@@ -1,51 +1,87 @@
+import { getLiveShowsForArtist } from "../data/liveShows"
+import VideoHero from "../components/liveShows/VideoHero"
+import VideoCard from "../components/liveShows/VideoCard"
+import { ExternalLinkIcon, ShareIcon } from "../components/liveShows/Icons"
+
+const ARTIST_ID = "the-smiths"
+const ARTIST_NAME = "THE SMITHS"
+
 export default function LiveShowsPage() {
+  const { featured, more } = getLiveShowsForArtist(ARTIST_ID)
+
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">THE SMITHS</h1>
-        <p className="text-sm text-gray-500">Live Performances</p>
+    <div className="w-full">
+      {/* Artist header */}
+      <header className="mx-auto mt-10 max-w-5xl text-center">
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-[0.18em] text-black/80">
+          {ARTIST_NAME}
+        </h1>
+        <div className="mt-3 text-xs font-semibold uppercase tracking-[0.35em] text-black/55">
+          Live Performances
+        </div>
       </header>
 
-      <section className="rounded-2xl border bg-white p-4">
-        <div className="aspect-video w-full rounded-xl bg-gray-200 flex items-center justify-center text-gray-500">
-          Featured video hero (placeholder)
-        </div>
+      {/* Featured hero */}
+      {featured ? <VideoHero show={featured} /> : null}
 
-        <div className="mt-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">Complete Concert</p>
-            <p className="text-xs text-gray-500">The Apollo • 1986</p>
+      {/* Complete Concert */}
+      <section className="mx-auto mt-10 max-w-5xl px-4 pb-16">
+        <div className="text-left">
+          <div className="text-lg font-extrabold tracking-[0.12em] text-black/75">
+            COMPLETE CONCERT
           </div>
-          <a
-            className="text-sm font-medium underline"
-            href="#"
-            onClick={(e) => e.preventDefault()}
-          >
-            Watch on YouTube
-          </a>
-        </div>
-      </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-700">More Live Sets</h2>
-        <div className="grid grid-cols-1 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border bg-white p-4">
-              <div className="flex items-start gap-3">
-                <div className="h-16 w-28 rounded-lg bg-gray-200 flex items-center justify-center text-xs text-gray-500">
-                  Thumb
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">Live Set Title {i + 1}</p>
-                  <p className="text-xs text-gray-500">Venue • 198{6 + i}</p>
-                </div>
-                <span className="ml-auto text-xs text-gray-600">58:12</span>
-              </div>
+          <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-2 text-black/60">
+            <div className="inline-flex items-center gap-2">
+              <span className="text-lg">📍</span>
+              <span className="font-medium">
+                {featured?.venue}
+                {featured?.city ? `, ${featured.city}` : ""}
+              </span>
             </div>
-          ))}
+
+            <div className="inline-flex items-center gap-2">
+              <span className="text-lg">🗓️</span>
+              <span className="font-medium">{featured?.year}</span>
+            </div>
+          </div>
+
+          <div className="mt-5 flex items-center gap-4">
+            <a
+              href={featured?.youtubeUrl ?? "https://www.youtube.com"}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-3 border border-[#7a2d2b] bg-transparent px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#7a2d2b] hover:bg-[#7a2d2b]/5"
+            >
+              <ExternalLinkIcon className="h-5 w-5" />
+              Watch on YouTube
+            </a>
+
+            {/* Share icon (non-functional) */}
+            <button
+              type="button"
+              className="grid h-12 w-12 place-items-center text-black/55 hover:text-black/75"
+              aria-label="Share"
+              onClick={() => {}}
+            >
+              <ShareIcon className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* More Live Sets */}
+        <div className="mt-12">
+          <div className="text-lg font-extrabold tracking-[0.12em] text-black/75">
+            MORE LIVE SETS
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+            {more.map((s) => (
+              <VideoCard key={s.id} show={s} />
+            ))}
+          </div>
         </div>
       </section>
     </div>
   )
 }
-

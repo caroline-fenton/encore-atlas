@@ -8,17 +8,21 @@ const tabs = [
 
 export default function AppLayout() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur">
-        <div className="mx-auto max-w-3xl px-4 py-3 flex items-center justify-between gap-3">
-          <div className="font-semibold tracking-tight">Encore Atlas</div>
+    <div className="min-h-screen bg-[#f6f1e8] text-black/85">
+      <header className="sticky top-0 z-10 border-b border-black/10 bg-[#f6f1e8]/90 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-5">
+          <div className="text-sm font-semibold uppercase tracking-[0.25em]">
+            Encore Atlas
+          </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500">Viewing:</label>
+          <div className="flex items-center gap-3">
+            <label className="text-xs uppercase tracking-[0.25em] text-black/55">
+              Viewing
+            </label>
+
             <select
-              className="rounded-lg border px-2 py-1 text-sm"
+              className="rounded-sm border border-black/20 bg-transparent px-2 py-1 text-sm"
               defaultValue="The Smiths"
-              aria-label="Viewing artist"
             >
               <option>The Smiths</option>
               <option>Joy Division</option>
@@ -30,25 +34,26 @@ export default function AppLayout() {
             </select>
 
             <button
-              className="ml-1 rounded-lg border px-2 py-1 text-sm"
-              aria-label="Account (coming soon)"
-              onClick={() => {}}
+              className="grid h-9 w-9 place-items-center rounded-sm border border-black/20 text-black/60"
+              aria-label="Account"
             >
               ☺
             </button>
           </div>
         </div>
 
-        <nav className="mx-auto max-w-3xl px-4 pb-3 flex gap-2">
+        <nav className="mx-auto flex max-w-5xl gap-6 px-6 pb-5">
           {tabs.map((t) => (
             <NavLink
               key={t.to}
               to={t.to}
-              end={t.end as boolean | undefined}
+              end={t.end}
               className={({ isActive }) =>
                 [
-                  "rounded-full px-3 py-1 text-sm font-medium border",
-                  isActive ? "bg-black text-white border-black" : "bg-white text-gray-700",
+                  "text-sm font-semibold uppercase tracking-[0.25em]",
+                  isActive
+                    ? "text-[#7a2d2b]"
+                    : "text-black/55 hover:text-black/75",
                 ].join(" ")
               }
             >
@@ -58,10 +63,9 @@ export default function AppLayout() {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-6">
+      <main className="mx-auto max-w-5xl px-6 pb-20">
         <Outlet />
       </main>
     </div>
   )
 }
-
