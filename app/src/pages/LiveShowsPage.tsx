@@ -10,9 +10,9 @@ export default function LiveShowsPage() {
   const { featured, more } = getLiveShowsForArtist(ARTIST_ID)
 
   return (
-    <div className="w-full">
+    <div className="space-y-8 pb-10">
       {/* Artist header */}
-      <header className="mx-auto mt-10 max-w-5xl text-center">
+      <header className="text-center">
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-[0.18em] text-black/80">
           {ARTIST_NAME}
         </h1>
@@ -21,12 +21,11 @@ export default function LiveShowsPage() {
         </div>
       </header>
 
-      {/* Featured hero */}
-      {featured ? <VideoHero show={featured} /> : null}
+      {/* Hero + Complete Concert */}
+      <section className="space-y-4">
+        {featured ? <VideoHero imageUrl={featured.thumbnailUrl} duration={featured.duration} /> : null}
 
-      {/* Complete Concert */}
-      <section className="mx-auto mt-10 max-w-5xl px-4 pb-16">
-        <div className="text-left">
+        <div className="py-4">
           <div className="text-lg font-extrabold tracking-[0.12em] text-black/75">
             COMPLETE CONCERT
           </div>
@@ -68,18 +67,18 @@ export default function LiveShowsPage() {
             </button>
           </div>
         </div>
+      </section>
 
-        {/* More Live Sets */}
-        <div className="mt-12">
-          <div className="text-lg font-extrabold tracking-[0.12em] text-black/75">
-            MORE LIVE SETS
-          </div>
+      {/* More Live Sets */}
+      <section className="space-y-4">
+        <div className="text-lg font-extrabold tracking-[0.12em] text-black/75">
+          MORE LIVE SETS
+        </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-            {more.map((s) => (
-              <VideoCard key={s.id} show={s} />
-            ))}
-          </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {more.map((s) => (
+            <VideoCard key={s.id} show={s} />
+          ))}
         </div>
       </section>
     </div>

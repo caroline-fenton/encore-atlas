@@ -2,8 +2,8 @@ import { NavLink, Outlet } from "react-router-dom"
 
 const tabs = [
   { to: "/", label: "Live Shows", end: true },
-  { to: "/interviews", label: "Interviews" },
-  { to: "/merch", label: "Merch" },
+  { to: "/interviews", label: "Interviews", end: false },
+  { to: "/merch", label: "Merch", end: false },
 ] as const
 
 export default function AppLayout() {
@@ -42,24 +42,26 @@ export default function AppLayout() {
           </div>
         </div>
 
-        <nav className="mx-auto flex max-w-5xl gap-6 px-6 pb-5">
-          {tabs.map((t) => (
-            <NavLink
-              key={t.to}
-              to={t.to}
-              end={t.end}
-              className={({ isActive }) =>
-                [
-                  "text-sm font-semibold uppercase tracking-[0.25em]",
-                  isActive
-                    ? "text-[#7a2d2b]"
-                    : "text-black/55 hover:text-black/75",
-                ].join(" ")
-              }
-            >
-              {t.label}
-            </NavLink>
-          ))}
+        <nav className="mx-auto max-w-5xl px-6 pb-5">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-xs font-semibold uppercase tracking-[0.25em]">
+            {tabs.map((t) => (
+              <NavLink
+                key={t.to}
+                to={t.to}
+                end={t.end}
+                className={({ isActive }) =>
+                  [
+                    "inline-flex items-center border-b-2 pb-1",
+                    isActive
+                      ? "border-[#7a2d2b] text-[#7a2d2b]"
+                      : "border-transparent text-black/55 hover:text-black/75",
+                  ].join(" ")
+                }
+              >
+                {t.label}
+              </NavLink>
+            ))}
+          </div>
         </nav>
       </header>
 

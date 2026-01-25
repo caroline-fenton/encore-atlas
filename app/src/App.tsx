@@ -7,12 +7,11 @@ import MerchPage from "./pages/MerchPage"
 export default function App() {
   return (
     <Routes>
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<LiveShowsPage />} />
-        <Route path="/interviews" element={<InterviewsPage />} />
-        <Route path="/merch" element={<MerchPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+  <Route path="/" element={<AppLayout />}>
+    <Route index element={<LiveShowsPage />} />
+    <Route path="interviews" element={<InterviewsPage />} />
+    <Route path="merch" element={<MerchPage />} />
+  </Route>
+</Routes>
   )
 }
