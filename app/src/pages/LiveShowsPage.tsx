@@ -1,47 +1,62 @@
+import { useOutletContext } from "react-router-dom"
+import type { AppOutletContext } from "../layouts/AppLayout"
 import { getLiveShowsForArtist } from "../data/liveShows"
 import VideoHero from "../components/liveShows/VideoHero"
 import VideoCard from "../components/liveShows/VideoCard"
 import { ExternalLinkIcon, ShareIcon } from "../components/liveShows/Icons"
-
-const ARTIST_ID = "the-smiths"
-const ARTIST_NAME = "THE SMITHS"
+import { MapPin, Calendar } from "lucide-react"
 
 export default function LiveShowsPage() {
-  const { featured, more } = getLiveShowsForArtist(ARTIST_ID)
+  const { selectedArtistId, selectedArtistName } =
+    useOutletContext<AppOutletContext>()
+
+  const { featured, more } = getLiveShowsForArtist(selectedArtistId)
+
+  const onShare = async () => {
+    const url = featured?.youtubeUrl ?? window.location.href
+    try {
+      await navigator.clipboard.writeText(url)
+      // optional: toast later
+    } catch {
+      // fallback
+      window.prompt("Copy link:", url)
+    }
+  }
 
   return (
     <div className="space-y-8 pb-10">
-      {/* Artist header */}
       <header className="text-center">
-        <h1 className="text-4xl md:text-5xl font-extrabold tracking-[0.18em] text-black/80">
-          {ARTIST_NAME}
+        <h1 className="font-display text-5xl md:text-6xl font-normal tracking-[0.22em] leading-none text-black/80 uppercase">
+          {selectedArtistName}
         </h1>
-        <div className="mt-3 text-xs font-semibold uppercase tracking-[0.35em] text-black/55">
+        <div className="mt-3 font-typewriter text-xs uppercase tracking-[0.35em] text-black/55">
           Live Performances
         </div>
       </header>
 
-      {/* Hero + Complete Concert */}
       <section className="space-y-4">
-        {featured ? <VideoHero imageUrl={featured.thumbnailUrl} duration={featured.duration} /> : null}
+        <VideoHero
+          videoId="5lMXA1r6GMM"
+          duration={featured?.duration ?? "1:18:00"}
+        />
 
         <div className="py-4">
-          <div className="text-lg font-extrabold tracking-[0.12em] text-black/75">
+          <div className="font-display text-2xl tracking-[0.12em] text-black/75">
             COMPLETE CONCERT
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-2 text-black/60">
+          <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-2 font-typewriter text-black/60">
             <div className="inline-flex items-center gap-2">
-              <span className="text-lg">📍</span>
-              <span className="font-medium">
+              <MapPin className="h-4 w-4" />
+              <span>
                 {featured?.venue}
                 {featured?.city ? `, ${featured.city}` : ""}
               </span>
             </div>
 
             <div className="inline-flex items-center gap-2">
-              <span className="text-lg">🗓️</span>
-              <span className="font-medium">{featured?.year}</span>
+              <Calendar className="h-4 w-4" />
+              <span>{featured?.year}</span>
             </div>
           </div>
 
@@ -56,12 +71,11 @@ export default function LiveShowsPage() {
               Watch on YouTube
             </a>
 
-            {/* Share icon (non-functional) */}
             <button
               type="button"
               className="grid h-12 w-12 place-items-center text-black/55 hover:text-black/75"
               aria-label="Share"
-              onClick={() => {}}
+              onClick={onShare}
             >
               <ShareIcon className="h-6 w-6" />
             </button>
@@ -69,9 +83,8 @@ export default function LiveShowsPage() {
         </div>
       </section>
 
-      {/* More Live Sets */}
       <section className="space-y-4">
-        <div className="text-lg font-extrabold tracking-[0.12em] text-black/75">
+        <div className="font-display text-2xl tracking-[0.12em] text-black/75">
           MORE LIVE SETS
         </div>
 

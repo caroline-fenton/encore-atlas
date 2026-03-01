@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom"
+import { useMemo, useState } from "react"
 
 const tabs = [
   { to: "/", label: "Live Shows", end: true },
@@ -6,10 +7,29 @@ const tabs = [
   { to: "/merch", label: "Merch", end: false },
 ] as const
 
+const artists = [
+  { id: "the-smiths", name: "THE SMITHS" },
+  { id: "joy-division", name: "JOY DIVISION" },
+  { id: "talking-heads", name: "TALKING HEADS" },
+  { id: "pixies", name: "PIXIES" },
+] as const
+
+export type AppOutletContext = {
+  selectedArtistId: string
+  selectedArtistName: string
+  setSelectedArtistId: (id: string) => void
+}
+
 export default function AppLayout() {
+  const [selectedArtistId, setSelectedArtistId] = useState<string>("the-smiths")
+
+  const selectedArtistName = useMemo(() => {
+    return artists.find((a) => a.id === selectedArtistId)?.name ?? "THE SMITHS"
+  }, [selectedArtistId])
+
   return (
     <div className="min-h-screen bg-[#f6f1e8] text-black/85">
-      <header className="sticky top-0 z-10 border-b border-black/10 bg-[#f6f1e8]/90 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-stone-200 bg-[#f6f1e8]/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-5">
           <div className="text-sm font-semibold uppercase tracking-[0.25em]">
             Encore Atlas
@@ -21,20 +41,22 @@ export default function AppLayout() {
             </label>
 
             <select
-              className="rounded-sm border border-black/20 bg-transparent px-2 py-1 text-sm"
-              defaultValue="The Smiths"
+              className="rounded-sm border border-stone-200 bg-transparent px-2 py-1 text-sm"
+              value={selectedArtistId}
+              onChange={(e) => setSelectedArtistId(e.target.value)}
             >
-              <option>The Smiths</option>
-              <option>Joy Division</option>
-              <option>Talking Heads</option>
-              <option>Pixies</option>
+              {artists.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
               <option disabled>──────────</option>
               <option disabled>Add artist (Soon)</option>
               <option disabled>Upload concert history (Soon)</option>
             </select>
 
             <button
-              className="grid h-9 w-9 place-items-center rounded-sm border border-black/20 text-black/60"
+              className="grid h-9 w-9 place-items-center rounded-sm border border-stone-200 text-black/60"
               aria-label="Account"
             >
               ☺
@@ -66,7 +88,13 @@ export default function AppLayout() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 pb-20">
-        <Outlet />
+        <Outlet
+          context={{
+            selectedArtistId,
+            selectedArtistName,
+            setSelectedArtistId,
+          } satisfies AppOutletContext}
+        />
       </main>
     </div>
   )

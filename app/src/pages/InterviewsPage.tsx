@@ -1,3 +1,5 @@
+import { ExternalLink, Share2 } from "lucide-react"
+
 export default function InterviewsPage() {
   return (
     <div className="space-y-6">
@@ -16,16 +18,17 @@ export default function InterviewsPage() {
               <div className="min-w-0 space-y-1">
                 <p className="text-sm font-medium">Speaker Name {i + 1}</p>
                 <p className="text-xs text-gray-500">BBC Radio • 32:10</p>
-                <button className="mt-2 inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium">
+                <button className="mt-2 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium">
+                  <ExternalLink className="h-4 w-4" />
                   Watch on YouTube
                 </button>
               </div>
               <button
-                className="ml-auto text-sm text-gray-500"
+                className="ml-auto text-gray-500 hover:text-gray-700"
                 onClick={() => {}}
                 aria-label="Share (coming soon)"
               >
-                ↗
+                <Share2 className="h-5 w-5" />
               </button>
             </div>
           </div>
