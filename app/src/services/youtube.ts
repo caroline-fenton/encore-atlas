@@ -66,6 +66,7 @@ type SearchOptions = {
   videoDuration?: "long" | "medium" | "any"
   order?: "relevance" | "viewCount" | "date"
   pageToken?: string
+  signal?: AbortSignal
 }
 
 type SearchResult = {
@@ -73,8 +74,8 @@ type SearchResult = {
   nextPageToken?: string
 }
 
-async function apiFetch<T>(url: string): Promise<T> {
-  const res = await fetch(url)
+async function apiFetch<T>(url: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(url, signal ? { signal } : undefined)
 
   if (!res.ok) {
     if (res.status === 403) {
@@ -112,7 +113,7 @@ export async function searchVideos(
   query: string,
   options: SearchOptions = {},
 ): Promise<SearchResult> {
-  const { maxResults = 5, videoDuration = "any", order = "relevance", pageToken } = options
+  const { maxResults = 5, videoDuration = "any", order = "relevance", pageToken, signal } = options
 
   const cacheKey = `search_${query}_${maxResults}_${videoDuration}_${order}_${pageToken ?? ""}`
   const cached = getCached<SearchResult>(cacheKey)
@@ -135,6 +136,7 @@ export async function searchVideos(
 
   const data = await apiFetch<YouTubeSearchResponse>(
     `${API_BASE}/search?${params}`,
+    signal,
   )
 
   const result: SearchResult = {
@@ -147,6 +149,7 @@ export async function searchVideos(
 
 export async function getVideoDetails(
   videoIds: string[],
+  signal?: AbortSignal,
 ): Promise<YouTubeVideoItem[]> {
   if (videoIds.length === 0) return []
 
@@ -176,6 +179,7 @@ export async function getVideoDetails(
 
     const data = await apiFetch<YouTubeVideoListResponse>(
       `${API_BASE}/videos?${params}`,
+      signal,
     )
 
     for (const item of data.items) {
@@ -235,7 +239,7 @@ export async function searchAndEnrich(
   const { artistName, ...searchOpts } = options
   const { items: searchResults, nextPageToken } = await searchVideos(query, searchOpts)
   const videoIds = searchResults.map(mapSearchItemToVideoId)
-  const details = await getVideoDetails(videoIds)
+  const details = await getVideoDetails(videoIds, searchOpts.signal)
   let videos = details.map(mapVideoItemToVideo)
 
   // Filter out irrelevant results if we know the artist name

@@ -23,7 +23,7 @@ type UseVideosResult = {
 }
 
 function useVideoFetch(
-  fetchFn: () => Promise<EnrichResult>,
+  fetchFn: (signal: AbortSignal) => Promise<EnrichResult>,
   loadMoreFn: (pageToken: string) => Promise<EnrichResult>,
   deps: unknown[],
 ): UseVideosResult {
@@ -46,11 +46,12 @@ function useVideoFetch(
 
     async function load() {
       setIsLoading(true)
+      setIsLoadingMore(false)
       setError(null)
       setNextPageToken(undefined)
 
       try {
-        const result = await fetchFn()
+        const result = await fetchFn(controller.signal)
         if (!cancelled) {
           setVideos(result.videos)
           setNextPageToken(result.nextPageToken)
@@ -121,12 +122,13 @@ function useVideoFetch(
 export function useArtistConcerts(artistName: string): UseVideosResult {
   const effectiveDurationRef: MutableRefObject<"long" | "any"> = useRef("long")
 
-  const fetchFn = useCallback(async () => {
+  const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildConcertSearchQuery(artistName)
     const result = await searchWithDurationFallback(query, {
       maxResults: 5,
       videoDuration: "long",
       artistName,
+      signal,
     })
     // Track whether fallback switched from "long" to "any"
     effectiveDurationRef.current = result.effectiveDuration === "any" ? "any" : "long"
@@ -150,9 +152,9 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
 }
 
 export function useArtistInterviews(artistName: string): UseVideosResult {
-  const fetchFn = useCallback(async () => {
+  const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildInterviewSearchQuery(artistName)
-    return searchAndEnrich(query, { maxResults: 4, artistName })
+    return searchAndEnrich(query, { maxResults: 4, artistName, signal })
   }, [artistName])
 
   const loadMoreFn = useCallback(
