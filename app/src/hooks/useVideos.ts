@@ -1,6 +1,10 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import type { Video } from "../types/video"
-import { searchAndEnrich } from "../services/youtube"
+import {
+  searchAndEnrich,
+  searchWithDurationFallback,
+  type EnrichResult,
+} from "../services/youtube"
 import {
   buildConcertSearchQuery,
   buildInterviewSearchQuery,
@@ -11,18 +15,24 @@ type UseVideosResult = {
   featured: Video | null
   more: Video[]
   isLoading: boolean
+  isLoadingMore: boolean
   error: string | null
+  hasMore: boolean
+  loadMore: () => void
   retry: () => void
 }
 
 function useVideoFetch(
-  fetchFn: () => Promise<Video[]>,
+  fetchFn: () => Promise<EnrichResult>,
+  loadMoreFn: (pageToken: string) => Promise<EnrichResult>,
   deps: unknown[],
 ): UseVideosResult {
   const [videos, setVideos] = useState<Video[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
+  const [nextPageToken, setNextPageToken] = useState<string | undefined>()
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -35,11 +45,13 @@ function useVideoFetch(
     async function load() {
       setIsLoading(true)
       setError(null)
+      setNextPageToken(undefined)
 
       try {
         const result = await fetchFn()
         if (!cancelled) {
-          setVideos(result)
+          setVideos(result.videos)
+          setNextPageToken(result.nextPageToken)
         }
       } catch (err) {
         if (!cancelled) {
@@ -63,6 +75,23 @@ function useVideoFetch(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, retryCount])
 
+  const loadMore = useCallback(async () => {
+    if (!nextPageToken || isLoadingMore) return
+
+    setIsLoadingMore(true)
+    try {
+      const result = await loadMoreFn(nextPageToken)
+      setVideos((prev) => [...prev, ...result.videos])
+      setNextPageToken(result.nextPageToken)
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load more videos",
+      )
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [nextPageToken, isLoadingMore, loadMoreFn])
+
   const featured = videos.length > 0 ? videos[0] : null
   const more = videos.length > 1 ? videos.slice(1) : []
 
@@ -71,21 +100,53 @@ function useVideoFetch(
     featured,
     more,
     isLoading,
+    isLoadingMore,
     error,
+    hasMore: !!nextPageToken,
+    loadMore,
     retry: () => setRetryCount((c) => c + 1),
   }
 }
 
 export function useArtistConcerts(artistName: string): UseVideosResult {
-  return useVideoFetch(async () => {
+  const fetchFn = useCallback(async () => {
     const query = buildConcertSearchQuery(artistName)
-    return searchAndEnrich(query, { maxResults: 5, videoDuration: "long" })
+    return searchWithDurationFallback(query, {
+      maxResults: 5,
+      videoDuration: "long",
+      artistName,
+    })
   }, [artistName])
+
+  const loadMoreFn = useCallback(
+    async (pageToken: string) => {
+      const query = buildConcertSearchQuery(artistName)
+      return searchAndEnrich(query, {
+        maxResults: 5,
+        videoDuration: "long",
+        artistName,
+        pageToken,
+      })
+    },
+    [artistName],
+  )
+
+  return useVideoFetch(fetchFn, loadMoreFn, [artistName])
 }
 
 export function useArtistInterviews(artistName: string): UseVideosResult {
-  return useVideoFetch(async () => {
+  const fetchFn = useCallback(async () => {
     const query = buildInterviewSearchQuery(artistName)
-    return searchAndEnrich(query, { maxResults: 4 })
+    return searchAndEnrich(query, { maxResults: 4, artistName })
   }, [artistName])
+
+  const loadMoreFn = useCallback(
+    async (pageToken: string) => {
+      const query = buildInterviewSearchQuery(artistName)
+      return searchAndEnrich(query, { maxResults: 4, artistName, pageToken })
+    },
+    [artistName],
+  )
+
+  return useVideoFetch(fetchFn, loadMoreFn, [artistName])
 }

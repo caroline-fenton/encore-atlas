@@ -65,6 +65,12 @@ type SearchOptions = {
   maxResults?: number
   videoDuration?: "long" | "medium" | "any"
   order?: "relevance" | "viewCount" | "date"
+  pageToken?: string
+}
+
+type SearchResult = {
+  items: YouTubeSearchItem[]
+  nextPageToken?: string
 }
 
 async function apiFetch<T>(url: string): Promise<T> {
@@ -72,13 +78,22 @@ async function apiFetch<T>(url: string): Promise<T> {
 
   if (!res.ok) {
     if (res.status === 403) {
-      // Mark quota exhaustion in cache until midnight PT
-      const now = new Date()
-      const midnight = new Date(now)
-      midnight.setHours(24, 0, 0, 0)
-      const ttl = midnight.getTime() - now.getTime()
-      setCache("quota_exhausted", true, ttl)
-      throw new YouTubeQuotaError()
+      // Check if this is actually a quota error vs. an auth/permission error
+      try {
+        const body = await res.json()
+        const reason = body?.error?.errors?.[0]?.reason
+        if (reason === "quotaExceeded" || reason === "dailyLimitExceeded") {
+          const now = new Date()
+          const midnight = new Date(now)
+          midnight.setHours(24, 0, 0, 0)
+          const ttl = midnight.getTime() - now.getTime()
+          setCache("quota_exhausted", true, ttl)
+          throw new YouTubeQuotaError()
+        }
+      } catch (e) {
+        if (e instanceof YouTubeQuotaError) throw e
+        // If we can't parse the body, fall through to generic error
+      }
     }
     throw new YouTubeApiError(
       `YouTube API error: ${res.status} ${res.statusText}`,
@@ -96,11 +111,11 @@ export function isQuotaExhausted(): boolean {
 export async function searchVideos(
   query: string,
   options: SearchOptions = {},
-): Promise<YouTubeSearchItem[]> {
-  const { maxResults = 5, videoDuration = "any", order = "relevance" } = options
+): Promise<SearchResult> {
+  const { maxResults = 5, videoDuration = "any", order = "relevance", pageToken } = options
 
-  const cacheKey = `search_${query}_${maxResults}_${videoDuration}_${order}`
-  const cached = getCached<YouTubeSearchItem[]>(cacheKey)
+  const cacheKey = `search_${query}_${maxResults}_${videoDuration}_${order}_${pageToken ?? ""}`
+  const cached = getCached<SearchResult>(cacheKey)
   if (cached) return cached
 
   if (isQuotaExhausted()) {
@@ -116,13 +131,18 @@ export async function searchVideos(
     order,
     key: API_KEY,
   })
+  if (pageToken) params.set("pageToken", pageToken)
 
   const data = await apiFetch<YouTubeSearchResponse>(
     `${API_BASE}/search?${params}`,
   )
 
-  setCache(cacheKey, data.items)
-  return data.items
+  const result: SearchResult = {
+    items: data.items,
+    nextPageToken: data.nextPageToken,
+  }
+  setCache(cacheKey, result)
+  return result
 }
 
 export async function getVideoDetails(
@@ -192,14 +212,53 @@ function mapSearchItemToVideoId(item: YouTubeSearchItem): string {
   return item.id.videoId
 }
 
+// --- Relevance filtering ---
+
+function isRelevantVideo(video: Video, artistName: string): boolean {
+  const normalised = artistName.toLowerCase().replace(/^the\s+/, "")
+  const title = video.title.toLowerCase()
+  return title.includes(normalised) || title.includes(artistName.toLowerCase())
+}
+
 // --- High-level: search + enrich ---
+
+export type EnrichResult = {
+  videos: Video[]
+  nextPageToken?: string
+}
 
 export async function searchAndEnrich(
   query: string,
-  options: SearchOptions = {},
-): Promise<Video[]> {
-  const searchResults = await searchVideos(query, options)
+  options: SearchOptions & { artistName?: string } = {},
+): Promise<EnrichResult> {
+  const { artistName, ...searchOpts } = options
+  const { items: searchResults, nextPageToken } = await searchVideos(query, searchOpts)
   const videoIds = searchResults.map(mapSearchItemToVideoId)
   const details = await getVideoDetails(videoIds)
-  return details.map(mapVideoItemToVideo)
+  let videos = details.map(mapVideoItemToVideo)
+
+  // Filter out irrelevant results if we know the artist name
+  if (artistName) {
+    videos = videos.filter((v) => isRelevantVideo(v, artistName))
+  }
+
+  return { videos, nextPageToken }
+}
+
+// Duration fallback: if "long" returns too few, retry with "any"
+export async function searchWithDurationFallback(
+  query: string,
+  options: SearchOptions & { artistName?: string } = {},
+  minResults = 3,
+): Promise<EnrichResult> {
+  const result = await searchAndEnrich(query, options)
+
+  if (
+    result.videos.length < minResults &&
+    options.videoDuration === "long"
+  ) {
+    return searchAndEnrich(query, { ...options, videoDuration: "any" })
+  }
+
+  return result
 }

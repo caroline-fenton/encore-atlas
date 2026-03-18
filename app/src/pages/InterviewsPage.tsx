@@ -1,5 +1,5 @@
 import { useOutletContext } from "react-router-dom"
-import { useRef, useState, useCallback } from "react"
+import { useRef, useState, useEffect, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
 import { useArtistInterviews } from "../hooks/useVideos"
@@ -13,11 +13,16 @@ import { ExternalLinkIcon, ShareIcon } from "../components/liveShows/Icons"
 export default function InterviewsPage() {
   const { selectedArtistName } = useOutletContext<AppOutletContext>()
 
-  const { videos, isLoading, error, retry } =
+  const { videos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
     useArtistInterviews(selectedArtistName)
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
+
+  // Reset selected interview when artist changes
+  useEffect(() => {
+    setNowPlaying(null)
+  }, [selectedArtistName])
 
   const handleSelectVideo = useCallback((video: Video) => {
     setNowPlaying(video)
@@ -113,6 +118,19 @@ export default function InterviewsPage() {
                 />
               ))}
             </div>
+
+            {hasMore && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={isLoadingMore}
+                  className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
+                >
+                  {isLoadingMore ? "Loading..." : "Load More"}
+                </button>
+              </div>
+            )}
           </section>
         </>
       )}

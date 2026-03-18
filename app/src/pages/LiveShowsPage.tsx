@@ -15,7 +15,7 @@ import { Calendar } from "lucide-react"
 export default function LiveShowsPage() {
   const { selectedArtistName } = useOutletContext<AppOutletContext>()
 
-  const { featured, more, isLoading, error, retry } =
+  const { featured, more, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
     useArtistConcerts(selectedArtistName)
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
@@ -140,6 +140,19 @@ export default function LiveShowsPage() {
                   />
                 ))}
               </div>
+
+              {hasMore && (
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={loadMore}
+                    disabled={isLoadingMore}
+                    className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
+                  >
+                    {isLoadingMore ? "Loading..." : "Load More"}
+                  </button>
+                </div>
+              )}
             </section>
           )}
         </>
