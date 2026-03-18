@@ -65,8 +65,21 @@ export default function LiveShowsPage() {
         </>
       )}
 
-      {!error && !isLoading && !featured && (
+      {!error && !isLoading && !featured && !hasMore && (
         <EmptyState message={`No concert videos found for ${selectedArtistName}.`} />
+      )}
+
+      {!error && !isLoading && !featured && hasMore && (
+        <div className="pt-2 text-center">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
+          >
+            {isLoadingMore ? "Loading..." : "Load More"}
+          </button>
+        </div>
       )}
 
       {!error && !isLoading && activeVideo && (

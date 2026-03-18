@@ -34,12 +34,14 @@ function useVideoFetch(
   const [retryCount, setRetryCount] = useState(0)
   const [nextPageToken, setNextPageToken] = useState<string | undefined>()
   const abortRef = useRef<AbortController | null>(null)
+  const generationRef = useRef(0)
 
   useEffect(() => {
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
 
+    const generation = ++generationRef.current
     let cancelled = false
 
     async function load() {
@@ -78,17 +80,25 @@ function useVideoFetch(
   const loadMore = useCallback(async () => {
     if (!nextPageToken || isLoadingMore) return
 
+    const generation = generationRef.current
     setIsLoadingMore(true)
     try {
       const result = await loadMoreFn(nextPageToken)
-      setVideos((prev) => [...prev, ...result.videos])
-      setNextPageToken(result.nextPageToken)
+      // Only apply results if the artist hasn't changed since we started
+      if (generation === generationRef.current) {
+        setVideos((prev) => [...prev, ...result.videos])
+        setNextPageToken(result.nextPageToken)
+      }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load more videos",
-      )
+      if (generation === generationRef.current) {
+        setError(
+          err instanceof Error ? err.message : "Failed to load more videos",
+        )
+      }
     } finally {
-      setIsLoadingMore(false)
+      if (generation === generationRef.current) {
+        setIsLoadingMore(false)
+      }
     }
   }, [nextPageToken, isLoadingMore, loadMoreFn])
 
