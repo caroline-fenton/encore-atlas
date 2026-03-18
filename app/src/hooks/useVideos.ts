@@ -3,6 +3,7 @@ import type { Video } from "../types/video"
 import {
   searchAndEnrich,
   searchWithDurationFallback,
+  YouTubeQuotaError,
   type EnrichResult,
 } from "../services/youtube"
 import {
@@ -41,7 +42,7 @@ function useVideoFetch(
     const controller = new AbortController()
     abortRef.current = controller
 
-    const generation = ++generationRef.current
+    ++generationRef.current
     let cancelled = false
 
     async function load() {
@@ -58,9 +59,12 @@ function useVideoFetch(
         }
       } catch (err) {
         if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : "Failed to load videos",
-          )
+          // Silently degrade on quota errors — just show empty results
+          if (!(err instanceof YouTubeQuotaError)) {
+            setError(
+              err instanceof Error ? err.message : "Failed to load videos",
+            )
+          }
         }
       } finally {
         if (!cancelled) {

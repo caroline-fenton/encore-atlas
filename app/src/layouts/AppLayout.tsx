@@ -1,7 +1,6 @@
 import { NavLink, Outlet, Link } from "react-router-dom"
 import { useState } from "react"
 import ArtistSearchBar from "../components/search/ArtistSearchBar"
-import QuotaWarning from "../components/shared/QuotaWarning"
 import LandingPage from "../pages/LandingPage"
 
 const tabs = [
@@ -101,8 +100,6 @@ export default function AppLayout() {
           </div>
         </nav>
       </header>
-
-      <QuotaWarning />
 
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <Outlet

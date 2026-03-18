@@ -1,7 +1,16 @@
+import { useState, useEffect } from "react"
 import { isQuotaExhausted } from "../../services/youtube"
 
 export default function QuotaWarning() {
-  if (!isQuotaExhausted()) return null
+  const [exhausted, setExhausted] = useState(isQuotaExhausted)
+
+  useEffect(() => {
+    const onQuotaExhausted = () => setExhausted(true)
+    window.addEventListener("quota-exhausted", onQuotaExhausted)
+    return () => window.removeEventListener("quota-exhausted", onQuotaExhausted)
+  }, [])
+
+  if (!exhausted) return null
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-3">
