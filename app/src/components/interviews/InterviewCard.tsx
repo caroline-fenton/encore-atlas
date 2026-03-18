@@ -38,12 +38,9 @@ export default function InterviewCard({ video, onSelect }: Props) {
       </div>
 
       <div className="flex flex-1 items-start gap-3 px-5 py-4">
-        <div className="min-w-0 flex-1 space-y-1">
+        <div className="min-w-0 flex-1">
           <div className="text-[15px] font-semibold tracking-[0.02em] text-black/80 line-clamp-2">
             {video.title}
-          </div>
-          <div className="text-sm text-black/55">
-            {video.channelTitle} · {new Date(video.publishedAt).getFullYear()}
           </div>
         </div>
 

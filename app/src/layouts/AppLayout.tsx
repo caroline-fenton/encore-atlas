@@ -2,12 +2,26 @@ import { NavLink, Outlet, Link } from "react-router-dom"
 import { useState } from "react"
 import ArtistSearchBar from "../components/search/ArtistSearchBar"
 import QuotaWarning from "../components/shared/QuotaWarning"
+import LandingPage from "../pages/LandingPage"
 
 const tabs = [
   { to: "/", label: "Live Shows", end: true },
   { to: "/interviews", label: "Interviews", end: false },
   { to: "/merch", label: "Merch", end: false },
 ] as const
+
+const RECENT_SEARCHES_KEY = "encore_atlas_recent_searches"
+
+function hasSearched(): boolean {
+  try {
+    const raw = localStorage.getItem(RECENT_SEARCHES_KEY)
+    if (!raw) return false
+    const searches = JSON.parse(raw)
+    return Array.isArray(searches) && searches.length > 0
+  } catch {
+    return false
+  }
+}
 
 type SelectedArtist = {
   id: string
@@ -25,6 +39,18 @@ export default function AppLayout() {
     id: "the-smiths",
     name: "THE SMITHS",
   })
+  const [showLanding, setShowLanding] = useState(!hasSearched())
+
+  if (showLanding) {
+    return (
+      <div className="min-h-screen bg-[#f6f1e8] text-black/85">
+        <LandingPage
+          onComplete={() => setShowLanding(false)}
+          setSelectedArtist={setSelectedArtist}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#f6f1e8] text-black/85">

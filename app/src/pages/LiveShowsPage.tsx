@@ -9,8 +9,6 @@ import VideoHeroSkeleton from "../components/shared/VideoHeroSkeleton"
 import VideoCardSkeleton from "../components/shared/VideoCardSkeleton"
 import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
-import { ExternalLinkIcon, ShareIcon } from "../components/liveShows/Icons"
-import { Calendar } from "lucide-react"
 
 export default function LiveShowsPage() {
   const { selectedArtistName } = useOutletContext<AppOutletContext>()
@@ -33,14 +31,6 @@ export default function LiveShowsPage() {
     heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }, [])
 
-  const onShare = async () => {
-    const url = activeVideo?.youtubeUrl ?? window.location.href
-    try {
-      await navigator.clipboard.writeText(url)
-    } catch {
-      window.prompt("Copy link:", url)
-    }
-  }
 
   return (
     <div className="space-y-8 pb-10">
@@ -89,39 +79,6 @@ export default function LiveShowsPage() {
                 {activeVideo.title}
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-2 font-typewriter text-black/60">
-                <div className="inline-flex items-center gap-2">
-                  <span>{activeVideo.channelTitle}</span>
-                </div>
-
-                <div className="inline-flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  <span>
-                    {new Date(activeVideo.publishedAt).getFullYear()}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-5 flex items-center gap-4">
-                <a
-                  href={activeVideo.youtubeUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-3 border border-[#7a2d2b] bg-transparent px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#7a2d2b] hover:bg-[#7a2d2b]/5"
-                >
-                  <ExternalLinkIcon className="h-5 w-5" />
-                  Watch on YouTube
-                </a>
-
-                <button
-                  type="button"
-                  className="grid h-12 w-12 place-items-center text-black/55 hover:text-black/75"
-                  aria-label="Share"
-                  onClick={onShare}
-                >
-                  <ShareIcon className="h-6 w-6" />
-                </button>
-              </div>
             </div>
           </section>
 

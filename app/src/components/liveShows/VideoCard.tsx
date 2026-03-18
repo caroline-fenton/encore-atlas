@@ -7,12 +7,12 @@ type Props = {
 }
 
 export default function VideoCard({ video, onSelect }: Props) {
-  // Curated content has venue/city/year. Search results fall back to channel + publish year.
+  // Curated content has venue/city/year. Search results show no extra meta.
   const meta = video.venue
     ? video.city
       ? `${video.venue}\n${video.city} · ${video.year}`
       : `${video.venue} · ${video.year}`
-    : `${video.channelTitle} · ${new Date(video.publishedAt).getFullYear()}`
+    : null
 
   return (
     <button
@@ -41,9 +41,11 @@ export default function VideoCard({ video, onSelect }: Props) {
             {video.title}
           </div>
 
-          <div className="mt-1 whitespace-pre-line text-sm leading-5 text-black/55">
-            {meta}
-          </div>
+          {meta && (
+            <div className="mt-1 whitespace-pre-line text-sm leading-5 text-black/55">
+              {meta}
+            </div>
+          )}
         </div>
       </div>
     </button>
