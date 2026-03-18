@@ -50,8 +50,21 @@ export default function InterviewsPage() {
         </div>
       )}
 
-      {!error && !isLoading && videos.length === 0 && (
+      {!error && !isLoading && videos.length === 0 && !hasMore && (
         <EmptyState message={`No interviews found for ${selectedArtistName}.`} />
+      )}
+
+      {!error && !isLoading && videos.length === 0 && hasMore && (
+        <div className="pt-2 text-center">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
+          >
+            {isLoadingMore ? "Loading..." : "Load More"}
+          </button>
+        </div>
       )}
 
       {!error && !isLoading && videos.length > 0 && (

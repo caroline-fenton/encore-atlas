@@ -225,6 +225,7 @@ function isRelevantVideo(video: Video, artistName: string): boolean {
 export type EnrichResult = {
   videos: Video[]
   nextPageToken?: string
+  effectiveDuration?: "long" | "medium" | "any"
 }
 
 export async function searchAndEnrich(
@@ -257,8 +258,9 @@ export async function searchWithDurationFallback(
     result.videos.length < minResults &&
     options.videoDuration === "long"
   ) {
-    return searchAndEnrich(query, { ...options, videoDuration: "any" })
+    const fallback = await searchAndEnrich(query, { ...options, videoDuration: "any" })
+    return { ...fallback, effectiveDuration: "any" }
   }
 
-  return result
+  return { ...result, effectiveDuration: options.videoDuration }
 }

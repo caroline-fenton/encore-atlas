@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, type MutableRefObject } from "react"
 import type { Video } from "../types/video"
 import {
   searchAndEnrich,
@@ -109,13 +109,18 @@ function useVideoFetch(
 }
 
 export function useArtistConcerts(artistName: string): UseVideosResult {
+  const effectiveDurationRef: MutableRefObject<"long" | "any"> = useRef("long")
+
   const fetchFn = useCallback(async () => {
     const query = buildConcertSearchQuery(artistName)
-    return searchWithDurationFallback(query, {
+    const result = await searchWithDurationFallback(query, {
       maxResults: 5,
       videoDuration: "long",
       artistName,
     })
+    // Track whether fallback switched from "long" to "any"
+    effectiveDurationRef.current = result.effectiveDuration === "any" ? "any" : "long"
+    return result
   }, [artistName])
 
   const loadMoreFn = useCallback(
@@ -123,7 +128,7 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
       const query = buildConcertSearchQuery(artistName)
       return searchAndEnrich(query, {
         maxResults: 5,
-        videoDuration: "long",
+        videoDuration: effectiveDurationRef.current,
         artistName,
         pageToken,
       })

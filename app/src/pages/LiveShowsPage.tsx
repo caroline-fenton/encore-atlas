@@ -82,21 +82,25 @@ export default function LiveShowsPage() {
             </div>
           </section>
 
-          {more.length > 0 && (
+          {(more.length > 0 || hasMore) && (
             <section className="space-y-4">
-              <div className="font-display text-2xl tracking-[0.12em] text-black/75">
-                MORE LIVE SETS
-              </div>
+              {more.length > 0 && (
+                <>
+                  <div className="font-display text-2xl tracking-[0.12em] text-black/75">
+                    MORE LIVE SETS
+                  </div>
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {more.map((v) => (
-                  <VideoCard
-                    key={v.id}
-                    video={v}
-                    onSelect={handleSelectVideo}
-                  />
-                ))}
-              </div>
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {more.map((v) => (
+                      <VideoCard
+                        key={v.id}
+                        video={v}
+                        onSelect={handleSelectVideo}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
 
               {hasMore && (
                 <div className="pt-2 text-center">
