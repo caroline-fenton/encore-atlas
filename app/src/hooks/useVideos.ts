@@ -49,6 +49,7 @@ function useVideoFetch(
       setIsLoading(true)
       setIsLoadingMore(false)
       setError(null)
+      setVideos([])
       setNextPageToken(undefined)
 
       try {
