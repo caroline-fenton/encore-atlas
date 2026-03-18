@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom"
+import { useState } from "react"
 import AppLayout from "./layouts/AppLayout"
 import LiveShowsPage from "./pages/LiveShowsPage"
 import InterviewsPage from "./pages/InterviewsPage"
@@ -19,8 +20,10 @@ function hasSearched(): boolean {
 }
 
 function HomePage() {
-  if (!hasSearched()) {
-    return <LandingPage />
+  const [showLanding, setShowLanding] = useState(!hasSearched())
+
+  if (showLanding) {
+    return <LandingPage onComplete={() => setShowLanding(false)} />
   }
   return <LiveShowsPage />
 }

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate, useOutletContext } from "react-router-dom"
+import { useOutletContext } from "react-router-dom"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import { useRecentSearches } from "../hooks/useRecentSearches"
 
@@ -11,11 +11,14 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, "")
 }
 
-export default function LandingPage() {
+type LandingPageProps = {
+  onComplete: () => void
+}
+
+export default function LandingPage({ onComplete }: LandingPageProps) {
   const [query, setQuery] = useState("")
   const { setSelectedArtist } = useOutletContext<AppOutletContext>()
   const { addSearch } = useRecentSearches()
-  const navigate = useNavigate()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,7 +30,7 @@ export default function LandingPage() {
       id: slugify(trimmed),
       name: trimmed.toUpperCase(),
     })
-    navigate("/")
+    onComplete()
   }
 
   return (
