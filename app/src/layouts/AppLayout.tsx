@@ -1,5 +1,7 @@
-import { NavLink, Outlet } from "react-router-dom"
-import { useMemo, useState } from "react"
+import { NavLink, Outlet, Link } from "react-router-dom"
+import { useState } from "react"
+import ArtistSearchBar from "../components/search/ArtistSearchBar"
+import LandingPage from "../pages/LandingPage"
 
 const tabs = [
   { to: "/", label: "Live Shows", end: true },
@@ -7,53 +9,65 @@ const tabs = [
   { to: "/merch", label: "Merch", end: false },
 ] as const
 
-const artists = [
-  { id: "the-smiths", name: "THE SMITHS" },
-  { id: "joy-division", name: "JOY DIVISION" },
-  { id: "talking-heads", name: "TALKING HEADS" },
-  { id: "pixies", name: "PIXIES" },
-] as const
+const RECENT_SEARCHES_KEY = "encore_atlas_recent_searches"
+
+function hasSearched(): boolean {
+  try {
+    const raw = localStorage.getItem(RECENT_SEARCHES_KEY)
+    if (!raw) return false
+    const searches = JSON.parse(raw)
+    return Array.isArray(searches) && searches.length > 0
+  } catch {
+    return false
+  }
+}
+
+type SelectedArtist = {
+  id: string
+  name: string
+}
 
 export type AppOutletContext = {
   selectedArtistId: string
   selectedArtistName: string
-  setSelectedArtistId: (id: string) => void
+  setSelectedArtist: (artist: SelectedArtist) => void
 }
 
 export default function AppLayout() {
-  const [selectedArtistId, setSelectedArtistId] = useState<string>("the-smiths")
+  const [selectedArtist, setSelectedArtist] = useState<SelectedArtist>({
+    id: "the-smiths",
+    name: "THE SMITHS",
+  })
+  const [showLanding, setShowLanding] = useState(!hasSearched())
 
-  const selectedArtistName = useMemo(() => {
-    return artists.find((a) => a.id === selectedArtistId)?.name ?? "THE SMITHS"
-  }, [selectedArtistId])
+  if (showLanding) {
+    return (
+      <div className="min-h-screen bg-[#f6f1e8] text-black/85">
+        <LandingPage
+          onComplete={() => setShowLanding(false)}
+          setSelectedArtist={setSelectedArtist}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#f6f1e8] text-black/85">
       <header className="sticky top-0 z-10 border-b border-stone-200 bg-[#f6f1e8]/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-5">
-          <div className="text-sm font-semibold uppercase tracking-[0.25em]">
+          <Link
+            to="/"
+            className="text-sm font-semibold uppercase tracking-[0.25em] hover:text-black/70"
+          >
             Encore Atlas
-          </div>
+          </Link>
 
           <div className="flex items-center gap-3">
             <label className="text-xs uppercase tracking-[0.25em] text-black/55">
               Viewing
             </label>
 
-            <select
-              className="rounded-sm border border-stone-200 bg-transparent px-2 py-1 text-sm"
-              value={selectedArtistId}
-              onChange={(e) => setSelectedArtistId(e.target.value)}
-            >
-              {artists.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-              <option disabled>──────────</option>
-              <option disabled>Add artist (Soon)</option>
-              <option disabled>Upload concert history (Soon)</option>
-            </select>
+            <ArtistSearchBar onSelectArtist={setSelectedArtist} />
 
             <button
               className="grid h-9 w-9 place-items-center rounded-sm border border-stone-200 text-black/60"
@@ -90,9 +104,9 @@ export default function AppLayout() {
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <Outlet
           context={{
-            selectedArtistId,
-            selectedArtistName,
-            setSelectedArtistId,
+            selectedArtistId: selectedArtist.id,
+            selectedArtistName: selectedArtist.name,
+            setSelectedArtist,
           } satisfies AppOutletContext}
         />
       </main>

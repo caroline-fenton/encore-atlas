@@ -1,40 +1,113 @@
-import { ExternalLink, Share2 } from "lucide-react"
+import { useOutletContext } from "react-router-dom"
+import { useRef, useState, useEffect, useCallback } from "react"
+import type { AppOutletContext } from "../layouts/AppLayout"
+import type { Video } from "../types/video"
+import { useArtistInterviews } from "../hooks/useVideos"
+import VideoHero from "../components/liveShows/VideoHero"
+import InterviewCard from "../components/interviews/InterviewCard"
+import VideoCardSkeleton from "../components/shared/VideoCardSkeleton"
+import ErrorState from "../components/shared/ErrorState"
+import EmptyState from "../components/shared/EmptyState"
 
 export default function InterviewsPage() {
+  const { selectedArtistName } = useOutletContext<AppOutletContext>()
+
+  const { videos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
+    useArtistInterviews(selectedArtistName)
+
+  const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
+  const heroRef = useRef<HTMLDivElement>(null)
+
+  // Reset selected interview when artist changes
+  useEffect(() => {
+    setNowPlaying(null)
+  }, [selectedArtistName])
+
+  const handleSelectVideo = useCallback((video: Video) => {
+    setNowPlaying(video)
+    heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [])
+
+
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">IN THEIR OWN WORDS</h1>
-        <p className="text-sm text-gray-500">Interviews & oral histories (placeholder)</p>
+    <div className="space-y-8 pb-10">
+      <header className="text-center">
+        <h1 className="font-display text-5xl md:text-6xl font-normal tracking-[0.22em] leading-none text-black/80 uppercase">
+          {selectedArtistName}
+        </h1>
+        <div className="mt-3 font-typewriter text-xs uppercase tracking-[0.35em] text-black/55">
+          In Their Own Words
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-2xl border bg-white p-4">
-            <div className="flex items-start gap-3">
-              <div className="h-16 w-28 rounded-lg bg-gray-200 flex items-center justify-center text-xs text-gray-500">
-                Thumb
+      {error && <ErrorState message={error} onRetry={retry} />}
+
+      {!error && isLoading && (
+        <div className="grid grid-cols-1 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <VideoCardSkeleton key={i} />
+          ))}
+        </div>
+      )}
+
+      {!error && !isLoading && videos.length === 0 && !hasMore && (
+        <EmptyState message={`No interviews found for ${selectedArtistName}.`} />
+      )}
+
+      {!error && !isLoading && videos.length === 0 && hasMore && (
+        <div className="pt-2 text-center">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
+          >
+            {isLoadingMore ? "Loading..." : "Load More"}
+          </button>
+        </div>
+      )}
+
+      {!error && !isLoading && videos.length > 0 && (
+        <>
+          {nowPlaying && (
+            <section className="space-y-4" ref={heroRef}>
+              <VideoHero video={nowPlaying} />
+
+              <div className="py-4">
+                <div className="font-display text-2xl tracking-[0.12em] text-black/75">
+                  {nowPlaying.title}
+                </div>
+
               </div>
-              <div className="min-w-0 space-y-1">
-                <p className="text-sm font-medium">Speaker Name {i + 1}</p>
-                <p className="text-xs text-gray-500">BBC Radio • 32:10</p>
-                <button className="mt-2 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium">
-                  <ExternalLink className="h-4 w-4" />
-                  Watch on YouTube
+            </section>
+          )}
+
+          <section className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              {videos.map((v) => (
+                <InterviewCard
+                  key={v.id}
+                  video={v}
+                  onSelect={handleSelectVideo}
+                />
+              ))}
+            </div>
+
+            {hasMore && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={isLoadingMore}
+                  className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
+                >
+                  {isLoadingMore ? "Loading..." : "Load More"}
                 </button>
               </div>
-              <button
-                className="ml-auto text-gray-500 hover:text-gray-700"
-                onClick={() => {}}
-                aria-label="Share (coming soon)"
-              >
-                <Share2 className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   )
 }
-
