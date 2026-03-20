@@ -84,10 +84,12 @@ async function apiFetch<T>(url: string, signal?: AbortSignal): Promise<T> {
         const body = await res.json()
         const reason = body?.error?.errors?.[0]?.reason
         if (reason === "quotaExceeded" || reason === "dailyLimitExceeded") {
+          // YouTube quota resets at midnight Pacific time
           const now = new Date()
-          const midnight = new Date(now)
-          midnight.setHours(24, 0, 0, 0)
-          const ttl = midnight.getTime() - now.getTime()
+          const pacific = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))
+          const midnightPT = new Date(pacific)
+          midnightPT.setHours(24, 0, 0, 0)
+          const ttl = midnightPT.getTime() - pacific.getTime()
           setCache("quota_exhausted", true, ttl)
           throw new YouTubeQuotaError()
         }
