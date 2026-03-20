@@ -218,21 +218,27 @@ function mapSearchItemToVideoId(item: YouTubeSearchItem): string {
 
 // --- Relevance filtering ---
 
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "")
+}
+
 function isRelevantVideo(video: Video, artistName: string): boolean {
   const name = artistName.toLowerCase()
   const stripped = name.replace(/^the\s+/, "")
   const title = video.title.toLowerCase()
 
-  // Also compare with spaces removed to handle "Meat Loaf" vs "Meatloaf" etc.
-  const titleNoSpaces = title.replace(/\s+/g, "")
-  const strippedNoSpaces = stripped.replace(/\s+/g, "")
-  const nameNoSpaces = name.replace(/\s+/g, "")
+  // Normalize: strip ALL non-alphanumeric chars to handle
+  // spacing ("Meat Loaf" vs "Meatloaf"), punctuation ("G.B.H." vs "GBH"),
+  // slashes ("AC/DC" vs "ACDC"), etc.
+  const titleNorm = normalize(title)
+  const strippedNorm = normalize(stripped)
+  const nameNorm = normalize(name)
 
   return (
     title.includes(stripped) ||
     title.includes(name) ||
-    titleNoSpaces.includes(strippedNoSpaces) ||
-    titleNoSpaces.includes(nameNoSpaces)
+    titleNorm.includes(strippedNorm) ||
+    titleNorm.includes(nameNorm)
   )
 }
 

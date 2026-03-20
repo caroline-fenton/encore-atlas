@@ -130,7 +130,7 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildConcertSearchQuery(artistName)
     const result = await searchWithDurationFallback(query, {
-      maxResults: 5,
+      maxResults: 10,
       videoDuration: "long",
       artistName,
       signal,
@@ -144,7 +144,7 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
     async (pageToken: string) => {
       const query = buildConcertSearchQuery(artistName)
       return searchAndEnrich(query, {
-        maxResults: 5,
+        maxResults: 10,
         videoDuration: effectiveDurationRef.current,
         artistName,
         pageToken,
@@ -159,13 +159,13 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
 export function useArtistInterviews(artistName: string): UseVideosResult {
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildInterviewSearchQuery(artistName)
-    return searchAndEnrich(query, { maxResults: 4, artistName, signal })
+    return searchAndEnrich(query, { maxResults: 8, artistName, signal })
   }, [artistName])
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
       const query = buildInterviewSearchQuery(artistName)
-      return searchAndEnrich(query, { maxResults: 4, artistName, pageToken })
+      return searchAndEnrich(query, { maxResults: 8, artistName, pageToken })
     },
     [artistName],
   )
