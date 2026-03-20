@@ -219,7 +219,10 @@ function mapSearchItemToVideoId(item: YouTubeSearchItem): string {
 // --- Relevance filtering ---
 
 function normalize(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, "")
+  return s
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]/g, "")
 }
 
 function isRelevantVideo(video: Video, artistName: string): boolean {
@@ -229,7 +232,7 @@ function isRelevantVideo(video: Video, artistName: string): boolean {
 
   // Normalize: strip ALL non-alphanumeric chars to handle
   // spacing ("Meat Loaf" vs "Meatloaf"), punctuation ("G.B.H." vs "GBH"),
-  // slashes ("AC/DC" vs "ACDC"), etc.
+  // slashes ("AC/DC" vs "ACDC"), ampersands ("Simon & Garfunkel" vs "and"), etc.
   const titleNorm = normalize(title)
   const strippedNorm = normalize(stripped)
   const nameNorm = normalize(name)
