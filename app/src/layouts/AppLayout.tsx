@@ -54,7 +54,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen bg-[#f6f1e8] text-black/85">
       <header className="sticky top-0 z-10 border-b border-stone-200 bg-[#f6f1e8]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-5">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 overflow-hidden px-6 py-5">
           <Link
             to="/"
             className="text-sm font-semibold uppercase tracking-[0.25em] hover:text-black/70"
@@ -62,8 +62,8 @@ export default function AppLayout() {
             Encore Atlas
           </Link>
 
-          <div className="flex items-center gap-3">
-            <label className="text-xs uppercase tracking-[0.25em] text-black/55">
+          <div className="flex min-w-0 items-center gap-3">
+            <label className="hidden text-xs uppercase tracking-[0.25em] text-black/55 sm:block">
               Viewing
             </label>
 

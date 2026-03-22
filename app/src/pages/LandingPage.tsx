@@ -32,7 +32,7 @@ export default function LandingPage({ onComplete, setSelectedArtist }: LandingPa
   }
 
   return (
-    <div className="flex min-h-screen flex-col text-center px-6">
+    <div className="flex min-h-screen max-w-full flex-col overflow-hidden text-center px-6">
       <div className="flex flex-1 flex-col items-center justify-center">
         <h1 className="font-display text-6xl md:text-8xl font-normal tracking-[0.08em] text-black/85">
           TURN IT UP.
