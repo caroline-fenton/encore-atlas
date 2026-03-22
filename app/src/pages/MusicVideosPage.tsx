@@ -23,9 +23,15 @@ export default function MusicVideosPage() {
     setNowPlaying(null)
   }, [selectedArtistName])
 
+  // Scroll to hero after nowPlaying changes and the hero section mounts
+  useEffect(() => {
+    if (nowPlaying) {
+      heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [nowPlaying])
+
   const handleSelectVideo = useCallback((video: Video) => {
     setNowPlaying(video)
-    heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }, [])
 
   return (
