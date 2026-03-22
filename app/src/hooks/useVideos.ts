@@ -8,6 +8,7 @@ import {
 } from "../services/youtube"
 import {
   buildConcertSearchQuery,
+  buildMusicVideoSearchQuery,
   buildInterviewSearchQuery,
 } from "../services/searchQueries"
 
@@ -149,6 +150,23 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
         artistName,
         pageToken,
       })
+    },
+    [artistName],
+  )
+
+  return useVideoFetch(fetchFn, loadMoreFn, [artistName])
+}
+
+export function useArtistMusicVideos(artistName: string): UseVideosResult {
+  const fetchFn = useCallback(async (signal: AbortSignal) => {
+    const query = buildMusicVideoSearchQuery(artistName)
+    return searchAndEnrich(query, { maxResults: 8, artistName, signal })
+  }, [artistName])
+
+  const loadMoreFn = useCallback(
+    async (pageToken: string) => {
+      const query = buildMusicVideoSearchQuery(artistName)
+      return searchAndEnrich(query, { maxResults: 8, artistName, pageToken })
     },
     [artistName],
   )
