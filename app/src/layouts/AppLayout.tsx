@@ -1,5 +1,6 @@
 import { NavLink, Outlet, Link } from "react-router-dom"
 import { useState } from "react"
+import { User } from "lucide-react"
 import ArtistSearchBar from "../components/search/ArtistSearchBar"
 import LandingPage from "../pages/LandingPage"
 
@@ -65,12 +66,17 @@ export default function AppLayout() {
           <div className="flex min-w-0 items-center gap-3">
             <ArtistSearchBar onSelectArtist={setSelectedArtist} />
 
-            <button
-              className="grid h-9 w-9 place-items-center rounded-sm border border-stone-200 text-black/60"
-              aria-label="Account"
-            >
-              ☺
-            </button>
+            <div className="group relative">
+              <button
+                className="grid h-9 w-9 place-items-center rounded-sm border border-stone-200 text-black/60"
+                aria-label="Account"
+              >
+                <User className="h-4 w-4" />
+              </button>
+              <span className="pointer-events-none absolute right-0 top-full mt-1 hidden whitespace-nowrap rounded bg-black/80 px-2 py-1 text-[10px] text-white group-hover:block group-focus-within:block">
+                Accounts Coming Soon
+              </span>
+            </div>
           </div>
         </div>
 
@@ -106,6 +112,18 @@ export default function AppLayout() {
           } satisfies AppOutletContext}
         />
       </main>
+
+      <footer className="border-t border-stone-200 py-8 text-center">
+        <p className="text-[10px] uppercase tracking-[0.25em] text-black/30">
+          Encore Atlas · Beta ·{" "}
+          <a
+            href="mailto:hello@encoreatlas.fm?subject=Encore%20Atlas%20Feedback"
+            className="text-black/40 hover:text-black/60"
+          >
+            Send Feedback
+          </a>
+        </p>
+      </footer>
     </div>
   )
 }

@@ -141,7 +141,7 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
             setTimeout(() => setIsOpen(false), 150)
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Search for an artist..."
+          placeholder="Search"
           className="w-24 sm:w-40 bg-transparent text-base sm:text-sm text-black/85 placeholder:text-black/35 outline-none"
           role="combobox"
           aria-expanded={isOpen}
