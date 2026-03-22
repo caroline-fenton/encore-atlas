@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRecentSearches } from "../hooks/useRecentSearches"
+import { getSuggestedArtists } from "../data/suggestedArtists"
 
 function slugify(name: string): string {
   return name
@@ -17,6 +18,15 @@ type LandingPageProps = {
 export default function LandingPage({ onComplete, setSelectedArtist }: LandingPageProps) {
   const [query, setQuery] = useState("")
   const { addSearch } = useRecentSearches()
+  const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const suggestedArtists = getSuggestedArtists()
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % suggestedArtists.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [suggestedArtists.length])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,7 +42,7 @@ export default function LandingPage({ onComplete, setSelectedArtist }: LandingPa
   }
 
   return (
-    <div className="flex min-h-screen flex-col text-center px-6">
+    <div className="flex min-h-screen max-w-full flex-col overflow-hidden text-center px-6">
       <div className="flex flex-1 flex-col items-center justify-center">
         <h1 className="font-display text-6xl md:text-8xl font-normal tracking-[0.08em] text-black/85">
           TURN IT UP.
@@ -47,8 +57,8 @@ export default function LandingPage({ onComplete, setSelectedArtist }: LandingPa
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="The Smiths"
-            className="w-full rounded-sm border border-stone-300 bg-transparent px-5 py-3 text-center text-sm text-black/85 placeholder:text-black/35 outline-none focus:border-[#7a2d2b]/50"
+            placeholder={suggestedArtists[placeholderIndex]?.name ?? "Search"}
+            className="w-full rounded-sm border border-stone-300 bg-transparent px-5 py-3 text-center text-base sm:text-sm text-black/85 placeholder:text-black/35 outline-none focus:border-[#7a2d2b]/50"
             autoFocus
           />
 
