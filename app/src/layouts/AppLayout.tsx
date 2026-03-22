@@ -63,10 +63,6 @@ export default function AppLayout() {
           </Link>
 
           <div className="flex min-w-0 items-center gap-3">
-            <label className="hidden text-xs uppercase tracking-[0.25em] text-black/55 sm:block">
-              Viewing
-            </label>
-
             <ArtistSearchBar onSelectArtist={setSelectedArtist} />
 
             <button

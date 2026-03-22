@@ -48,7 +48,7 @@ export default function LandingPage({ onComplete, setSelectedArtist }: LandingPa
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="The Smiths"
-            className="w-full rounded-sm border border-stone-300 bg-transparent px-5 py-3 text-center text-sm text-black/85 placeholder:text-black/35 outline-none focus:border-[#7a2d2b]/50"
+            className="w-full rounded-sm border border-stone-300 bg-transparent px-5 py-3 text-center text-base sm:text-sm text-black/85 placeholder:text-black/35 outline-none focus:border-[#7a2d2b]/50"
             autoFocus
           />
 
