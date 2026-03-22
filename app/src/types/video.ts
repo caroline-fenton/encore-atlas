@@ -16,4 +16,4 @@ export type Video = {
   isCompleteConcert?: boolean
 }
 
-export type VideoCategory = "concert" | "interview"
+export type VideoCategory = "concert" | "musicVideo" | "interview"
