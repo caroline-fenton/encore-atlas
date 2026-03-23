@@ -8,6 +8,7 @@ import {
 } from "../services/youtube"
 import {
   buildConcertSearchQuery,
+  buildMusicVideoSearchQuery,
   buildInterviewSearchQuery,
 } from "../services/searchQueries"
 
@@ -130,7 +131,7 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildConcertSearchQuery(artistName)
     const result = await searchWithDurationFallback(query, {
-      maxResults: 10,
+      maxResults: 5,
       videoDuration: "long",
       artistName,
       signal,
@@ -144,7 +145,7 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
     async (pageToken: string) => {
       const query = buildConcertSearchQuery(artistName)
       return searchAndEnrich(query, {
-        maxResults: 10,
+        maxResults: 5,
         videoDuration: effectiveDurationRef.current,
         artistName,
         pageToken,
@@ -156,16 +157,33 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
   return useVideoFetch(fetchFn, loadMoreFn, [artistName])
 }
 
+export function useArtistMusicVideos(artistName: string): UseVideosResult {
+  const fetchFn = useCallback(async (signal: AbortSignal) => {
+    const query = buildMusicVideoSearchQuery(artistName)
+    return searchAndEnrich(query, { maxResults: 5, artistName, signal })
+  }, [artistName])
+
+  const loadMoreFn = useCallback(
+    async (pageToken: string) => {
+      const query = buildMusicVideoSearchQuery(artistName)
+      return searchAndEnrich(query, { maxResults: 5, artistName, pageToken })
+    },
+    [artistName],
+  )
+
+  return useVideoFetch(fetchFn, loadMoreFn, [artistName])
+}
+
 export function useArtistInterviews(artistName: string): UseVideosResult {
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildInterviewSearchQuery(artistName)
-    return searchAndEnrich(query, { maxResults: 8, artistName, signal })
+    return searchAndEnrich(query, { maxResults: 5, artistName, signal })
   }, [artistName])
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
       const query = buildInterviewSearchQuery(artistName)
-      return searchAndEnrich(query, { maxResults: 8, artistName, pageToken })
+      return searchAndEnrich(query, { maxResults: 5, artistName, pageToken })
     },
     [artistName],
   )

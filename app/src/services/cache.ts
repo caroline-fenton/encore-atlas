@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "encore_atlas_"
-const DEFAULT_TTL = 24 * 60 * 60 * 1000 // 24 hours
+const DEFAULT_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 type CacheEntry<T> = {
   data: T
