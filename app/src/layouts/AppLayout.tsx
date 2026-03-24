@@ -13,15 +13,19 @@ const tabs = [
 
 const RECENT_SEARCHES_KEY = "encore_atlas_recent_searches"
 
-function hasSearched(): boolean {
+function getRecentSearches(): string[] {
   try {
     const raw = localStorage.getItem(RECENT_SEARCHES_KEY)
-    if (!raw) return false
+    if (!raw) return []
     const searches = JSON.parse(raw)
-    return Array.isArray(searches) && searches.length > 0
+    return Array.isArray(searches) ? searches : []
   } catch {
-    return false
+    return []
   }
+}
+
+function toSlug(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, "-")
 }
 
 type SelectedArtist = {
@@ -36,11 +40,15 @@ export type AppOutletContext = {
 }
 
 export default function AppLayout() {
-  const [selectedArtist, setSelectedArtist] = useState<SelectedArtist>({
-    id: "the-smiths",
-    name: "THE SMITHS",
-  })
-  const [showLanding, setShowLanding] = useState(!hasSearched())
+  const recentSearches = getRecentSearches()
+  const mostRecent = recentSearches[0]
+
+  const [selectedArtist, setSelectedArtist] = useState<SelectedArtist>(
+    mostRecent
+      ? { id: toSlug(mostRecent), name: mostRecent.toUpperCase() }
+      : { id: "the-smiths", name: "THE SMITHS" },
+  )
+  const [showLanding, setShowLanding] = useState(recentSearches.length === 0)
 
   if (showLanding) {
     return (

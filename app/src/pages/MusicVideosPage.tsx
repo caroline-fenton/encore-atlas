@@ -3,6 +3,10 @@ import { useRef, useState, useEffect, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
 import { useArtistMusicVideos } from "../hooks/useVideos"
+import { useArtistBio } from "../hooks/useArtistBio"
+import { useDecadeFilter } from "../hooks/useDecadeFilter"
+import ArtistBio from "../components/shared/ArtistBio"
+import DecadeFilter from "../components/shared/DecadeFilter"
 import VideoHero from "../components/liveShows/VideoHero"
 import MusicVideoCard from "../components/musicVideos/MusicVideoCard"
 import VideoCardSkeleton from "../components/shared/VideoCardSkeleton"
@@ -12,8 +16,10 @@ import EmptyState from "../components/shared/EmptyState"
 export default function MusicVideosPage() {
   const { selectedArtistName } = useOutletContext<AppOutletContext>()
 
-  const { videos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
+  const { videos: allVideos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
     useArtistMusicVideos(selectedArtistName)
+  const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
+  const { filtered: videos, selectedDecade, setSelectedDecade } = useDecadeFilter(allVideos, selectedArtistName)
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
@@ -44,6 +50,16 @@ export default function MusicVideosPage() {
           Official Videos
         </div>
       </header>
+
+      <ArtistBio bio={bio} isLoading={bioLoading} />
+
+      {!isLoading && allVideos.length > 0 && (
+        <DecadeFilter
+          videos={allVideos}
+          selected={selectedDecade}
+          onSelect={setSelectedDecade}
+        />
+      )}
 
       {error && <ErrorState message={error} onRetry={retry} />}
 
@@ -81,6 +97,9 @@ export default function MusicVideosPage() {
               <div className="py-4">
                 <div className="font-display text-2xl tracking-[0.12em] text-black/75">
                   {nowPlaying.title}
+                </div>
+                <div className="mt-1 text-xs text-black/40">
+                  {nowPlaying.channelTitle}
                 </div>
               </div>
             </section>

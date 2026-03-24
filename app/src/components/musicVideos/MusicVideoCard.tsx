@@ -32,6 +32,9 @@ export default function MusicVideoCard({ video, onSelect }: Props) {
           <div className="text-[15px] font-semibold tracking-[0.02em] text-black/80 line-clamp-2">
             {video.title}
           </div>
+          <div className="mt-0.5 text-[11px] text-black/40">
+            {video.channelTitle}
+          </div>
         </div>
       </div>
     </button>

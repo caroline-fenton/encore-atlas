@@ -40,6 +40,9 @@ export default function VideoCard({ video, onSelect }: Props) {
           <div className="text-[15px] font-semibold tracking-[0.02em] text-black/80">
             {video.title}
           </div>
+          <div className="mt-0.5 text-[11px] text-black/40">
+            {video.channelTitle}
+          </div>
 
           {meta && (
             <div className="mt-1 whitespace-pre-line text-sm leading-5 text-black/55">

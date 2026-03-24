@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react"
+import { track } from "@vercel/analytics"
 import { Search } from "lucide-react"
 import { getSuggestedArtists, type SuggestedArtist } from "../../data/suggestedArtists"
 import { useRecentSearches } from "../../hooks/useRecentSearches"
@@ -48,6 +49,7 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
 
   const handleSelectArtist = useCallback(
     (artist: SuggestedArtist) => {
+      track("artist_search", { artist: artist.name, source: "suggested" })
       addSearch(artist.name)
       onSelectArtist({ id: artist.id, name: artist.name })
       setQuery("")
@@ -72,6 +74,7 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
         return
       }
 
+      track("artist_search", { artist: trimmed, source: "custom" })
       addSearch(trimmed)
       onSelectArtist({
         id: slugify(trimmed),
