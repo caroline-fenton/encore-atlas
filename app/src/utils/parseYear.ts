@@ -4,14 +4,29 @@
  * Returns null if no year is found.
  */
 export function parseYearFromTitle(title: string): number | null {
-  const matches = title.match(/\b(19[5-9]\d|20[0-3]\d)\b/g)
-  if (!matches) return null
+  const years: number[] = []
 
-  // If multiple years, prefer the one most likely to be a performance year.
-  // Typically the latest year <= current year is the performance date.
+  // Match 4-digit years (e.g. "1977", "2025")
+  const fourDigit = title.match(/\b(19[5-9]\d|20[0-3]\d)\b/g)
+  if (fourDigit) {
+    years.push(...fourDigit.map(Number))
+  }
+
+  // Match 2-digit years after / or - in date patterns (e.g. "6/11/93", "5-8-77")
+  const twoDigit = title.match(/[\/-]\d{1,2}[\/-](\d{2})\b/g)
+  if (twoDigit) {
+    for (const match of twoDigit) {
+      const yy = parseInt(match.slice(-2), 10)
+      const full = yy >= 50 ? 1900 + yy : 2000 + yy
+      years.push(full)
+    }
+  }
+
+  if (years.length === 0) return null
+
   const currentYear = new Date().getFullYear()
-  const years = matches.map(Number).filter((y) => y <= currentYear)
-  return years.length > 0 ? Math.max(...years) : null
+  const valid = years.filter((y) => y <= currentYear)
+  return valid.length > 0 ? Math.max(...valid) : null
 }
 
 export function yearToDecade(year: number): string {
