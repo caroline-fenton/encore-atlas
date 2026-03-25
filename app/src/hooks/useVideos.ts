@@ -10,6 +10,7 @@ import {
   buildConcertSearchQuery,
   buildMusicVideoSearchQuery,
   buildInterviewSearchQuery,
+  type SearchFilters,
 } from "../services/searchQueries"
 
 type UseVideosResult = {
@@ -125,25 +126,25 @@ function useVideoFetch(
   }
 }
 
-export function useArtistConcerts(artistName: string): UseVideosResult {
+export function useArtistConcerts(artistName: string, filters?: SearchFilters): UseVideosResult {
   const effectiveDurationRef: MutableRefObject<"long" | "any"> = useRef("long")
+  const filtersKey = `${filters?.year ?? ""}|${filters?.album ?? ""}`
 
   const fetchFn = useCallback(async (signal: AbortSignal) => {
-    const query = buildConcertSearchQuery(artistName)
+    const query = buildConcertSearchQuery(artistName, filters)
     const result = await searchWithDurationFallback(query, {
       maxResults: 5,
       videoDuration: "long",
       artistName,
       signal,
     })
-    // Track whether fallback switched from "long" to "any"
     effectiveDurationRef.current = result.effectiveDuration === "any" ? "any" : "long"
     return result
-  }, [artistName])
+  }, [artistName, filtersKey])
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
-      const query = buildConcertSearchQuery(artistName)
+      const query = buildConcertSearchQuery(artistName, filters)
       return searchAndEnrich(query, {
         maxResults: 5,
         videoDuration: effectiveDurationRef.current,
@@ -151,42 +152,46 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
         pageToken,
       })
     },
-    [artistName],
+    [artistName, filtersKey],
   )
 
-  return useVideoFetch(fetchFn, loadMoreFn, [artistName])
+  return useVideoFetch(fetchFn, loadMoreFn, [artistName, filtersKey])
 }
 
-export function useArtistMusicVideos(artistName: string): UseVideosResult {
+export function useArtistMusicVideos(artistName: string, filters?: SearchFilters): UseVideosResult {
+  const filtersKey = `${filters?.year ?? ""}|${filters?.album ?? ""}`
+
   const fetchFn = useCallback(async (signal: AbortSignal) => {
-    const query = buildMusicVideoSearchQuery(artistName)
+    const query = buildMusicVideoSearchQuery(artistName, filters)
     return searchAndEnrich(query, { maxResults: 5, artistName, signal })
-  }, [artistName])
+  }, [artistName, filtersKey])
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
-      const query = buildMusicVideoSearchQuery(artistName)
+      const query = buildMusicVideoSearchQuery(artistName, filters)
       return searchAndEnrich(query, { maxResults: 5, artistName, pageToken })
     },
-    [artistName],
+    [artistName, filtersKey],
   )
 
-  return useVideoFetch(fetchFn, loadMoreFn, [artistName])
+  return useVideoFetch(fetchFn, loadMoreFn, [artistName, filtersKey])
 }
 
-export function useArtistInterviews(artistName: string): UseVideosResult {
+export function useArtistInterviews(artistName: string, filters?: SearchFilters): UseVideosResult {
+  const filtersKey = `${filters?.year ?? ""}|${filters?.album ?? ""}`
+
   const fetchFn = useCallback(async (signal: AbortSignal) => {
-    const query = buildInterviewSearchQuery(artistName)
+    const query = buildInterviewSearchQuery(artistName, filters)
     return searchAndEnrich(query, { maxResults: 5, artistName, signal })
-  }, [artistName])
+  }, [artistName, filtersKey])
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
-      const query = buildInterviewSearchQuery(artistName)
+      const query = buildInterviewSearchQuery(artistName, filters)
       return searchAndEnrich(query, { maxResults: 5, artistName, pageToken })
     },
-    [artistName],
+    [artistName, filtersKey],
   )
 
-  return useVideoFetch(fetchFn, loadMoreFn, [artistName])
+  return useVideoFetch(fetchFn, loadMoreFn, [artistName, filtersKey])
 }

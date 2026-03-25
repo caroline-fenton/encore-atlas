@@ -4,6 +4,7 @@ import { Search } from "lucide-react"
 import { getSuggestedArtists, type SuggestedArtist } from "../../data/suggestedArtists"
 import { useRecentSearches } from "../../hooks/useRecentSearches"
 import SearchSuggestionPanel from "./SearchSuggestionPanel"
+import type { SearchFilters } from "../../services/searchQueries"
 
 type SelectedArtist = {
   id: string
@@ -11,7 +12,7 @@ type SelectedArtist = {
 }
 
 type Props = {
-  onSelectArtist: (artist: SelectedArtist) => void
+  onSelectArtist: (artist: SelectedArtist, filters?: SearchFilters) => void
 }
 
 function slugify(name: string): string {
@@ -26,6 +27,8 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
   const [query, setQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [filterYear, setFilterYear] = useState("")
+  const [filterAlbum, setFilterAlbum] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const { searches, addSearch, removeSearch } = useRecentSearches()
 
@@ -47,17 +50,30 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
     return items
   }, [query, suggestedArtists, searches])
 
+  const buildFilters = useCallback((): SearchFilters | undefined => {
+    const year = filterYear.trim()
+    const album = filterAlbum.trim()
+    if (!year && !album) return undefined
+    return { ...(year && { year }), ...(album && { album }) }
+  }, [filterYear, filterAlbum])
+
+  const clearAndClose = useCallback(() => {
+    setQuery("")
+    setFilterYear("")
+    setFilterAlbum("")
+    setIsOpen(false)
+    setHighlightedIndex(-1)
+    inputRef.current?.blur()
+  }, [])
+
   const handleSelectArtist = useCallback(
     (artist: SuggestedArtist) => {
       track("artist_search", { artist: artist.name, source: "suggested" })
       addSearch(artist.name)
-      onSelectArtist({ id: artist.id, name: artist.name })
-      setQuery("")
-      setIsOpen(false)
-      setHighlightedIndex(-1)
-      inputRef.current?.blur()
+      onSelectArtist({ id: artist.id, name: artist.name }, buildFilters())
+      clearAndClose()
     },
-    [onSelectArtist, addSearch],
+    [onSelectArtist, addSearch, buildFilters, clearAndClose],
   )
 
   const handleSelectSearch = useCallback(
@@ -79,13 +95,10 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
       onSelectArtist({
         id: slugify(trimmed),
         name: trimmed.toUpperCase(),
-      })
-      setQuery("")
-      setIsOpen(false)
-      setHighlightedIndex(-1)
-      inputRef.current?.blur()
+      }, buildFilters())
+      clearAndClose()
     },
-    [suggestedArtists, addSearch, onSelectArtist, handleSelectArtist],
+    [suggestedArtists, addSearch, onSelectArtist, handleSelectArtist, buildFilters, clearAndClose],
   )
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -158,6 +171,10 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
           suggestedArtists={suggestedArtists}
           filterQuery={query}
           highlightedIndex={highlightedIndex}
+          filterYear={filterYear}
+          filterAlbum={filterAlbum}
+          onFilterYearChange={setFilterYear}
+          onFilterAlbumChange={setFilterAlbum}
           onSelectSuggested={handleSelectArtist}
           onSelectRecent={handleSelectSearch}
           onRemoveRecent={removeSearch}

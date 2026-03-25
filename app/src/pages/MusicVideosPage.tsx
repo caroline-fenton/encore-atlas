@@ -14,10 +14,10 @@ import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
 
 export default function MusicVideosPage() {
-  const { selectedArtistName } = useOutletContext<AppOutletContext>()
+  const { selectedArtistName, searchFilters } = useOutletContext<AppOutletContext>()
 
   const { videos: allVideos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
-    useArtistMusicVideos(selectedArtistName)
+    useArtistMusicVideos(selectedArtistName, searchFilters)
   const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
   const { filtered: videos, selectedDecade, setSelectedDecade } = useDecadeFilter(allVideos, selectedArtistName)
 
@@ -53,7 +53,7 @@ export default function MusicVideosPage() {
 
       <ArtistBio bio={bio} isLoading={bioLoading} />
 
-      {!isLoading && allVideos.length > 0 && (
+      {!isLoading && allVideos.length > 0 && !searchFilters?.year && (
         <DecadeFilter
           videos={allVideos}
           selected={selectedDecade}
