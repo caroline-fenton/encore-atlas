@@ -30,6 +30,7 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
   const [filterYear, setFilterYear] = useState("")
   const [filterAlbum, setFilterAlbum] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const { searches, addSearch, removeSearch } = useRecentSearches()
 
   const suggestedArtists = getSuggestedArtists()
@@ -138,8 +139,18 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
     }
   }
 
+  const handleBlur = useCallback((e: React.FocusEvent) => {
+    // If focus is moving to another element within our container, stay open
+    const relatedTarget = e.relatedTarget as Node | null
+    if (relatedTarget && containerRef.current?.contains(relatedTarget)) {
+      return
+    }
+    // Delay to allow mouseDown on suggestions to fire
+    setTimeout(() => setIsOpen(false), 150)
+  }, [])
+
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef} onBlur={handleBlur}>
       <div className="flex items-center gap-2 rounded-sm border border-stone-200 bg-transparent px-2 py-1">
         <Search className="h-3.5 w-3.5 text-black/40" />
         <input
@@ -152,10 +163,6 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
             if (!isOpen) setIsOpen(true)
           }}
           onFocus={() => setIsOpen(true)}
-          onBlur={() => {
-            // Delay to allow mouseDown on suggestions to fire
-            setTimeout(() => setIsOpen(false), 150)
-          }}
           onKeyDown={handleKeyDown}
           placeholder="Search"
           className="w-24 sm:w-40 bg-transparent text-base sm:text-sm text-black/85 placeholder:text-black/35 outline-none"
