@@ -4,9 +4,7 @@ import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
 import { useArtistMusicVideos } from "../hooks/useVideos"
 import { useArtistBio } from "../hooks/useArtistBio"
-import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import ArtistBio from "../components/shared/ArtistBio"
-import DecadeFilter from "../components/shared/DecadeFilter"
 import VideoHero from "../components/liveShows/VideoHero"
 import MusicVideoCard from "../components/musicVideos/MusicVideoCard"
 import VideoCardSkeleton from "../components/shared/VideoCardSkeleton"
@@ -16,18 +14,17 @@ import EmptyState from "../components/shared/EmptyState"
 export default function MusicVideosPage() {
   const { selectedArtistName, searchFilters } = useOutletContext<AppOutletContext>()
 
-  const { videos: allVideos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
+  const { videos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
     useArtistMusicVideos(selectedArtistName, searchFilters)
   const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
-  const { filtered: videos, selectedDecade, setSelectedDecade } = useDecadeFilter(allVideos, selectedArtistName)
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
 
-  // Reset selected video when artist or decade filter changes
+  // Reset selected video when artist changes
   useEffect(() => {
     setNowPlaying(null)
-  }, [selectedArtistName, selectedDecade])
+  }, [selectedArtistName])
 
   // Scroll to hero after nowPlaying changes and the hero section mounts
   useEffect(() => {
@@ -52,14 +49,6 @@ export default function MusicVideosPage() {
       </header>
 
       <ArtistBio bio={bio} isLoading={bioLoading} />
-
-      {!isLoading && allVideos.length > 0 && !searchFilters?.year && (
-        <DecadeFilter
-          videos={allVideos}
-          selected={selectedDecade}
-          onSelect={setSelectedDecade}
-        />
-      )}
 
       {error && <ErrorState message={error} onRetry={retry} />}
 

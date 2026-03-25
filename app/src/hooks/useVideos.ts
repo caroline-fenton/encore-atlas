@@ -10,8 +10,11 @@ import {
   buildConcertSearchQuery,
   buildMusicVideoSearchQuery,
   buildInterviewSearchQuery,
+  widenYearFilter,
   type SearchFilters,
 } from "../services/searchQueries"
+
+const MIN_RESULTS_BEFORE_WIDEN = 3
 
 type UseVideosResult = {
   videos: Video[]
@@ -139,6 +142,20 @@ export function useArtistConcerts(artistName: string, filters?: SearchFilters): 
       signal,
     })
     effectiveDurationRef.current = result.effectiveDuration === "any" ? "any" : "long"
+
+    if (filters?.year && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
+      const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
+      const widenedQuery = buildConcertSearchQuery(artistName, widenedFilters)
+      const widenedResult = await searchWithDurationFallback(widenedQuery, {
+        maxResults: 5,
+        videoDuration: "long",
+        artistName,
+        signal,
+      })
+      effectiveDurationRef.current = widenedResult.effectiveDuration === "any" ? "any" : "long"
+      return widenedResult
+    }
+
     return result
   }, [artistName, filtersKey])
 
@@ -163,7 +180,15 @@ export function useArtistMusicVideos(artistName: string, filters?: SearchFilters
 
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildMusicVideoSearchQuery(artistName, filters)
-    return searchAndEnrich(query, { maxResults: 5, artistName, signal })
+    const result = await searchAndEnrich(query, { maxResults: 5, artistName, signal })
+
+    if (filters?.year && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
+      const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
+      const widenedQuery = buildMusicVideoSearchQuery(artistName, widenedFilters)
+      return searchAndEnrich(widenedQuery, { maxResults: 5, artistName, signal })
+    }
+
+    return result
   }, [artistName, filtersKey])
 
   const loadMoreFn = useCallback(
@@ -182,7 +207,15 @@ export function useArtistInterviews(artistName: string, filters?: SearchFilters)
 
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildInterviewSearchQuery(artistName, filters)
-    return searchAndEnrich(query, { maxResults: 5, artistName, signal })
+    const result = await searchAndEnrich(query, { maxResults: 5, artistName, signal })
+
+    if (filters?.year && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
+      const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
+      const widenedQuery = buildInterviewSearchQuery(artistName, widenedFilters)
+      return searchAndEnrich(widenedQuery, { maxResults: 5, artistName, signal })
+    }
+
+    return result
   }, [artistName, filtersKey])
 
   const loadMoreFn = useCallback(

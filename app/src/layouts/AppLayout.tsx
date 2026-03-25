@@ -2,6 +2,7 @@ import { NavLink, Outlet, Link } from "react-router-dom"
 import { useState } from "react"
 import { User } from "lucide-react"
 import ArtistSearchBar from "../components/search/ArtistSearchBar"
+import ActiveFilterPills from "../components/search/ActiveFilterPills"
 import LandingPage from "../pages/LandingPage"
 import type { SearchFilters } from "../services/searchQueries"
 
@@ -60,6 +61,14 @@ export default function AppLayout() {
   const handleSelectArtist = (artist: SelectedArtist, filters?: SearchFilters) => {
     setSelectedArtist(artist)
     setSearchFilters(filters ?? {})
+  }
+
+  const handleClearFilter = (key: "year" | "album") => {
+    setSearchFilters((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
   }
 
   if (showLanding) {
@@ -121,6 +130,12 @@ export default function AppLayout() {
               </NavLink>
             ))}
           </div>
+
+          {(searchFilters.year || searchFilters.album) && (
+            <div className="mt-3">
+              <ActiveFilterPills filters={searchFilters} onClearFilter={handleClearFilter} />
+            </div>
+          )}
         </nav>
       </header>
 
