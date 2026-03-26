@@ -186,8 +186,9 @@ export function useArtistConcerts(artistName: string, filters?: SearchFilters): 
     })
     effectiveDurationRef.current = result.effectiveDuration === "any" ? "any" : "long"
 
-    if (filters?.year && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
-      const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
+    const widenedYear = filters?.year ? widenYearFilter(filters.year) : null
+    if (widenedYear && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
+      const widenedFilters = { ...filters, year: widenedYear }
       const widenedQuery = buildConcertSearchQuery(artistName, widenedFilters)
       effectiveQueryRef.current = widenedQuery
       const widenedResult = await searchWithDurationFallback(widenedQuery, {
@@ -227,8 +228,9 @@ export function useArtistMusicVideos(artistName: string, filters?: SearchFilters
     effectiveQueryRef.current = query
     const result = await searchAndEnrich(query, { maxResults: 5, artistName, signal })
 
-    if (filters?.year && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
-      const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
+    const widenedYear = filters?.year ? widenYearFilter(filters.year) : null
+    if (widenedYear && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
+      const widenedFilters = { ...filters, year: widenedYear }
       const widenedQuery = buildMusicVideoSearchQuery(artistName, widenedFilters)
       effectiveQueryRef.current = widenedQuery
       const widenedResult = await searchAndEnrich(widenedQuery, { maxResults: 5, artistName, signal })
@@ -257,8 +259,9 @@ export function useArtistInterviews(artistName: string, filters?: SearchFilters)
     effectiveQueryRef.current = query
     const result = await searchAndEnrich(query, { maxResults: 5, artistName, signal })
 
-    if (filters?.year && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
-      const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
+    const widenedYear = filters?.year ? widenYearFilter(filters.year) : null
+    if (widenedYear && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
+      const widenedFilters = { ...filters, year: widenedYear }
       const widenedQuery = buildInterviewSearchQuery(artistName, widenedFilters)
       effectiveQueryRef.current = widenedQuery
       const widenedResult = await searchAndEnrich(widenedQuery, { maxResults: 5, artistName, signal })
