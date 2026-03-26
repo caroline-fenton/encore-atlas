@@ -138,7 +138,7 @@ function useVideoFetch(
       const result = await loadMoreFn(nextPageToken)
       // Only apply results if the artist hasn't changed since we started
       if (generation === generationRef.current) {
-        setVideos((prev) => [...prev, ...sortByYearMatch(result.videos, yearFilter)])
+        setVideos((prev) => sortByYearMatch([...prev, ...result.videos], yearFilter))
         setNextPageToken(result.nextPageToken)
       }
     } catch (err) {
