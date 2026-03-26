@@ -16,25 +16,29 @@ import {
 import { parseYearFromTitle } from "../utils/parseYear"
 
 /**
- * Sort videos so that those matching the requested year come first.
- * Non-matching videos retain their original order below.
+ * Sort videos by proximity to the requested year.
+ * Exact matches first, then ±2 years, then everything else.
+ * Within each group, original order is preserved.
  */
 function sortByYearMatch(videos: Video[], yearFilter?: string): Video[] {
   if (!yearFilter?.trim()) return videos
   const targetYear = parseInt(yearFilter.trim(), 10)
   if (isNaN(targetYear)) return videos
 
-  const matching: Video[] = []
+  const exact: Video[] = []
+  const nearby: Video[] = []
   const rest: Video[] = []
   for (const v of videos) {
     const parsed = parseYearFromTitle(v.title)
     if (parsed === targetYear) {
-      matching.push(v)
+      exact.push(v)
+    } else if (parsed != null && Math.abs(parsed - targetYear) <= 2) {
+      nearby.push(v)
     } else {
       rest.push(v)
     }
   }
-  return [...matching, ...rest]
+  return [...exact, ...nearby, ...rest]
 }
 
 const MIN_RESULTS_BEFORE_WIDEN = 3
