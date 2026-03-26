@@ -13,6 +13,29 @@ import {
   widenYearFilter,
   type SearchFilters,
 } from "../services/searchQueries"
+import { parseYearFromTitle } from "../utils/parseYear"
+
+/**
+ * Sort videos so that those matching the requested year come first.
+ * Non-matching videos retain their original order below.
+ */
+function sortByYearMatch(videos: Video[], yearFilter?: string): Video[] {
+  if (!yearFilter?.trim()) return videos
+  const targetYear = parseInt(yearFilter.trim(), 10)
+  if (isNaN(targetYear)) return videos
+
+  const matching: Video[] = []
+  const rest: Video[] = []
+  for (const v of videos) {
+    const parsed = parseYearFromTitle(v.title)
+    if (parsed === targetYear) {
+      matching.push(v)
+    } else {
+      rest.push(v)
+    }
+  }
+  return [...matching, ...rest]
+}
 
 const MIN_RESULTS_BEFORE_WIDEN = 3
 
@@ -32,6 +55,7 @@ function useVideoFetch(
   fetchFn: (signal: AbortSignal) => Promise<EnrichResult>,
   loadMoreFn: (pageToken: string) => Promise<EnrichResult>,
   deps: unknown[],
+  yearFilter?: string,
 ): UseVideosResult {
   const [videos, setVideos] = useState<Video[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -60,7 +84,7 @@ function useVideoFetch(
       try {
         const result = await fetchFn(controller.signal)
         if (!cancelled) {
-          setVideos(result.videos)
+          setVideos(sortByYearMatch(result.videos, yearFilter))
           setNextPageToken(result.nextPageToken)
         }
       } catch (err) {
@@ -97,7 +121,7 @@ function useVideoFetch(
       const result = await loadMoreFn(nextPageToken)
       // Only apply results if the artist hasn't changed since we started
       if (generation === generationRef.current) {
-        setVideos((prev) => [...prev, ...result.videos])
+        setVideos((prev) => [...prev, ...sortByYearMatch(result.videos, yearFilter)])
         setNextPageToken(result.nextPageToken)
       }
     } catch (err) {
@@ -172,7 +196,7 @@ export function useArtistConcerts(artistName: string, filters?: SearchFilters): 
     [artistName, filtersKey],
   )
 
-  return useVideoFetch(fetchFn, loadMoreFn, [artistName, filtersKey])
+  return useVideoFetch(fetchFn, loadMoreFn, [artistName, filtersKey], filters?.year)
 }
 
 export function useArtistMusicVideos(artistName: string, filters?: SearchFilters): UseVideosResult {
@@ -199,7 +223,7 @@ export function useArtistMusicVideos(artistName: string, filters?: SearchFilters
     [artistName, filtersKey],
   )
 
-  return useVideoFetch(fetchFn, loadMoreFn, [artistName, filtersKey])
+  return useVideoFetch(fetchFn, loadMoreFn, [artistName, filtersKey], filters?.year)
 }
 
 export function useArtistInterviews(artistName: string, filters?: SearchFilters): UseVideosResult {
@@ -226,5 +250,5 @@ export function useArtistInterviews(artistName: string, filters?: SearchFilters)
     [artistName, filtersKey],
   )
 
-  return useVideoFetch(fetchFn, loadMoreFn, [artistName, filtersKey])
+  return useVideoFetch(fetchFn, loadMoreFn, [artistName, filtersKey], filters?.year)
 }
