@@ -21,10 +21,10 @@ export default function InterviewsPage() {
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
 
-  // Reset selected interview when artist changes
+  // Reset selected interview when artist or filters change
   useEffect(() => {
     setNowPlaying(null)
-  }, [selectedArtistName])
+  }, [selectedArtistName, searchFilters])
 
   const handleSelectVideo = useCallback((video: Video) => {
     setNowPlaying(video)

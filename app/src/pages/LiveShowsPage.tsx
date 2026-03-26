@@ -22,10 +22,10 @@ export default function LiveShowsPage() {
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
 
-  // Reset nowPlaying when featured video changes
+  // Reset nowPlaying when featured video or filters change
   useEffect(() => {
     setNowPlaying(null)
-  }, [featured?.id])
+  }, [featured?.id, searchFilters])
 
   const activeVideo = nowPlaying ?? featured
 
