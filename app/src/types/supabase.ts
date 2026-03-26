@@ -26,8 +26,8 @@ export type Database = {
         Row: {
           id: string
           name: string
-          tags: string[]
-          tag_source: string
+          tags: string[] | null
+          tag_source: string | null
           youtube_channel_id: string | null
           created_at: string
         }

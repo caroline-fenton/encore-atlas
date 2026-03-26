@@ -46,9 +46,8 @@ export default function SearchSuggestionPanel({
   )
   filteredRecent.forEach((s) => items.push({ type: "recent", value: s }))
 
-  const hasFilters = filterYear.trim() !== "" || filterAlbum.trim() !== ""
-
-  if (items.length === 0 && !hasFilters) return null
+  // Always show panel when open — filter inputs should be accessible
+  // even when no suggestions/recent searches match
 
   let idx = 0
 
