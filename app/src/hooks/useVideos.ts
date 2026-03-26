@@ -155,10 +155,12 @@ function useVideoFetch(
 
 export function useArtistConcerts(artistName: string, filters?: SearchFilters): UseVideosResult {
   const effectiveDurationRef: MutableRefObject<"long" | "any"> = useRef("long")
+  const effectiveQueryRef = useRef("")
   const filtersKey = `${filters?.year ?? ""}|${filters?.album ?? ""}`
 
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildConcertSearchQuery(artistName, filters)
+    effectiveQueryRef.current = query
     const result = await searchWithDurationFallback(query, {
       maxResults: 5,
       videoDuration: "long",
@@ -170,6 +172,7 @@ export function useArtistConcerts(artistName: string, filters?: SearchFilters): 
     if (filters?.year && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
       const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
       const widenedQuery = buildConcertSearchQuery(artistName, widenedFilters)
+      effectiveQueryRef.current = widenedQuery
       const widenedResult = await searchWithDurationFallback(widenedQuery, {
         maxResults: 5,
         videoDuration: "long",
@@ -185,8 +188,7 @@ export function useArtistConcerts(artistName: string, filters?: SearchFilters): 
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
-      const query = buildConcertSearchQuery(artistName, filters)
-      return searchAndEnrich(query, {
+      return searchAndEnrich(effectiveQueryRef.current, {
         maxResults: 5,
         videoDuration: effectiveDurationRef.current,
         artistName,
@@ -200,15 +202,18 @@ export function useArtistConcerts(artistName: string, filters?: SearchFilters): 
 }
 
 export function useArtistMusicVideos(artistName: string, filters?: SearchFilters): UseVideosResult {
+  const effectiveQueryRef = useRef("")
   const filtersKey = `${filters?.year ?? ""}|${filters?.album ?? ""}`
 
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildMusicVideoSearchQuery(artistName, filters)
+    effectiveQueryRef.current = query
     const result = await searchAndEnrich(query, { maxResults: 5, artistName, signal })
 
     if (filters?.year && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
       const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
       const widenedQuery = buildMusicVideoSearchQuery(artistName, widenedFilters)
+      effectiveQueryRef.current = widenedQuery
       return searchAndEnrich(widenedQuery, { maxResults: 5, artistName, signal })
     }
 
@@ -217,8 +222,7 @@ export function useArtistMusicVideos(artistName: string, filters?: SearchFilters
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
-      const query = buildMusicVideoSearchQuery(artistName, filters)
-      return searchAndEnrich(query, { maxResults: 5, artistName, pageToken })
+      return searchAndEnrich(effectiveQueryRef.current, { maxResults: 5, artistName, pageToken })
     },
     [artistName, filtersKey],
   )
@@ -227,15 +231,18 @@ export function useArtistMusicVideos(artistName: string, filters?: SearchFilters
 }
 
 export function useArtistInterviews(artistName: string, filters?: SearchFilters): UseVideosResult {
+  const effectiveQueryRef = useRef("")
   const filtersKey = `${filters?.year ?? ""}|${filters?.album ?? ""}`
 
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildInterviewSearchQuery(artistName, filters)
+    effectiveQueryRef.current = query
     const result = await searchAndEnrich(query, { maxResults: 5, artistName, signal })
 
     if (filters?.year && result.videos.length < MIN_RESULTS_BEFORE_WIDEN) {
       const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
       const widenedQuery = buildInterviewSearchQuery(artistName, widenedFilters)
+      effectiveQueryRef.current = widenedQuery
       return searchAndEnrich(widenedQuery, { maxResults: 5, artistName, signal })
     }
 
@@ -244,8 +251,7 @@ export function useArtistInterviews(artistName: string, filters?: SearchFilters)
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
-      const query = buildInterviewSearchQuery(artistName, filters)
-      return searchAndEnrich(query, { maxResults: 5, artistName, pageToken })
+      return searchAndEnrich(effectiveQueryRef.current, { maxResults: 5, artistName, pageToken })
     },
     [artistName, filtersKey],
   )
