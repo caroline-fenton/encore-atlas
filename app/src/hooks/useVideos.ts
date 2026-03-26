@@ -43,6 +43,19 @@ function sortByYearMatch(videos: Video[], yearFilter?: string): Video[] {
 
 const MIN_RESULTS_BEFORE_WIDEN = 3
 
+/**
+ * Merge original exact-year results with widened results, deduplicating by video ID.
+ * Original results come first so the year sort keeps them at the top.
+ */
+function mergeResults(original: EnrichResult, widened: EnrichResult): EnrichResult {
+  const seen = new Set(original.videos.map((v) => v.id))
+  const extra = widened.videos.filter((v) => !seen.has(v.id))
+  return {
+    videos: [...original.videos, ...extra],
+    nextPageToken: widened.nextPageToken,
+  }
+}
+
 type UseVideosResult = {
   videos: Video[]
   featured: Video | null
@@ -184,7 +197,7 @@ export function useArtistConcerts(artistName: string, filters?: SearchFilters): 
         signal,
       })
       effectiveDurationRef.current = widenedResult.effectiveDuration === "any" ? "any" : "long"
-      return widenedResult
+      return mergeResults(result, widenedResult)
     }
 
     return result
@@ -218,7 +231,8 @@ export function useArtistMusicVideos(artistName: string, filters?: SearchFilters
       const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
       const widenedQuery = buildMusicVideoSearchQuery(artistName, widenedFilters)
       effectiveQueryRef.current = widenedQuery
-      return searchAndEnrich(widenedQuery, { maxResults: 5, artistName, signal })
+      const widenedResult = await searchAndEnrich(widenedQuery, { maxResults: 5, artistName, signal })
+      return mergeResults(result, widenedResult)
     }
 
     return result
@@ -247,7 +261,8 @@ export function useArtistInterviews(artistName: string, filters?: SearchFilters)
       const widenedFilters = { ...filters, year: widenYearFilter(filters.year) }
       const widenedQuery = buildInterviewSearchQuery(artistName, widenedFilters)
       effectiveQueryRef.current = widenedQuery
-      return searchAndEnrich(widenedQuery, { maxResults: 5, artistName, signal })
+      const widenedResult = await searchAndEnrich(widenedQuery, { maxResults: 5, artistName, signal })
+      return mergeResults(result, widenedResult)
     }
 
     return result

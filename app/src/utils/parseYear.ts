@@ -12,8 +12,8 @@ export function parseYearFromTitle(title: string): number | null {
     years.push(...fourDigit.map(Number))
   }
 
-  // Match 2-digit years after / or - in date patterns (e.g. "6/11/93", "5-8-77")
-  const twoDigit = title.match(/[\/-]\d{1,2}[\/-](\d{2})\b/g)
+  // Match 2-digit years after /, -, or . in date patterns (e.g. "6/11/93", "5-8-77", "9.6.96")
+  const twoDigit = title.match(/[\/.:-]\d{1,2}[\/.:-](\d{2})\b/g)
   if (twoDigit) {
     for (const match of twoDigit) {
       const yy = parseInt(match.slice(-2), 10)
