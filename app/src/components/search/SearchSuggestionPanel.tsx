@@ -10,6 +10,7 @@ type Props = {
   filterAlbum: string
   onFilterYearChange: (value: string) => void
   onFilterAlbumChange: (value: string) => void
+  onSubmit: () => void
   onSelectSuggested: (artist: SuggestedArtist) => void
   onSelectRecent: (query: string) => void
   onRemoveRecent: (query: string) => void
@@ -24,6 +25,7 @@ export default function SearchSuggestionPanel({
   filterAlbum,
   onFilterYearChange,
   onFilterAlbumChange,
+  onSubmit,
   onSelectSuggested,
   onSelectRecent,
   onRemoveRecent,
@@ -48,6 +50,13 @@ export default function SearchSuggestionPanel({
 
   // Always show panel when open — filter inputs should be accessible
   // even when no suggestions/recent searches match
+
+  const handleFilterKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      onSubmit()
+    }
+  }
 
   let idx = 0
 
@@ -149,6 +158,7 @@ export default function SearchSuggestionPanel({
               type="text"
               value={filterYear}
               onChange={(e) => onFilterYearChange(e.target.value)}
+              onKeyDown={handleFilterKeyDown}
               placeholder="Year"
               className="w-full min-w-0 bg-transparent text-xs text-black/75 placeholder:text-black/35 outline-none"
               onMouseDown={(e) => e.stopPropagation()}
@@ -160,6 +170,7 @@ export default function SearchSuggestionPanel({
               type="text"
               value={filterAlbum}
               onChange={(e) => onFilterAlbumChange(e.target.value)}
+              onKeyDown={handleFilterKeyDown}
               placeholder="Album"
               className="w-full min-w-0 bg-transparent text-xs text-black/75 placeholder:text-black/35 outline-none"
               onMouseDown={(e) => e.stopPropagation()}

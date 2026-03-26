@@ -102,6 +102,12 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
     [suggestedArtists, addSearch, onSelectArtist, handleSelectArtist, buildFilters, clearAndClose],
   )
 
+  const submitCurrentQuery = useCallback(() => {
+    if (query.trim()) {
+      handleSelectSearch(query)
+    }
+  }, [query, handleSelectSearch])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const items = getItems()
 
@@ -182,6 +188,7 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
           filterAlbum={filterAlbum}
           onFilterYearChange={setFilterYear}
           onFilterAlbumChange={setFilterAlbum}
+          onSubmit={submitCurrentQuery}
           onSelectSuggested={handleSelectArtist}
           onSelectRecent={handleSelectSearch}
           onRemoveRecent={removeSearch}

@@ -12,14 +12,17 @@ export function parseYearFromTitle(title: string): number | null {
     years.push(...fourDigit.map(Number))
   }
 
-  // Match 2-digit years after /, -, or . in date patterns (e.g. "6/11/93", "5-8-77", "9.6.96")
-  // Exclude : to avoid matching timestamps like "1:23:24"
-  const twoDigit = title.match(/[\/.\-]\d{1,2}[\/.\-](\d{2})\b/g)
-  if (twoDigit) {
-    for (const match of twoDigit) {
-      const yy = parseInt(match.slice(-2), 10)
-      const full = yy >= 50 ? 1900 + yy : 2000 + yy
-      years.push(full)
+  // Only try 2-digit year patterns when no 4-digit year was found.
+  // This avoids misinterpreting YYYY-MM-DD dates (e.g. "2001-02-03"
+  // where "03" would be incorrectly parsed as year 2003).
+  if (years.length === 0) {
+    const twoDigit = title.match(/[\/.\-]\d{1,2}[\/.\-](\d{2})\b/g)
+    if (twoDigit) {
+      for (const match of twoDigit) {
+        const yy = parseInt(match.slice(-2), 10)
+        const full = yy >= 50 ? 1900 + yy : 2000 + yy
+        years.push(full)
+      }
     }
   }
 
