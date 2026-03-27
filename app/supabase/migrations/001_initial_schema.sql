@@ -96,4 +96,3 @@ create index idx_artist_searches_user_id on public.artist_searches(user_id);
 create index idx_artist_searches_searched_at on public.artist_searches(searched_at desc);
 create index idx_watch_history_user_id on public.watch_history(user_id);
 create index idx_watch_history_artist_id on public.watch_history(artist_id);
-create index idx_artists_name on public.artists(name);
