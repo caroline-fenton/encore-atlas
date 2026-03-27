@@ -17,8 +17,10 @@ Most music products optimize for what’s next. Encore Atlas explores how people
 - User Journeys
 - Validation Plan
 - Story Map
-- PRD
-- Roadmap
+- [Product Roadmap](docs/app-roadmap.md)
+- [Decisions](docs/decisions.md)
+- [Constraints](docs/constraints.md)
+- [Recommended Videos PRD](docs/recommended-videos-prd.md)
 
 (Links will be added as artifacts are created.)
 
