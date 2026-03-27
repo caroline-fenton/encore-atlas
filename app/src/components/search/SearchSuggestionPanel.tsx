@@ -1,4 +1,4 @@
-import { X, Calendar, Disc3 } from "lucide-react"
+import { X } from "lucide-react"
 import type { SuggestedArtist } from "../../data/suggestedArtists"
 
 type Props = {
@@ -6,11 +6,6 @@ type Props = {
   suggestedArtists: SuggestedArtist[]
   filterQuery: string
   highlightedIndex: number
-  filterYear: string
-  filterAlbum: string
-  onFilterYearChange: (value: string) => void
-  onFilterAlbumChange: (value: string) => void
-  onSubmit: () => void
   onSelectSuggested: (artist: SuggestedArtist) => void
   onSelectRecent: (query: string) => void
   onRemoveRecent: (query: string) => void
@@ -21,11 +16,6 @@ export default function SearchSuggestionPanel({
   suggestedArtists,
   filterQuery,
   highlightedIndex,
-  filterYear,
-  filterAlbum,
-  onFilterYearChange,
-  onFilterAlbumChange,
-  onSubmit,
   onSelectSuggested,
   onSelectRecent,
   onRemoveRecent,
@@ -48,15 +38,7 @@ export default function SearchSuggestionPanel({
   )
   filteredRecent.forEach((s) => items.push({ type: "recent", value: s }))
 
-  // Always show panel when open — filter inputs should be accessible
-  // even when no suggestions/recent searches match
-
-  const handleFilterKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      onSubmit()
-    }
-  }
+  if (items.length === 0) return null
 
   let idx = 0
 
@@ -144,40 +126,6 @@ export default function SearchSuggestionPanel({
           })}
         </div>
       )}
-
-      {/* Filters */}
-      <div>
-        <div className="mx-3 border-t border-stone-200" />
-        <div className="px-3 pb-1 pt-2 font-typewriter text-[10px] uppercase tracking-[0.3em] text-black/40">
-          Filters
-        </div>
-        <div className="flex gap-2 px-3 pb-3">
-          <div className="flex flex-1 items-center gap-1.5 rounded-sm border border-stone-200 bg-white/50 px-2 py-1.5">
-            <Calendar className="h-3 w-3 text-black/35 shrink-0" />
-            <input
-              type="text"
-              value={filterYear}
-              onChange={(e) => onFilterYearChange(e.target.value)}
-              onKeyDown={handleFilterKeyDown}
-              placeholder="Year"
-              className="w-full min-w-0 bg-transparent text-xs text-black/75 placeholder:text-black/35 outline-none"
-              onMouseDown={(e) => e.stopPropagation()}
-            />
-          </div>
-          <div className="flex flex-1 items-center gap-1.5 rounded-sm border border-stone-200 bg-white/50 px-2 py-1.5">
-            <Disc3 className="h-3 w-3 text-black/35 shrink-0" />
-            <input
-              type="text"
-              value={filterAlbum}
-              onChange={(e) => onFilterAlbumChange(e.target.value)}
-              onKeyDown={handleFilterKeyDown}
-              placeholder="Album"
-              className="w-full min-w-0 bg-transparent text-xs text-black/75 placeholder:text-black/35 outline-none"
-              onMouseDown={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

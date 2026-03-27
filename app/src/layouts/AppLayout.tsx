@@ -2,9 +2,7 @@ import { NavLink, Outlet, Link } from "react-router-dom"
 import { useState } from "react"
 import { User } from "lucide-react"
 import ArtistSearchBar from "../components/search/ArtistSearchBar"
-import ActiveFilterPills from "../components/search/ActiveFilterPills"
 import LandingPage from "../pages/LandingPage"
-import type { SearchFilters } from "../services/searchQueries"
 
 const tabs = [
   { to: "/", label: "Live Shows", end: true },
@@ -42,7 +40,6 @@ type SelectedArtist = {
 export type AppOutletContext = {
   selectedArtistId: string
   selectedArtistName: string
-  searchFilters: SearchFilters
   setSelectedArtist: (artist: SelectedArtist) => void
 }
 
@@ -55,28 +52,14 @@ export default function AppLayout() {
       ? { id: toSlug(mostRecent), name: mostRecent.toUpperCase() }
       : { id: "the-smiths", name: "THE SMITHS" },
   )
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({})
   const [showLanding, setShowLanding] = useState(recentSearches.length === 0)
-
-  const handleSelectArtist = (artist: SelectedArtist, filters?: SearchFilters) => {
-    setSelectedArtist(artist)
-    setSearchFilters(filters ?? {})
-  }
-
-  const handleClearFilter = (key: "year" | "album") => {
-    setSearchFilters((prev) => {
-      const next = { ...prev }
-      delete next[key]
-      return next
-    })
-  }
 
   if (showLanding) {
     return (
       <div className="min-h-screen bg-[#f6f1e8] text-black/85">
         <LandingPage
           onComplete={() => setShowLanding(false)}
-          setSelectedArtist={handleSelectArtist}
+          setSelectedArtist={setSelectedArtist}
         />
       </div>
     )
@@ -94,7 +77,7 @@ export default function AppLayout() {
           </Link>
 
           <div className="flex min-w-0 items-center gap-3">
-            <ArtistSearchBar onSelectArtist={handleSelectArtist} />
+            <ArtistSearchBar onSelectArtist={setSelectedArtist} />
 
             <div className="group relative">
               <button
@@ -130,12 +113,6 @@ export default function AppLayout() {
               </NavLink>
             ))}
           </div>
-
-          {(searchFilters.year || searchFilters.album) && (
-            <div className="mt-3">
-              <ActiveFilterPills filters={searchFilters} onClearFilter={handleClearFilter} />
-            </div>
-          )}
         </nav>
       </header>
 
@@ -144,8 +121,7 @@ export default function AppLayout() {
           context={{
             selectedArtistId: selectedArtist.id,
             selectedArtistName: selectedArtist.name,
-            searchFilters,
-            setSelectedArtist: handleSelectArtist,
+            setSelectedArtist,
           } satisfies AppOutletContext}
         />
       </main>

@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react"
-import { Calendar, Disc3 } from "lucide-react"
 import { useRecentSearches } from "../hooks/useRecentSearches"
 import { getSuggestedArtists } from "../data/suggestedArtists"
-import type { SearchFilters } from "../services/searchQueries"
 
 function slugify(name: string): string {
   return name
@@ -14,13 +12,11 @@ function slugify(name: string): string {
 
 type LandingPageProps = {
   onComplete: () => void
-  setSelectedArtist: (artist: { id: string; name: string }, filters?: SearchFilters) => void
+  setSelectedArtist: (artist: { id: string; name: string }) => void
 }
 
 export default function LandingPage({ onComplete, setSelectedArtist }: LandingPageProps) {
   const [query, setQuery] = useState("")
-  const [filterYear, setFilterYear] = useState("")
-  const [filterAlbum, setFilterAlbum] = useState("")
   const { addSearch } = useRecentSearches()
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const suggestedArtists = getSuggestedArtists()
@@ -37,16 +33,11 @@ export default function LandingPage({ onComplete, setSelectedArtist }: LandingPa
     const trimmed = query.trim()
     if (!trimmed) return
 
-    const year = filterYear.trim()
-    const album = filterAlbum.trim()
-    const filters: SearchFilters | undefined =
-      year || album ? { ...(year && { year }), ...(album && { album }) } : undefined
-
     addSearch(trimmed)
     setSelectedArtist({
       id: slugify(trimmed),
       name: trimmed.toUpperCase(),
-    }, filters)
+    })
     onComplete()
   }
 
@@ -70,29 +61,6 @@ export default function LandingPage({ onComplete, setSelectedArtist }: LandingPa
             className="w-full rounded-sm border border-stone-300 bg-transparent px-5 py-3 text-center text-base sm:text-sm text-black/85 placeholder:text-black/35 outline-none focus:border-[#7a2d2b]/50"
             autoFocus
           />
-
-          <div className="flex gap-3">
-            <div className="flex flex-1 items-center gap-2 rounded-sm border border-stone-300 bg-transparent px-4 py-3">
-              <Calendar className="h-4 w-4 text-black/35 shrink-0" />
-              <input
-                type="text"
-                value={filterYear}
-                onChange={(e) => setFilterYear(e.target.value)}
-                placeholder="Year"
-                className="w-full bg-transparent text-base sm:text-sm text-black/85 placeholder:text-black/35 outline-none"
-              />
-            </div>
-            <div className="flex flex-1 items-center gap-2 rounded-sm border border-stone-300 bg-transparent px-4 py-3">
-              <Disc3 className="h-4 w-4 text-black/35 shrink-0" />
-              <input
-                type="text"
-                value={filterAlbum}
-                onChange={(e) => setFilterAlbum(e.target.value)}
-                placeholder="Album"
-                className="w-full bg-transparent text-base sm:text-sm text-black/85 placeholder:text-black/35 outline-none"
-              />
-            </div>
-          </div>
 
           <button
             type="submit"

@@ -4,7 +4,9 @@ import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
 import { useArtistConcerts } from "../hooks/useVideos"
 import { useArtistBio } from "../hooks/useArtistBio"
+import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import ArtistBio from "../components/shared/ArtistBio"
+import DecadeFilter from "../components/shared/DecadeFilter"
 import VideoHero from "../components/liveShows/VideoHero"
 import VideoCard from "../components/liveShows/VideoCard"
 import VideoHeroSkeleton from "../components/shared/VideoHeroSkeleton"
@@ -13,19 +15,23 @@ import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
 
 export default function LiveShowsPage() {
-  const { selectedArtistName, searchFilters } = useOutletContext<AppOutletContext>()
+  const { selectedArtistName } = useOutletContext<AppOutletContext>()
 
-  const { featured, more, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
-    useArtistConcerts(selectedArtistName, searchFilters)
+  const { videos: allVideos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
+    useArtistConcerts(selectedArtistName)
   const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
+  const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(allVideos, selectedArtistName)
+
+  const featured = filtered.length > 0 ? filtered[0] : null
+  const more = filtered.length > 1 ? filtered.slice(1) : []
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
 
-  // Reset nowPlaying when featured video or filters change
+  // Reset nowPlaying when featured video or decade filter changes
   useEffect(() => {
     setNowPlaying(null)
-  }, [featured?.id, searchFilters])
+  }, [featured?.id, selectedDecade])
 
   const activeVideo = nowPlaying ?? featured
 
@@ -47,6 +53,14 @@ export default function LiveShowsPage() {
       </header>
 
       <ArtistBio bio={bio} isLoading={bioLoading} />
+
+      {!isLoading && allVideos.length > 0 && (
+        <DecadeFilter
+          videos={allVideos}
+          selected={selectedDecade}
+          onSelect={setSelectedDecade}
+        />
+      )}
 
       {error && <ErrorState message={error} onRetry={retry} />}
 

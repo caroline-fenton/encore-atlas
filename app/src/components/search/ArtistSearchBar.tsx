@@ -4,7 +4,6 @@ import { Search } from "lucide-react"
 import { getSuggestedArtists, type SuggestedArtist } from "../../data/suggestedArtists"
 import { useRecentSearches } from "../../hooks/useRecentSearches"
 import SearchSuggestionPanel from "./SearchSuggestionPanel"
-import type { SearchFilters } from "../../services/searchQueries"
 
 type SelectedArtist = {
   id: string
@@ -12,7 +11,7 @@ type SelectedArtist = {
 }
 
 type Props = {
-  onSelectArtist: (artist: SelectedArtist, filters?: SearchFilters) => void
+  onSelectArtist: (artist: SelectedArtist) => void
 }
 
 function slugify(name: string): string {
@@ -27,10 +26,7 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
   const [query, setQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
-  const [filterYear, setFilterYear] = useState("")
-  const [filterAlbum, setFilterAlbum] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   const { searches, addSearch, removeSearch } = useRecentSearches()
 
   const suggestedArtists = getSuggestedArtists()
@@ -51,30 +47,17 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
     return items
   }, [query, suggestedArtists, searches])
 
-  const buildFilters = useCallback((): SearchFilters | undefined => {
-    const year = filterYear.trim()
-    const album = filterAlbum.trim()
-    if (!year && !album) return undefined
-    return { ...(year && { year }), ...(album && { album }) }
-  }, [filterYear, filterAlbum])
-
-  const clearAndClose = useCallback(() => {
-    setQuery("")
-    setFilterYear("")
-    setFilterAlbum("")
-    setIsOpen(false)
-    setHighlightedIndex(-1)
-    inputRef.current?.blur()
-  }, [])
-
   const handleSelectArtist = useCallback(
     (artist: SuggestedArtist) => {
       track("artist_search", { artist: artist.name, source: "suggested" })
       addSearch(artist.name)
-      onSelectArtist({ id: artist.id, name: artist.name }, buildFilters())
-      clearAndClose()
+      onSelectArtist({ id: artist.id, name: artist.name })
+      setQuery("")
+      setIsOpen(false)
+      setHighlightedIndex(-1)
+      inputRef.current?.blur()
     },
-    [onSelectArtist, addSearch, buildFilters, clearAndClose],
+    [onSelectArtist, addSearch],
   )
 
   const handleSelectSearch = useCallback(
@@ -96,17 +79,14 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
       onSelectArtist({
         id: slugify(trimmed),
         name: trimmed.toUpperCase(),
-      }, buildFilters())
-      clearAndClose()
+      })
+      setQuery("")
+      setIsOpen(false)
+      setHighlightedIndex(-1)
+      inputRef.current?.blur()
     },
-    [suggestedArtists, addSearch, onSelectArtist, handleSelectArtist, buildFilters, clearAndClose],
+    [suggestedArtists, addSearch, onSelectArtist, handleSelectArtist],
   )
-
-  const submitCurrentQuery = useCallback(() => {
-    if (query.trim()) {
-      handleSelectSearch(query)
-    }
-  }, [query, handleSelectSearch])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const items = getItems()
@@ -145,18 +125,8 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
     }
   }
 
-  const handleBlur = useCallback((e: React.FocusEvent) => {
-    // If focus is moving to another element within our container, stay open
-    const relatedTarget = e.relatedTarget as Node | null
-    if (relatedTarget && containerRef.current?.contains(relatedTarget)) {
-      return
-    }
-    // Delay to allow mouseDown on suggestions to fire
-    setTimeout(() => setIsOpen(false), 150)
-  }, [])
-
   return (
-    <div className="relative" ref={containerRef} onBlur={handleBlur}>
+    <div className="relative">
       <div className="flex items-center gap-2 rounded-sm border border-stone-200 bg-transparent px-2 py-1">
         <Search className="h-3.5 w-3.5 text-black/40" />
         <input
@@ -169,6 +139,10 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
             if (!isOpen) setIsOpen(true)
           }}
           onFocus={() => setIsOpen(true)}
+          onBlur={() => {
+            // Delay to allow mouseDown on suggestions to fire
+            setTimeout(() => setIsOpen(false), 150)
+          }}
           onKeyDown={handleKeyDown}
           placeholder="Search"
           className="w-24 sm:w-40 bg-transparent text-base sm:text-sm text-black/85 placeholder:text-black/35 outline-none"
@@ -184,11 +158,6 @@ export default function ArtistSearchBar({ onSelectArtist }: Props) {
           suggestedArtists={suggestedArtists}
           filterQuery={query}
           highlightedIndex={highlightedIndex}
-          filterYear={filterYear}
-          filterAlbum={filterAlbum}
-          onFilterYearChange={setFilterYear}
-          onFilterAlbumChange={setFilterAlbum}
-          onSubmit={submitCurrentQuery}
           onSelectSuggested={handleSelectArtist}
           onSelectRecent={handleSelectSearch}
           onRemoveRecent={removeSearch}
