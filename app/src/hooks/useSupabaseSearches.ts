@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { useAuth } from "./useAuth"
+import type { User } from "@supabase/supabase-js"
 import { findOrCreateArtist } from "../services/artists"
 import {
   recordSearch as recordSearchService,
@@ -12,9 +12,9 @@ type ArtistSearchRow = Database["public"]["Tables"]["artist_searches"]["Row"]
 /**
  * React hook that syncs search history to Supabase.
  * Falls back gracefully if Supabase is unavailable.
+ * Accepts the current user rather than bootstrapping auth independently.
  */
-export function useSupabaseSearches() {
-  const { user } = useAuth()
+export function useSupabaseSearches(user: User | null) {
   const [recentSearches, setRecentSearches] = useState<ArtistSearchRow[]>([])
 
   // Fetch recent searches on mount (and when user changes)

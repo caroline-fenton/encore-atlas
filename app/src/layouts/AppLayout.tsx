@@ -49,8 +49,8 @@ export default function AppLayout() {
   const recentSearches = getRecentSearches()
   const mostRecent = recentSearches[0]
 
-  const { user, loading: authLoading } = useAuth()
-  const { recordSearch: recordSupabaseSearch } = useSupabaseSearches()
+  const { user } = useAuth()
+  const { recordSearch: recordSupabaseSearch } = useSupabaseSearches(user)
 
   const [selectedArtist, setSelectedArtistState] = useState<SelectedArtist>(
     mostRecent
