@@ -44,10 +44,11 @@ export async function findOrCreateArtist(
     const existing = await getArtistByName(name)
     if (existing) return existing
 
-    // Not found — insert a new artist
+    // Not found — insert with normalized (lowercase) name for deduplication
+    const normalizedName = name.trim().toLowerCase()
     const { data, error } = await supabase
       .from("artists")
-      .insert({ name })
+      .insert({ name: normalizedName })
       .select()
       .single()
 

@@ -43,8 +43,8 @@ export async function ensureSession(): Promise<User | null> {
     } = await supabase.auth.getSession()
 
     if (session?.user) {
-      // Touch last_seen_at
-      upsertUserRow(session.user)
+      // Await upsert so the users row exists before callers record searches
+      await upsertUserRow(session.user)
       return session.user
     }
 
