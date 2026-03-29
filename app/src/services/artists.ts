@@ -48,7 +48,7 @@ export async function findOrCreateArtist(
     const normalizedName = name.trim().toLowerCase()
     const { data, error } = await supabase
       .from("artists")
-      .insert({ name: normalizedName })
+      .insert({ name: normalizedName }, { defaultToNull: false })
       .select()
       .single()
 

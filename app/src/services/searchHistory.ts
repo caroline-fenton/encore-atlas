@@ -13,11 +13,14 @@ export async function recordSearch(
   artistId?: string,
 ): Promise<void> {
   try {
-    const { error } = await supabase.from("artist_searches").insert({
-      user_id: userId,
-      query_text: queryText,
-      selected_artist_id: artistId ?? null,
-    })
+    const { error } = await supabase.from("artist_searches").insert(
+      {
+        user_id: userId,
+        query_text: queryText,
+        selected_artist_id: artistId ?? null,
+      },
+      { defaultToNull: false },
+    )
 
     if (error) {
       console.warn("[searchHistory] recordSearch error:", error.message)

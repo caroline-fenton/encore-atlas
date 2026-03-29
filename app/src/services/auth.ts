@@ -8,11 +8,14 @@ import type { User, AuthChangeEvent, Session } from "@supabase/supabase-js"
 async function upsertUserRow(user: User): Promise<void> {
   try {
     // Try insert first (new user)
-    const { error: insertError } = await supabase.from("users").insert({
-      id: user.id,
-      is_anonymous: user.is_anonymous ?? true,
-      last_seen_at: new Date().toISOString(),
-    })
+    const { error: insertError } = await supabase.from("users").insert(
+      {
+        id: user.id,
+        is_anonymous: user.is_anonymous ?? true,
+        last_seen_at: new Date().toISOString(),
+      },
+      { defaultToNull: false },
+    )
 
     if (insertError) {
       // If user already exists (duplicate key), update last_seen_at instead
