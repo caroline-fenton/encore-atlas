@@ -1,5 +1,5 @@
 import { useOutletContext } from "react-router-dom"
-import { useRef, useState, useEffect, useCallback } from "react"
+import { useRef, useState, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
 import { useArtistConcerts } from "../hooks/useVideos"
@@ -27,11 +27,14 @@ export default function LiveShowsPage() {
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
+  const resetKey = `${featured?.id}::${selectedDecade}`
+  const [prevResetKey, setPrevResetKey] = useState(resetKey)
 
-  // Reset nowPlaying when featured video or decade filter changes
-  useEffect(() => {
+  // Reset nowPlaying synchronously during render when featured video or decade changes
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey)
     setNowPlaying(null)
-  }, [featured?.id, selectedDecade])
+  }
 
   const activeVideo = nowPlaying ?? featured
 

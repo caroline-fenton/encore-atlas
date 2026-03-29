@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import type { User } from "@supabase/supabase-js"
 import { ensureSession, onAuthStateChange } from "../services/auth"
 
@@ -10,6 +10,14 @@ type AuthState = {
   waitForAuth: () => Promise<User | null>
 }
 
+function createDeferred() {
+  let resolve: (u: User | null) => void = () => {}
+  const promise = new Promise<User | null>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
 /**
  * React hook that manages anonymous authentication.
  * On mount it ensures a Supabase session exists and
@@ -19,20 +27,9 @@ export function useAuth(): AuthState {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // A ref holding a promise that resolves once the initial auth bootstrap
+  // A deferred promise that resolves once the initial auth bootstrap
   // is complete.  Callers can await this to avoid racing against init.
-  const readyRef = useRef<{
-    promise: Promise<User | null>
-    resolve: (u: User | null) => void
-  } | null>(null)
-
-  if (readyRef.current === null) {
-    let resolve: (u: User | null) => void = () => {}
-    const promise = new Promise<User | null>((r) => {
-      resolve = r
-    })
-    readyRef.current = { promise, resolve }
-  }
+  const [ready] = useState(createDeferred)
 
   useEffect(() => {
     let mounted = true
@@ -44,7 +41,7 @@ export function useAuth(): AuthState {
         setLoading(false)
       }
       // Always resolve so waiters unblock even if unmounted
-      readyRef.current?.resolve(u)
+      ready.resolve(u)
     })
 
     // Listen for changes (e.g. token refresh)
@@ -58,11 +55,11 @@ export function useAuth(): AuthState {
       mounted = false
       unsubscribe()
     }
-  }, [])
+  }, [ready])
 
   const waitForAuth = useCallback(
-    () => readyRef.current!.promise,
-    [],
+    () => ready.promise,
+    [ready],
   )
 
   return {

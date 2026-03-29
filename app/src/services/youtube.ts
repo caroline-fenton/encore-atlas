@@ -11,6 +11,10 @@ import { getAliases } from "../data/artistAliases"
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY as string
 const API_BASE = "https://www.googleapis.com/youtube/v3"
 
+if (!API_KEY) {
+  throw new Error("Missing required environment variable: VITE_YOUTUBE_API_KEY")
+}
+
 export class YouTubeApiError extends Error {
   status: number
 

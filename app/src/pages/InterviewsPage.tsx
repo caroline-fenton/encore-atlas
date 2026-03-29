@@ -1,5 +1,5 @@
 import { useOutletContext } from "react-router-dom"
-import { useRef, useState, useEffect, useCallback } from "react"
+import { useRef, useState, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
 import { useArtistInterviews } from "../hooks/useVideos"
@@ -23,11 +23,14 @@ export default function InterviewsPage() {
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
+  const resetKey = `${selectedArtistName}::${selectedDecade}`
+  const [prevResetKey, setPrevResetKey] = useState(resetKey)
 
-  // Reset selected interview when artist or decade filter changes
-  useEffect(() => {
+  // Reset selected interview synchronously during render when artist or decade changes
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey)
     setNowPlaying(null)
-  }, [selectedArtistName, selectedDecade])
+  }
 
   const handleSelectVideo = useCallback((video: Video) => {
     setNowPlaying(video)
