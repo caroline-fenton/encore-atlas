@@ -21,6 +21,7 @@ export type Database = {
           display_name?: string | null
           last_seen_at?: string
         }
+        Relationships: []
       }
       artists: {
         Row: {
@@ -45,6 +46,7 @@ export type Database = {
           tag_source?: string
           youtube_channel_id?: string | null
         }
+        Relationships: []
       }
       artist_searches: {
         Row: {
@@ -65,6 +67,22 @@ export type Database = {
           query_text?: string
           selected_artist_id?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "artist_searches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artist_searches_selected_artist_id_fkey"
+            columns: ["selected_artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       watch_history: {
         Row: {
@@ -88,7 +106,29 @@ export type Database = {
         Update: {
           watch_duration_seconds?: number | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "watch_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watch_history_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
     }
   }
 }

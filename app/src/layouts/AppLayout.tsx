@@ -1,8 +1,10 @@
 import { NavLink, Outlet, Link } from "react-router-dom"
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { User } from "lucide-react"
 import ArtistSearchBar from "../components/search/ArtistSearchBar"
 import LandingPage from "../pages/LandingPage"
+import { useAuth } from "../hooks/useAuth"
+import { useSupabaseSearches } from "../hooks/useSupabaseSearches"
 
 const tabs = [
   { to: "/", label: "Live Shows", end: true },
@@ -47,12 +49,25 @@ export default function AppLayout() {
   const recentSearches = getRecentSearches()
   const mostRecent = recentSearches[0]
 
-  const [selectedArtist, setSelectedArtist] = useState<SelectedArtist>(
+  const { user, waitForAuth } = useAuth()
+  const { recordSearch: recordSupabaseSearch } = useSupabaseSearches(user, waitForAuth)
+
+  const [selectedArtist, setSelectedArtistState] = useState<SelectedArtist>(
     mostRecent
       ? { id: toSlug(mostRecent), name: mostRecent.toUpperCase() }
       : { id: "the-smiths", name: "THE SMITHS" },
   )
   const [showLanding, setShowLanding] = useState(recentSearches.length === 0)
+
+  const setSelectedArtist = useCallback(
+    (artist: SelectedArtist) => {
+      setSelectedArtistState(artist)
+
+      // Fire-and-forget: record the search to Supabase without blocking the UI
+      recordSupabaseSearch(artist.name).catch(() => {})
+    },
+    [recordSupabaseSearch],
+  )
 
   if (showLanding) {
     return (

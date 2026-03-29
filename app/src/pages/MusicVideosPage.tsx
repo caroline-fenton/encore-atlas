@@ -23,11 +23,14 @@ export default function MusicVideosPage() {
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
+  const resetKey = `${selectedArtistName}::${selectedDecade}`
+  const [prevResetKey, setPrevResetKey] = useState(resetKey)
 
-  // Reset selected video when artist or decade filter changes
-  useEffect(() => {
+  // Reset selected video synchronously during render when artist or decade changes
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey)
     setNowPlaying(null)
-  }, [selectedArtistName, selectedDecade])
+  }
 
   // Scroll to hero after nowPlaying changes and the hero section mounts
   useEffect(() => {
