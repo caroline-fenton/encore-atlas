@@ -12,9 +12,13 @@ type ArtistSearchRow = Database["public"]["Tables"]["artist_searches"]["Row"]
 /**
  * React hook that syncs search history to Supabase.
  * Falls back gracefully if Supabase is unavailable.
- * Accepts the current user rather than bootstrapping auth independently.
+ * Accepts the current user and a `waitForAuth` helper so that searches
+ * submitted before auth init completes are not silently dropped.
  */
-export function useSupabaseSearches(user: User | null) {
+export function useSupabaseSearches(
+  user: User | null,
+  waitForAuth: () => Promise<User | null>,
+) {
   const [recentSearches, setRecentSearches] = useState<ArtistSearchRow[]>([])
 
   // Fetch recent searches on mount (and when user changes)
@@ -38,26 +42,33 @@ export function useSupabaseSearches(user: User | null) {
    * Records a search to Supabase.
    * Finds or creates the artist, then inserts the search row.
    * Fire-and-forget — errors are caught and logged.
+   *
+   * If auth has not initialised yet, waits for it rather than
+   * silently dropping the search.
    */
   const recordSearch = useCallback(
     async (artistName: string): Promise<void> => {
-      if (!user) return
+      // If user is not available yet, wait for auth to finish initialising.
+      const resolvedUser = user ?? (await waitForAuth())
+      if (!resolvedUser) return
 
       try {
         const artist = await findOrCreateArtist(artistName)
         await recordSearchService(
-          user.id,
+          resolvedUser.id,
           artistName,
           artist?.id ?? undefined,
         )
 
         // Optimistically refresh the list
-        getRecentSearches(user.id).then(setRecentSearches).catch(() => {})
+        getRecentSearches(resolvedUser.id)
+          .then(setRecentSearches)
+          .catch(() => {})
       } catch (err) {
         console.warn("[useSupabaseSearches] recordSearch failed:", err)
       }
     },
-    [user],
+    [user, waitForAuth],
   )
 
   return { recentSearches, recordSearch }

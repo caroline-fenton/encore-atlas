@@ -11,10 +11,12 @@ export async function getArtistByName(
   name: string,
 ): Promise<ArtistRow | null> {
   try {
+    // Use lower() for a case-insensitive exact match instead of ilike,
+    // which would treat '%' and '_' in the name as SQL wildcards.
     const { data, error } = await supabase
       .from("artists")
       .select("*")
-      .ilike("name", name)
+      .filter("name", "ilike", name.replace(/%/g, "\\%").replace(/_/g, "\\_"))
       .limit(1)
       .maybeSingle()
 
