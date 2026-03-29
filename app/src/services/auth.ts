@@ -9,11 +9,13 @@ async function upsertUserRow(user: User): Promise<void> {
   try {
     // Try insert first (new user)
     const { error: insertError } = await supabase.from("users").insert(
-      {
-        id: user.id,
-        is_anonymous: user.is_anonymous ?? true,
-        last_seen_at: new Date().toISOString(),
-      },
+      [
+        {
+          id: user.id,
+          is_anonymous: user.is_anonymous ?? true,
+          last_seen_at: new Date().toISOString(),
+        },
+      ],
       { defaultToNull: false },
     )
 
