@@ -131,7 +131,7 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildConcertSearchQuery(artistName)
     const result = await searchWithDurationFallback(query, {
-      maxResults: 5,
+      maxResults: 25,
       videoDuration: "long",
       artistName,
       signal,
@@ -145,7 +145,7 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
     async (pageToken: string) => {
       const query = buildConcertSearchQuery(artistName)
       return searchAndEnrich(query, {
-        maxResults: 5,
+        maxResults: 25,
         videoDuration: effectiveDurationRef.current,
         artistName,
         pageToken,
@@ -160,13 +160,13 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
 export function useArtistMusicVideos(artistName: string): UseVideosResult {
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildMusicVideoSearchQuery(artistName)
-    return searchAndEnrich(query, { maxResults: 5, artistName, signal })
+    return searchAndEnrich(query, { maxResults: 25, artistName, signal })
   }, [artistName])
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
       const query = buildMusicVideoSearchQuery(artistName)
-      return searchAndEnrich(query, { maxResults: 5, artistName, pageToken })
+      return searchAndEnrich(query, { maxResults: 25, artistName, pageToken })
     },
     [artistName],
   )
@@ -177,13 +177,13 @@ export function useArtistMusicVideos(artistName: string): UseVideosResult {
 export function useArtistInterviews(artistName: string): UseVideosResult {
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildInterviewSearchQuery(artistName)
-    return searchAndEnrich(query, { maxResults: 5, artistName, signal })
+    return searchAndEnrich(query, { maxResults: 25, artistName, signal })
   }, [artistName])
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
       const query = buildInterviewSearchQuery(artistName)
-      return searchAndEnrich(query, { maxResults: 5, artistName, pageToken })
+      return searchAndEnrich(query, { maxResults: 25, artistName, pageToken })
     },
     [artistName],
   )
