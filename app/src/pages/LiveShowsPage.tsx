@@ -50,20 +50,26 @@ export default function LiveShowsPage() {
   // Try the lazy curation pipeline first
   const artistPage = useArtistPage(selectedArtistName)
 
-  // Fall back to direct YouTube search if the pipeline fails or returns no videos
-  const hasCachedVideos =
-    artistPage.data !== null && artistPage.data.videos.length > 0
+  // Only fall back to direct YouTube search after the pipeline has definitively
+  // failed or returned no videos. While the pipeline is still loading, pass ""
+  // to prevent the fallback from firing and burning YouTube quota.
+  const pipelineSettled = !artistPage.isLoading && !artistPage.isBuilding
+  const pipelineSucceeded =
+    pipelineSettled && artistPage.data !== null && artistPage.data.videos.length > 0
+  const pipelineFailed =
+    pipelineSettled && !pipelineSucceeded
+
   const youtubeResult = useArtistConcerts(
-    hasCachedVideos ? "" : selectedArtistName,
+    pipelineFailed ? selectedArtistName : "",
   )
 
   // Determine which data source to use
-  const useCached = hasCachedVideos
+  const useCached = pipelineSucceeded
   const allVideos = useCached
     ? mapCachedVideos(artistPage.data!.videos)
     : youtubeResult.videos
-  const isLoading = useCached ? artistPage.isLoading : youtubeResult.isLoading
-  const error = useCached ? artistPage.error : youtubeResult.error
+  const isLoading = !pipelineSettled || (pipelineFailed && youtubeResult.isLoading)
+  const error = pipelineFailed ? youtubeResult.error : artistPage.error
   const hasMore = useCached ? false : youtubeResult.hasMore
   const loadMore = youtubeResult.loadMore
   const isLoadingMore = youtubeResult.isLoadingMore
