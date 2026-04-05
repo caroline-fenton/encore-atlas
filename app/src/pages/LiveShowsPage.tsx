@@ -3,6 +3,7 @@ import { useRef, useState, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
 import { useArtistConcerts } from "../hooks/useVideos"
+import { useArtistPage } from "../hooks/useArtistPage"
 import { useArtistBio } from "../hooks/useArtistBio"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import ArtistBio from "../components/shared/ArtistBio"
@@ -13,14 +14,66 @@ import VideoHeroSkeleton from "../components/shared/VideoHeroSkeleton"
 import VideoCardSkeleton from "../components/shared/VideoCardSkeleton"
 import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
+import BuildingState from "../components/shared/BuildingState"
+
+/**
+ * Maps cached artist_videos rows to the Video type used by display components.
+ */
+function mapCachedVideos(
+  videos: {
+    youtube_video_id: string
+    title: string
+    description: string | null
+    thumbnail_url: string | null
+    published_at: string | null
+    view_count: number | null
+  }[],
+): Video[] {
+  return videos.map((v) => ({
+    id: v.youtube_video_id,
+    title: v.title,
+    channelTitle: "",
+    description: v.description ?? "",
+    thumbnailUrl:
+      v.thumbnail_url ??
+      `https://img.youtube.com/vi/${v.youtube_video_id}/hqdefault.jpg`,
+    youtubeUrl: `https://www.youtube.com/watch?v=${v.youtube_video_id}`,
+    duration: "",
+    publishedAt: v.published_at ?? "",
+    viewCount: v.view_count ?? undefined,
+  }))
+}
 
 export default function LiveShowsPage() {
   const { selectedArtistName } = useOutletContext<AppOutletContext>()
 
-  const { videos: allVideos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
-    useArtistConcerts(selectedArtistName)
+  // Try the lazy curation pipeline first
+  const artistPage = useArtistPage(selectedArtistName)
+
+  // Fall back to direct YouTube search if the pipeline fails or returns no videos
+  const hasCachedVideos =
+    artistPage.data !== null && artistPage.data.videos.length > 0
+  const youtubeResult = useArtistConcerts(
+    hasCachedVideos ? "" : selectedArtistName,
+  )
+
+  // Determine which data source to use
+  const useCached = hasCachedVideos
+  const allVideos = useCached
+    ? mapCachedVideos(artistPage.data!.videos)
+    : youtubeResult.videos
+  const isLoading = useCached ? artistPage.isLoading : youtubeResult.isLoading
+  const error = useCached ? artistPage.error : youtubeResult.error
+  const hasMore = useCached ? false : youtubeResult.hasMore
+  const loadMore = youtubeResult.loadMore
+  const isLoadingMore = youtubeResult.isLoadingMore
+  const retry = useCached ? artistPage.retry : youtubeResult.retry
+
   const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
-  const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(allVideos, selectedArtistName)
+  const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(
+    allVideos,
+    selectedArtistName,
+  )
 
   const featured = filtered.length > 0 ? filtered[0] : null
   const more = filtered.length > 1 ? filtered.slice(1) : []
@@ -30,7 +83,6 @@ export default function LiveShowsPage() {
   const resetKey = `${featured?.id}::${selectedDecade}`
   const [prevResetKey, setPrevResetKey] = useState(resetKey)
 
-  // Reset nowPlaying synchronously during render when featured video or decade changes
   if (prevResetKey !== resetKey) {
     setPrevResetKey(resetKey)
     setNowPlaying(null)
@@ -43,6 +95,19 @@ export default function LiveShowsPage() {
     heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }, [])
 
+  // Show building state when the edge function is generating a new artist page
+  if (artistPage.isBuilding) {
+    return (
+      <div className="space-y-8 pb-10">
+        <header className="text-center">
+          <h1 className="font-display text-5xl md:text-6xl font-normal tracking-[0.22em] leading-none text-black/80 uppercase">
+            {selectedArtistName}
+          </h1>
+        </header>
+        <BuildingState artistName={selectedArtistName} />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8 pb-10">
@@ -53,9 +118,27 @@ export default function LiveShowsPage() {
         <div className="mt-3 font-typewriter text-xs uppercase tracking-[0.35em] text-black/55">
           Live Performances
         </div>
+        {useCached && artistPage.data?.artist.tags && (
+          <div className="mt-2 flex flex-wrap justify-center gap-2">
+            {artistPage.data.artist.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-black/10 bg-white/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-black/50"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </header>
 
-      <ArtistBio bio={bio} isLoading={bioLoading} />
+      {useCached && artistPage.data?.artist.blurb ? (
+        <div className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-black/55">
+          {artistPage.data.artist.blurb}
+        </div>
+      ) : (
+        <ArtistBio bio={bio} isLoading={bioLoading} />
+      )}
 
       {!isLoading && allVideos.length > 0 && (
         <DecadeFilter
@@ -88,7 +171,9 @@ export default function LiveShowsPage() {
       )}
 
       {!error && !isLoading && !featured && !hasMore && (
-        <EmptyState message={`No concert videos found for ${selectedArtistName}.`} />
+        <EmptyState
+          message={`No concert videos found for ${selectedArtistName}.`}
+        />
       )}
 
       {!error && !isLoading && !featured && hasMore && (
