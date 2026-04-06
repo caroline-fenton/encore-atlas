@@ -138,13 +138,7 @@ export default function LiveShowsPage() {
         )}
       </header>
 
-      {useCached && artistPage.data?.artist.blurb ? (
-        <div className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-black/55">
-          {artistPage.data.artist.blurb}
-        </div>
-      ) : (
-        <ArtistBio bio={bio} isLoading={bioLoading} />
-      )}
+      <ArtistBio bio={bio} isLoading={bioLoading} />
 
       {!isLoading && allVideos.length > 0 && (
         <DecadeFilter
