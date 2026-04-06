@@ -111,7 +111,10 @@ Respond with ONLY valid JSON, no markdown formatting or code blocks.`
   }
 
   const data = await res.json()
-  const text = data.content?.[0]?.text ?? ""
+  const raw = data.content?.[0]?.text ?? ""
+
+  // Strip markdown code fences if Claude wraps the response
+  const text = raw.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
 
   try {
     const parsed = JSON.parse(text)
