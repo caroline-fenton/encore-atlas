@@ -10,7 +10,7 @@ const corsHeaders = {
 async function youtubeSearch(
   query: string,
   apiKey: string,
-  maxResults = 5,
+  maxResults = 10,
 ): Promise<YouTubeSearchItem[]> {
   const params = new URLSearchParams({
     part: "snippet",
@@ -283,7 +283,7 @@ Deno.serve(async (req) => {
       }
 
       // If we already have enough, stop early
-      if (allResults.length >= 15) break
+      if (allResults.length >= 25) break
     }
 
     // If we have too few results, try one more variation
@@ -306,8 +306,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Cap at 15 videos
-    const topResults = allResults.slice(0, 15)
+    // Cap at 25 videos
+    const topResults = allResults.slice(0, 25)
 
     // Get video details (thumbnails, view counts)
     const videoIds = topResults.map((r) => r.id.videoId)
