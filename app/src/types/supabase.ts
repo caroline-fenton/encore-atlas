@@ -78,6 +78,7 @@ export type Database = {
           thumbnail_url: string | null
           published_at: string | null
           view_count: number | null
+          duration: string | null
           search_query: string
           is_manually_added: boolean
           display_order: number
@@ -92,6 +93,7 @@ export type Database = {
           thumbnail_url?: string | null
           published_at?: string | null
           view_count?: number | null
+          duration?: string | null
           search_query: string
           is_manually_added?: boolean
           display_order?: number
@@ -103,6 +105,7 @@ export type Database = {
           thumbnail_url?: string | null
           published_at?: string | null
           view_count?: number | null
+          duration?: string | null
           display_order?: number
           is_manually_added?: boolean
         }

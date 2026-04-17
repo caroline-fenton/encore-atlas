@@ -27,6 +27,7 @@ function mapCachedVideos(
     thumbnail_url: string | null
     published_at: string | null
     view_count: number | null
+    duration: string | null
   }[],
 ): Video[] {
   return videos.map((v) => ({
@@ -38,7 +39,7 @@ function mapCachedVideos(
       v.thumbnail_url ??
       `https://img.youtube.com/vi/${v.youtube_video_id}/hqdefault.jpg`,
     youtubeUrl: `https://www.youtube.com/watch?v=${v.youtube_video_id}`,
-    duration: "",
+    duration: v.duration ?? "",
     publishedAt: v.published_at ?? "",
     viewCount: v.view_count ?? undefined,
   }))
@@ -73,7 +74,9 @@ export default function LiveShowsPage() {
   const hasMore = useCached ? false : youtubeResult.hasMore
   const loadMore = youtubeResult.loadMore
   const isLoadingMore = youtubeResult.isLoadingMore
-  const retry = useCached ? artistPage.retry : youtubeResult.retry
+  // Always retry the pipeline first — if it failed transiently, retrying
+  // only the YouTube fallback would never re-attempt server-side caching.
+  const retry = artistPage.retry
 
   const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(

@@ -18,6 +18,7 @@ export type ArtistPageData = {
     thumbnail_url: string | null
     published_at: string | null
     view_count: number | null
+    duration: string | null
     display_order: number
   }[]
   was_cache_hit: boolean
@@ -28,7 +29,7 @@ export type ArtistPageData = {
  * Returns the data if the artist has been through the build pipeline
  * (last_refreshed_at is set), even if Claude tagging failed.
  */
-async function getCachedArtistPage(
+export async function getCachedArtistPage(
   artistName: string,
 ): Promise<ArtistPageData | null> {
   const normalized = artistName.trim().toLowerCase()
@@ -70,6 +71,7 @@ async function getCachedArtistPage(
       thumbnail_url: v.thumbnail_url,
       published_at: v.published_at,
       view_count: v.view_count,
+      duration: v.duration,
       display_order: v.display_order,
     })),
     was_cache_hit: true,
@@ -80,7 +82,7 @@ async function getCachedArtistPage(
  * Calls the Supabase Edge Function to build an artist page.
  * The edge function handles YouTube search + Claude tagging + DB write.
  */
-async function buildArtistPage(
+export async function buildArtistPage(
   artistName: string,
 ): Promise<ArtistPageData> {
   const { data, error } = await supabase.functions.invoke("build-artist-page", {

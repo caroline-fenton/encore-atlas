@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react"
-import { fetchArtistPage, type ArtistPageData } from "../services/artistPage"
+import {
+  getCachedArtistPage,
+  buildArtistPage,
+  type ArtistPageData,
+} from "../services/artistPage"
 
 type UseArtistPageResult = {
   data: ArtistPageData | null
@@ -36,22 +40,20 @@ export function useArtistPage(artistName: string): UseArtistPageResult {
       setData(null)
 
       try {
-        // fetchArtistPage tries cache first, then calls edge function
-        // We use a two-phase approach: check cache locally first for instant UX,
-        // then if miss, show "building" state while edge function runs
-        const result = await fetchArtistPage(artistName)
+        // Phase 1: check cache (fast)
+        const cached = await getCachedArtistPage(artistName)
+        if (cancelled) return
 
-        if (!cancelled) {
-          // If it wasn't a cache hit, the edge function built it (building phase happened)
-          if (!result.was_cache_hit) {
-            setIsBuilding(true)
-            // Brief pause so the "building" message flashes before content appears
-            await new Promise((r) => setTimeout(r, 300))
-            // Re-check after delay — user may have switched artists
-            if (cancelled) return
-          }
-          setData(result)
+        if (cached) {
+          setData(cached)
+          return
         }
+
+        // Phase 2: cache miss — show building state while edge function runs
+        setIsBuilding(true)
+        const result = await buildArtistPage(artistName)
+        if (cancelled) return
+        setData(result)
       } catch (err) {
         if (!cancelled) {
           setError(

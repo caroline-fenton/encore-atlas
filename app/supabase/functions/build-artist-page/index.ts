@@ -42,7 +42,7 @@ async function youtubeVideoDetails(
   if (videoIds.length === 0) return new Map()
 
   const params = new URLSearchParams({
-    part: "snippet,statistics",
+    part: "snippet,contentDetails,statistics",
     id: videoIds.join(","),
     key: apiKey,
   })
@@ -66,9 +66,21 @@ async function youtubeVideoDetails(
         : null,
       publishedAt: item.snippet?.publishedAt ?? null,
       description: item.snippet?.description ?? null,
+      duration: item.contentDetails?.duration ?? null,
     })
   }
   return map
+}
+
+function parseDuration(iso: string): string {
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  if (!match) return ""
+  const hours = parseInt(match[1] || "0", 10)
+  const minutes = parseInt(match[2] || "0", 10)
+  const seconds = parseInt(match[3] || "0", 10)
+  const pad = (n: number) => n.toString().padStart(2, "0")
+  if (hours > 0) return `${hours}:${pad(minutes)}:${pad(seconds)}`
+  return `${minutes}:${pad(seconds)}`
 }
 
 // Claude API call for tagging + blurb
@@ -143,6 +155,7 @@ type YouTubeVideoDetail = {
   viewCount: number | null
   publishedAt: string | null
   description: string | null
+  duration: string | null
 }
 
 type ClaudeTagResult = {
@@ -170,6 +183,7 @@ type ArtistPageResponse = {
     thumbnail_url: string | null
     published_at: string | null
     view_count: number | null
+    duration: string | null
     display_order: number
   }[]
   was_cache_hit: boolean
@@ -246,6 +260,7 @@ Deno.serve(async (req) => {
           thumbnail_url: v.thumbnail_url,
           published_at: v.published_at,
           view_count: v.view_count,
+          duration: v.duration,
           display_order: v.display_order,
         })),
         was_cache_hit: true,
@@ -383,6 +398,7 @@ Deno.serve(async (req) => {
         thumbnail_url: detail?.thumbnail ?? null,
         published_at: detail?.publishedAt ?? item.snippet.publishedAt ?? null,
         view_count: detail?.viewCount ?? null,
+        duration: detail?.duration ? parseDuration(detail.duration) : null,
         search_query: `${artist_name} live concert`,
         display_order: index,
       }
@@ -417,6 +433,7 @@ Deno.serve(async (req) => {
         thumbnail_url: v.thumbnail_url,
         published_at: v.published_at,
         view_count: v.view_count,
+        duration: v.duration,
         display_order: v.display_order,
       })),
       was_cache_hit: false,
