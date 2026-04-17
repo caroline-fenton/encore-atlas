@@ -47,6 +47,8 @@ export function useArtistPage(artistName: string): UseArtistPageResult {
             setIsBuilding(true)
             // Brief pause so the "building" message flashes before content appears
             await new Promise((r) => setTimeout(r, 300))
+            // Re-check after delay — user may have switched artists
+            if (cancelled) return
           }
           setData(result)
         }
