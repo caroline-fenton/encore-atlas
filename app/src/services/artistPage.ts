@@ -25,7 +25,8 @@ export type ArtistPageData = {
 
 /**
  * Checks if an artist page is already cached in Supabase.
- * Returns the data if the artist exists AND has been fully built (has tags).
+ * Returns the data if the artist has been through the build pipeline
+ * (last_refreshed_at is set), even if Claude tagging failed.
  */
 async function getCachedArtistPage(
   artistName: string,
@@ -39,7 +40,9 @@ async function getCachedArtistPage(
     .ilike("name", escaped)
     .maybeSingle()
 
-  if (!artist || !artist.tags || artist.tags.length === 0) {
+  // last_refreshed_at is set by the edge function after a successful build.
+  // Using this instead of tags avoids perpetual rebuilds when tagging fails.
+  if (!artist || !artist.last_refreshed_at) {
     return null
   }
 

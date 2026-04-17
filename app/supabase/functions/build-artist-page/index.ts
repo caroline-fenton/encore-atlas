@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
       .ilike("name", normalizedName.replace(/%/g, "\\%").replace(/_/g, "\\_"))
       .maybeSingle()
 
-    if (existingArtist && existingArtist.tags && existingArtist.tags.length > 0) {
+    if (existingArtist && existingArtist.last_refreshed_at) {
       // Cache hit — return artist + videos
       const { data: videos } = await supabase
         .from("artist_videos")

@@ -75,6 +75,12 @@ function useVideoFetch(
       }
     }
 
+    // Skip fetch when no artist name is provided (e.g. pipeline is handling it)
+    if (deps[0] === "") {
+      setIsLoading(false)
+      return
+    }
+
     load()
 
     return () => {
