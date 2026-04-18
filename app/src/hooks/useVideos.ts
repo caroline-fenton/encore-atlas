@@ -75,6 +75,16 @@ function useVideoFetch(
       }
     }
 
+    // Skip fetch when no artist name is provided (e.g. pipeline is handling it).
+    // Clear stale state so previous artist's results don't bleed through.
+    if (deps[0] === "") {
+      setVideos([])
+      setError(null)
+      setNextPageToken(undefined)
+      setIsLoading(false)
+      return
+    }
+
     load()
 
     return () => {

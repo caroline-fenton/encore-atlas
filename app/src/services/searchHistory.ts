@@ -11,6 +11,7 @@ export async function recordSearch(
   userId: string,
   queryText: string,
   artistId?: string,
+  wasCacheHit?: boolean,
 ): Promise<void> {
   try {
     const { error } = await supabase.from("artist_searches").insert(
@@ -19,6 +20,7 @@ export async function recordSearch(
           user_id: userId,
           query_text: queryText,
           selected_artist_id: artistId ?? null,
+          was_cache_hit: wasCacheHit ?? false,
         },
       ],
       { defaultToNull: false },
