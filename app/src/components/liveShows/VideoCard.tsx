@@ -4,9 +4,10 @@ import type { Video } from "../../types/video"
 type Props = {
   video: Video
   onSelect: (video: Video) => void
+  isWatched?: boolean
 }
 
-export default function VideoCard({ video, onSelect }: Props) {
+export default function VideoCard({ video, onSelect, isWatched = false }: Props) {
   // Curated content has venue/city/year. Search results show no extra meta.
   const meta = video.venue
     ? video.city
@@ -34,6 +35,12 @@ export default function VideoCard({ video, onSelect }: Props) {
               className="border border-black/10 bg-white/80 text-black/70"
             />
           </div>
+
+          {isWatched && (
+            <div className="absolute left-2 top-2 rounded-sm bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/90">
+              Watched
+            </div>
+          )}
         </div>
 
         <div className="flex flex-1 flex-col justify-center px-5 py-4">

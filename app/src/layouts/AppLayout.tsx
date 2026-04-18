@@ -11,6 +11,7 @@ const tabs = [
   { to: "/music-videos", label: "Music Videos", end: false },
   { to: "/interviews", label: "Interviews", end: false },
   { to: "/merch", label: "Merch", end: false },
+  { to: "/history", label: "History", end: false },
 ] as const
 
 const RECENT_SEARCHES_KEY = "encore_atlas_recent_searches"

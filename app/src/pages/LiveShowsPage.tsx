@@ -6,6 +6,7 @@ import { useArtistConcerts } from "../hooks/useVideos"
 import { useArtistPage } from "../hooks/useArtistPage"
 import { useArtistBio } from "../hooks/useArtistBio"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
+import { useWatchHistory } from "../hooks/useWatchHistory"
 import ArtistBio from "../components/shared/ArtistBio"
 import DecadeFilter from "../components/shared/DecadeFilter"
 import VideoHero from "../components/liveShows/VideoHero"
@@ -78,6 +79,9 @@ export default function LiveShowsPage() {
   // only the YouTube fallback would never re-attempt server-side caching.
   const retry = artistPage.retry
 
+  const artistId = artistPage.data?.artist.id ?? null
+  const { watchedVideoIds, recordWatch } = useWatchHistory(artistId)
+
   const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(
     allVideos,
@@ -102,7 +106,9 @@ export default function LiveShowsPage() {
   const handleSelectVideo = useCallback((video: Video) => {
     setNowPlaying(video)
     heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }, [])
+    // Fire-and-forget: record the watch
+    recordWatch(video, selectedArtistName).catch(() => {})
+  }, [recordWatch, selectedArtistName])
 
   // Show building state when the edge function is generating a new artist page
   if (artistPage.isBuilding) {
@@ -221,6 +227,7 @@ export default function LiveShowsPage() {
                         key={v.id}
                         video={v}
                         onSelect={handleSelectVideo}
+                        isWatched={watchedVideoIds.has(v.id)}
                       />
                     ))}
                   </div>
