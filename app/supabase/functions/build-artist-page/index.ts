@@ -334,7 +334,9 @@ Deno.serve(async (req) => {
 
     // ── WRITE TO DATABASE ──
 
-    // Upsert artist record
+    // Write artist metadata without last_refreshed_at yet — that only gets
+    // set after videos are successfully persisted, so a build with zero
+    // videos (transient API failure) isn't treated as a completed build.
     const artistData = {
       name: normalizedName,
       tags: tagResult.tags,
@@ -343,7 +345,6 @@ Deno.serve(async (req) => {
       decade: tagResult.decade,
       related_artists: tagResult.related_artists,
       discovered_by: userId,
-      last_refreshed_at: new Date().toISOString(),
     }
 
     let artistId: string
@@ -356,7 +357,7 @@ Deno.serve(async (req) => {
         .eq("id", existingArtist.id)
 
       if (updateError) {
-        console.error("Failed to update artist:", updateError)
+        throw new Error(`Failed to update artist: ${updateError.message}`)
       }
       artistId = existingArtist.id
     } else {
@@ -411,6 +412,12 @@ Deno.serve(async (req) => {
 
       if (videoError) {
         console.error("Failed to insert videos:", videoError)
+      } else {
+        // Only mark as fully built after videos are successfully persisted
+        await supabase
+          .from("artists")
+          .update({ last_refreshed_at: new Date().toISOString() })
+          .eq("id", artistId)
       }
     }
 
