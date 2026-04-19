@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import type { User } from "@supabase/supabase-js"
 import { findOrCreateArtist } from "../services/artists"
 import {
@@ -24,6 +24,14 @@ export function useWatchHistory(
   waitForAuth: () => Promise<User | null>,
 ) {
   const [watchedVideoIds, setWatchedVideoIds] = useState<Set<string>>(new Set())
+
+  // Tracks the artistId currently being viewed so in-flight recordWatch
+  // calls can check whether the user has since switched artists and
+  // avoid mutating the next artist's watched set.
+  const activeArtistIdRef = useRef<string | null>(artistId)
+  useEffect(() => {
+    activeArtistIdRef.current = artistId
+  }, [artistId])
 
   // Refresh watched IDs whenever the artist or user changes
   useEffect(() => {
@@ -60,9 +68,14 @@ export function useWatchHistory(
 
         // Only mark as watched after the row is actually persisted.
         // Otherwise the badge and /history page diverge on refresh.
-        if (ok) {
-          setWatchedVideoIds((prev) => new Set([...prev, video.id]))
-        }
+        if (!ok) return
+
+        // Guard against stale completions: if the user switched artists
+        // while the insert was in flight, this video belongs to the
+        // previous artist — don't mutate the new artist's watched set.
+        if (activeArtistIdRef.current !== artist.id) return
+
+        setWatchedVideoIds((prev) => new Set([...prev, video.id]))
       } catch (err) {
         console.warn("[useWatchHistory] recordWatch failed:", err)
       }
