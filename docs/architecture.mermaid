@@ -1,0 +1,162 @@
+%%
+%% Encore Atlas — System Architecture
+%% For review with Codex to surface assumptions and gaps
+%%
+%% Legend:
+%%   ⚠️  = assumption or risk worth questioning
+%%   🚧  = partially built, not fully wired
+%%   🔮  = planned but not yet started
+%%   ✓   = working as intended
+%%
+
+flowchart TB
+
+    %% ─────────────────────────────────────────────────────
+    %% BROWSER / CLIENT
+    %% ─────────────────────────────────────────────────────
+    subgraph BROWSER["🖥️ Client — React PWA (Vite + TypeScript, deployed on Vercel)"]
+        direction TB
+
+        subgraph PAGES["Pages / Routes"]
+            P_HOME["/ — Live Shows ✓"]
+            P_MV["/music-videos ✓"]
+            P_INT["/interviews ✓"]
+            P_MERCH["/merch ✓"]
+            P_FORYOU["🔮 /for-you (not built)"]
+        end
+
+        subgraph HOOKS["React Hooks"]
+            H_VIDEOS["useArtistConcerts\nuseArtistMusicVideos\nuseArtistInterviews"]
+            H_AUTH["useAuth\n(Supabase anonymous session)"]
+            H_SUPABASE["useSupabaseSearches 🚧\n(records searches to DB)"]
+            H_BIO["useArtistBio\n(Wikipedia)"]
+            H_DECADE["useDecadeFilter\n(client-side)"]
+        end
+
+        subgraph SERVICES["Services"]
+            S_YT["youtube.ts\nsearchVideos → getVideoDetails → map\n⚠️ direct browser → API, no proxy"]
+            S_CACHE["cache.ts\n⚠️ localStorage, 7-day TTL\n⚠️ per-device only, no cross-user sharing"]
+            S_WIKI["wikipedia.ts\n(artist bio)"]
+            S_QUERIES["searchQueries.ts\n(3 hardcoded query templates)\n⚠️ no AI query expansion yet"]
+            S_ARTISTS["artists.ts 🚧\n(findOrCreateArtist in Supabase)"]
+            S_HIST["searchHistory.ts 🚧\n(recordSearch to Supabase)"]
+            S_AUTH["auth.ts\n(anon sign-in)"]
+        end
+
+        subgraph STATIC["Static / Curated Data (in-bundle)"]
+            D_CURATED["curatedVideos.ts 🚧\n⚠️ all video IDs are placeholders\n⚠️ not connected to any page"]
+            D_ALIASES["artistAliases.ts\n(relevance filtering)"]
+            D_SUGGESTED["suggestedArtists.ts\n16 artists, weekly rotation\n⚠️ no dynamic expansion"]
+            D_MERCH["merch.ts\n⚠️ static mock data, no real products"]
+        end
+    end
+
+    %% ─────────────────────────────────────────────────────
+    %% EXTERNAL APIs (LIVE TODAY)
+    %% ─────────────────────────────────────────────────────
+    subgraph EXTERNAL["🌐 External APIs — Active"]
+        YT_API["YouTube Data API v3\n────────────────────────\n⚠️ 10,000 units/day shared quota\n⚠️ API key exposed in browser bundle\nSearch = 100 units per call\nVideo detail = 1 unit per video (batch)\n────────────────────────\n~30 unique artist loads before exhaustion\n(3 content types × ~100 units each)\nQuota resets midnight PT\n⚠️ exhaustion = empty content for ALL users"]
+        WIKI_API["Wikipedia REST API\nFree, no quota ✓"]
+        VERCEL_A["Vercel Analytics\nPage views only\n⚠️ no custom events wired"]
+    end
+
+    %% ─────────────────────────────────────────────────────
+    %% BACKEND — SUPABASE (PARTIAL)
+    %% ─────────────────────────────────────────────────────
+    subgraph SUPABASE["⚙️ Backend — Supabase (Partially Integrated 🚧)"]
+        SB_AUTH["Supabase Auth\nAnonymous sessions ✓\n→ Identified users 🔮"]
+
+        subgraph SB_DB["Postgres Schema"]
+            T_USERS["users\n(id, is_anonymous, display_name,\nlast_seen_at)"]
+            T_ARTISTS["artists\n(id, name, tags[],\ntag_source,\n⚠️ youtube_channel_id — defined but never populated or used)"]
+            T_SEARCHES["artist_searches\n(user_id → query_text → selected_artist_id)\n🚧 hook exists, wiring uncertain"]
+            T_WATCH["watch_history\n(user_id, artist_id, youtube_video_id,\nwatch_duration_seconds)\n🚧 schema defined, not wired to player"]
+        end
+
+        SB_RAPI["Supabase REST API\n(anon key — client-safe ✓)\n⚠️ free tier may pause on inactivity"]
+    end
+
+    %% ─────────────────────────────────────────────────────
+    %% PLANNED — NOT YET BUILT
+    %% ─────────────────────────────────────────────────────
+    subgraph PLANNED["🔮 Planned / Not Yet Built"]
+        CLAUDE_TAG["Claude API — Artist Tagging\n⚠️ requires server-side execution\n(secret key cannot live in browser)\n⚠️ no server layer exists yet\nWhere does this actually run?"]
+
+        SB_EDGE["Supabase Edge Functions\n(likely home for server-side logic:\n- Claude API calls\n- YouTube proxy / shared cache\n- Recommendation computation)"]
+
+        YT_PROXY["YouTube API Server Proxy\n(would share cache across all users)\n⚠️ missing today — every user burns quota independently"]
+
+        SHARED_CACHE["Shared Response Cache\n(Redis or Postgres)\n⚠️ missing today — localStorage is per-device"]
+
+        COLLAB["Collaborative Filtering\n('users who searched X also searched Y')\n⚠️ needs meaningful user volume to work\nWhat is the minimum viable search count?"]
+
+        FORYOU_TAB["'For You' Tab\n(personalized feed)\n⚠️ depends on watch_history being wired\n⚠️ depends on tags being populated\n⚠️ depends on enough user data for relevance"]
+    end
+
+    %% ─────────────────────────────────────────────────────
+    %% POTENTIAL FUTURE INTEGRATIONS
+    %% ─────────────────────────────────────────────────────
+    subgraph FUTURE_APIS["🔮 Potential Future Data Sources"]
+        SETLISTFM["Setlist.fm API\nFree, generous rate limits\nConcert history by artist/venue/date\nActual setlists — song-by-song\nHigh alignment with 'relive a show' use case"]
+        LASTFM["Last.fm API\nFree tier available\nSimilar artists, tags, listener counts\nCould power recommendations without Claude"]
+        MUSICBRAINZ["MusicBrainz\nFree, open, no key required\nArtist relationships, eras, discography\nUseful for recommendation graph"]
+        ARCHIVE_ORG["Archive.org — Live Music Archive\nFree, no quota\nLegal live recordings (Grateful Dead, etc.)\nBypasses YouTube dependency entirely for select artists"]
+        TICKETMASTER["Ticketmaster / SeatGeek\nUpcoming shows + tickets\n(Phase 7 Platform Expansion)"]
+        YT_RSS["YouTube Channel RSS Feeds\nFree, no quota cost\nReturns latest uploads for a channel\n⚠️ requires youtube_channel_id per artist\n(field exists in schema but is unpopulated)"]
+    end
+
+    %% ─────────────────────────────────────────────────────
+    %% DATA FLOWS — CURRENT
+    %% ─────────────────────────────────────────────────────
+
+    PAGES --> HOOKS
+    HOOKS --> SERVICES
+    HOOKS --> STATIC
+
+    S_YT -->|"3 calls per artist\n(search × 3 content types)\n+ detail calls\n⚠️ no rate limiting"| YT_API
+    S_YT <-->|"cache hit avoids API call\n⚠️ only benefits same device/browser"| S_CACHE
+    H_BIO --> S_WIKI
+    S_WIKI --> WIKI_API
+    PAGES -->|"page view events"| VERCEL_A
+
+    H_AUTH --> S_AUTH
+    S_AUTH --> SB_AUTH
+    H_SUPABASE --> S_ARTISTS
+    H_SUPABASE --> S_HIST
+    S_ARTISTS --> SB_RAPI
+    S_HIST --> SB_RAPI
+    SB_RAPI --> SB_AUTH
+    SB_RAPI --> SB_DB
+
+    %% ─────────────────────────────────────────────────────
+    %% DATA FLOWS — PLANNED
+    %% ─────────────────────────────────────────────────────
+
+    CLAUDE_TAG -.->|"needs server layer"| SB_EDGE
+    SB_EDGE -.->|"shared YouTube proxy"| YT_PROXY
+    YT_PROXY -.->|"shared result cache"| SHARED_CACHE
+    YT_PROXY -.->|"still consumes quota\nbut shared across users"| YT_API
+    T_SEARCHES -.->|"co-occurrence queries"| COLLAB
+    T_ARTISTS -.->|"tag similarity"| COLLAB
+    T_WATCH -.->|"needs wiring to player"| FORYOU_TAB
+    COLLAB -.->|"feeds"| FORYOU_TAB
+
+    T_ARTISTS -.->|"youtube_channel_id\n(unpopulated)"| YT_RSS
+    YT_RSS -.->|"free alternative\nto search for known artists"| D_CURATED
+
+    %% ─────────────────────────────────────────────────────
+    %% ASSUMPTION FLAGS (summary)
+    %% ─────────────────────────────────────────────────────
+
+    subgraph ASSUMPTIONS["⚠️ Key Assumptions to Stress-Test"]
+        A1["1. Quota is shared across all users\n   (single client-side API key)\n   One heavy user can exhaust it for everyone"]
+        A2["2. localStorage cache doesn't cross users or devices\n   Same search by two users = two quota burns"]
+        A3["3. ~30 unique artist loads per day before quota exhaustion\n   Is this realistic at any meaningful scale?"]
+        A4["4. Claude API for tagging has no home yet\n   Server layer (Edge Functions) is unbuilt\n   This blocks Phase 4 of the roadmap entirely"]
+        A5["5. youtube_channel_id exists in schema but is never set\n   Channel-based feeds (RSS) would be free\n   but require populating this field"]
+        A6["6. watch_history is not wired to the video player\n   Phase 5 personalization depends on this data\n   No data = no personalization"]
+        A7["7. Collaborative filtering needs enough users\n   What is the floor? 100? 1,000?\n   Below that, recommendations will feel random"]
+        A8["8. curatedVideos.ts has all placeholder IDs\n   Curated path (quota-free) is not usable yet\n   Manual curation pipeline is undefined"]
+        A9["9. Supabase free tier can pause on inactivity\n   A gap in usage = cold start = broken auth/persistence"]
+        A10["10. Discovery is entirely search-initiated\n    Users must already know who they want to find\n    No ambient or editorial discovery entry point exists"]
+    end

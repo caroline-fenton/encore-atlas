@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Encore Atlas — Architecture Diagram</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 24px;
+    }
+    h1 { font-size: 1.2rem; font-weight: 600; color: #fff; margin-bottom: 4px; }
+    p.sub { font-size: 0.85rem; color: #888; margin-bottom: 32px; }
+    .diagram-wrap {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 32px;
+      overflow-x: auto;
+    }
+    .legend {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .legend span {
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <h1>Encore Atlas — System Architecture</h1>
+  <p class="sub">For stress-testing with Codex. Legend: ⚠️ assumption/risk &nbsp;|&nbsp; 🚧 partially built &nbsp;|&nbsp; 🔮 planned &nbsp;|&nbsp; ✓ working</p>
+
+  <div class="diagram-wrap">
+    <div class="mermaid">
+flowchart TB
+
+  subgraph BROWSER["🖥️ Client — React PWA (Vite + TypeScript, Vercel)"]
+    direction TB
+
+    subgraph PAGES["Pages / Routes"]
+      P_HOME["/ Live Shows ✓"]
+      P_MV["/music-videos ✓"]
+      P_INT["/interviews ✓"]
+      P_MERCH["/merch ✓"]
+      P_FORYOU["🔮 /for-you"]
+    end
+
+    subgraph SERVICES["Services"]
+      S_YT["youtube.ts\nsearch → enrich → map\n⚠️ direct browser call, no proxy"]
+      S_CACHE["cache.ts\n⚠️ localStorage, 7-day TTL\n⚠️ per-device only\nno cross-user sharing"]
+      S_WIKI["wikipedia.ts\nartist bio"]
+      S_QUERIES["searchQueries.ts\n3 hardcoded query templates\n⚠️ no AI query expansion"]
+      S_ARTISTS["artists.ts 🚧\nfindOrCreateArtist"]
+      S_HIST["searchHistory.ts 🚧\nrecordSearch"]
+    end
+
+    subgraph STATIC["Static / In-Bundle Data"]
+      D_CURATED["curatedVideos.ts 🚧\n⚠️ all video IDs are placeholders\n⚠️ not connected to any page"]
+      D_SUGGESTED["suggestedArtists.ts\n16 artists, weekly rotation\n⚠️ no dynamic expansion"]
+      D_ALIASES["artistAliases.ts\nrelevance filtering"]
+      D_MERCH["merch.ts\n⚠️ static mock data"]
+    end
+  end
+
+  subgraph EXTERNAL["🌐 External APIs — Active Today"]
+    YT_API["YouTube Data API v3\n━━━━━━━━━━━━━━━━━━━\n⚠️ 10,000 units/day SHARED quota\n⚠️ API key exposed in JS bundle\nSearch = 100 units per call\nVideo detail = 1 unit per video\n━━━━━━━━━━━━━━━━━━━\n~30 unique artists/day before exhaustion\n3 searches per artist × 100 units each\nQuota resets midnight Pacific\n⚠️ exhaustion = empty for ALL users"]
+    WIKI_API["Wikipedia REST API\nFree, no quota ✓"]
+    VERCEL_A["Vercel Analytics\nPage views only\n⚠️ no custom events wired\nPRD success metrics unmeasurable"]
+  end
+
+  subgraph SUPABASE["⚙️ Backend — Supabase (Partial 🚧)"]
+    SB_AUTH["Auth\nAnonymous sessions ✓\nIdentified users 🔮\n⚠️ free tier pauses after 7d inactivity"]
+
+    subgraph SB_DB["Postgres Tables"]
+      T_USERS["users\nid, is_anonymous, display_name"]
+      T_ARTISTS["artists\nid, name, tags[]\n⚠️ youtube_channel_id — defined, never set"]
+      T_SEARCHES["artist_searches\nuser_id → query → artist_id\n🚧 hook exists, wiring uncertain"]
+      T_WATCH["watch_history\nuser_id, artist_id, youtube_video_id\n⚠️ schema exists, NOT wired to player\nblocks all personalization phases"]
+    end
+
+    SB_RAPI["REST API\nanon key — client-safe ✓"]
+  end
+
+  subgraph PLANNED["🔮 Planned — Not Yet Built"]
+    CLAUDE_TAG["Claude API — Artist Tagging\n⚠️ requires server-side execution\nsecret key cannot be in browser\n⚠️ no server layer exists today\nThis blocks Phase 4 entirely"]
+    SB_EDGE["Supabase Edge Functions\nlikely home for:\n- Claude API calls\n- YouTube proxy\n- Recommendation logic"]
+    YT_PROXY["YouTube API Server Proxy\n⚠️ missing today\nevery user burns quota independently"]
+    SHARED_CACHE["Shared Cache\nPostgres or Redis\none cache entry = benefit for all users\n⚠️ missing today"]
+    COLLAB["Collaborative Filtering\nusers who searched X also searched Y\n⚠️ what is the minimum user count?\nbelow floor = feels random"]
+    FORYOU_TAB["For You Tab\n⚠️ depends on watch_history being wired\n⚠️ depends on tags being populated\n⚠️ depends on enough users for signal"]
+  end
+
+  subgraph FUTURE["🔮 Potential Future Data Sources"]
+    SETLISTFM["Setlist.fm API\nFree, generous limits\nConcert history + actual setlists\nHighest alignment with core use case"]
+    LASTFM["Last.fm API\nFree tier\nSimilar artists, tags, listener data\nCould replace Claude tagging for cold start"]
+    MUSICBRAINZ["MusicBrainz\nFree, no key required\nArtist relationships, eras, scenes"]
+    ARCHIVE_ORG["Archive.org\nFree, no quota\nLegal live recordings\nBypasses YouTube for select artists"]
+    YT_RSS["YouTube Channel RSS\nFree, no quota\n15 latest uploads per channel\n⚠️ requires youtube_channel_id per artist"]
+  end
+
+  %% Active data flows
+  PAGES --> SERVICES
+  PAGES --> STATIC
+  S_YT -->|"3 calls per artist load\n⚠️ no rate limiting"| YT_API
+  S_YT <-->|"7-day TTL\n⚠️ same device only"| S_CACHE
+  S_WIKI --> WIKI_API
+  PAGES --> VERCEL_A
+  S_ARTISTS --> SB_RAPI
+  S_HIST --> SB_RAPI
+  SB_RAPI --> SB_AUTH
+  SB_RAPI --> SB_DB
+
+  %% Planned flows
+  CLAUDE_TAG -.->|"needs server"| SB_EDGE
+  SB_EDGE -.->|"proxy calls"| YT_PROXY
+  YT_PROXY -.->|"shared result store"| SHARED_CACHE
+  YT_PROXY -.-> YT_API
+  T_SEARCHES -.->|"co-occurrence"| COLLAB
+  T_ARTISTS -.->|"tag similarity"| COLLAB
+  T_WATCH -.->|"needs player wiring"| FORYOU_TAB
+  COLLAB -.-> FORYOU_TAB
+  T_ARTISTS -.->|"youtube_channel_id\nunpopulated"| YT_RSS
+  YT_RSS -.->|"free alternative\nto search API"| D_CURATED
+
+  subgraph ASSUMPTIONS["⚠️ Top 10 Assumptions to Stress-Test"]
+    A1["1. Quota shared across all users via single client-side key"]
+    A2["2. localStorage gives zero cross-user cache benefit"]
+    A3["3. ~30 unique artist loads before daily quota exhaustion"]
+    A4["4. Claude API tagging has no server home — blocks Phase 4"]
+    A5["5. youtube_channel_id exists in schema but is never populated"]
+    A6["6. watch_history not wired to player — personalization is blocked"]
+    A7["7. Collaborative filtering needs N users — floor is undefined"]
+    A8["8. curatedVideos.ts has placeholder IDs — curated path is inert"]
+    A9["9. Supabase free tier pauses on inactivity — reliability risk"]
+    A10["10. No custom analytics events — PRD success metrics unmeasurable"]
+  end
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      flowchart: { curve: 'basis', padding: 20 },
+      themeVariables: {
+        background: '#1a1a1a',
+        primaryColor: '#2a2a2a',
+        primaryTextColor: '#e0e0e0',
+        lineColor: '#555',
+        edgeLabelBackground: '#1a1a1a',
+        clusterBkg: '#222',
+        clusterBorder: '#444',
+        fontSize: '13px'
+      }
+    });
+  </script>
+</body>
+</html>
