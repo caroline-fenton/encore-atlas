@@ -47,7 +47,8 @@ function mapCachedVideos(
 }
 
 export default function LiveShowsPage() {
-  const { selectedArtistName } = useOutletContext<AppOutletContext>()
+  const { selectedArtistName, user, waitForAuth } =
+    useOutletContext<AppOutletContext>()
 
   // Try the lazy curation pipeline first
   const artistPage = useArtistPage(selectedArtistName)
@@ -80,7 +81,11 @@ export default function LiveShowsPage() {
   const retry = artistPage.retry
 
   const artistId = artistPage.data?.artist.id ?? null
-  const { watchedVideoIds, recordWatch } = useWatchHistory(artistId)
+  const { watchedVideoIds, recordWatch } = useWatchHistory(
+    artistId,
+    user,
+    waitForAuth,
+  )
 
   const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useOutletContext } from "react-router-dom"
-import { useAuth } from "../hooks/useAuth"
 import { getRecentWatchHistory } from "../services/watchHistory"
 import type { WatchHistoryEntry } from "../services/watchHistory"
 import type { AppOutletContext } from "../layouts/AppLayout"
@@ -26,32 +25,37 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 export default function WatchHistoryPage() {
-  const { setSelectedArtist } = useOutletContext<AppOutletContext>()
-  const { user, loading: authLoading } = useAuth()
+  // Consume the single auth session from AppLayout via outlet context
+  // rather than calling useAuth() again (would race parallel bootstraps).
+  const { setSelectedArtist, user, waitForAuth } =
+    useOutletContext<AppOutletContext>()
   const navigate = useNavigate()
 
   const [history, setHistory] = useState<WatchHistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (authLoading) return
-    if (!user) {
+    let cancelled = false
+
+    const load = async () => {
+      const resolvedUser = user ?? (await waitForAuth())
+      if (cancelled) return
+      if (!resolvedUser) {
+        setIsLoading(false)
+        return
+      }
+      const rows = await getRecentWatchHistory(resolvedUser.id)
+      if (cancelled) return
+      setHistory(rows)
       setIsLoading(false)
-      return
     }
 
-    let cancelled = false
-    getRecentWatchHistory(user.id).then((rows) => {
-      if (!cancelled) {
-        setHistory(rows)
-        setIsLoading(false)
-      }
-    })
+    load()
 
     return () => {
       cancelled = true
     }
-  }, [user, authLoading])
+  }, [user, waitForAuth])
 
   function handleSelect(entry: WatchHistoryEntry) {
     const artistName = entry.artists?.name

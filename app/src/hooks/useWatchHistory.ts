@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { useAuth } from "./useAuth"
+import type { User } from "@supabase/supabase-js"
 import { findOrCreateArtist } from "../services/artists"
 import {
   recordWatch as recordWatchService,
@@ -10,12 +10,19 @@ import type { Video } from "../types/video"
 /**
  * Tracks watch history for the current artist.
  *
+ * Accepts user/waitForAuth from a single auth owner (AppLayout via
+ * outlet context) rather than calling useAuth() itself, to avoid
+ * parallel ensureSession() bootstraps racing into split user_ids.
+ *
  * - watchedVideoIds: set of youtube_video_ids the user has already watched
  *   for the given artist (empty if artistId is null or user not authed yet).
- * - recordWatch: fire-and-forget function to record a video watch.
+ * - recordWatch: records a video watch; local state only updates on success.
  */
-export function useWatchHistory(artistId: string | null) {
-  const { user, waitForAuth } = useAuth()
+export function useWatchHistory(
+  artistId: string | null,
+  user: User | null,
+  waitForAuth: () => Promise<User | null>,
+) {
   const [watchedVideoIds, setWatchedVideoIds] = useState<Set<string>>(new Set())
 
   // Refresh watched IDs whenever the artist or user changes

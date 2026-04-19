@@ -1,6 +1,7 @@
 import { NavLink, Outlet, Link } from "react-router-dom"
 import { useState, useCallback } from "react"
 import { User } from "lucide-react"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 import ArtistSearchBar from "../components/search/ArtistSearchBar"
 import LandingPage from "../pages/LandingPage"
 import { useAuth } from "../hooks/useAuth"
@@ -44,6 +45,13 @@ export type AppOutletContext = {
   selectedArtistId: string
   selectedArtistName: string
   setSelectedArtist: (artist: SelectedArtist) => void
+  /**
+   * The single auth session owned by AppLayout.
+   * Consume these rather than calling useAuth() again to avoid
+   * parallel ensureSession() calls racing into split user_ids.
+   */
+  user: SupabaseUser | null
+  waitForAuth: () => Promise<SupabaseUser | null>
 }
 
 export default function AppLayout() {
@@ -138,6 +146,8 @@ export default function AppLayout() {
             selectedArtistId: selectedArtist.id,
             selectedArtistName: selectedArtist.name,
             setSelectedArtist,
+            user,
+            waitForAuth,
           } satisfies AppOutletContext}
         />
       </main>
