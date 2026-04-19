@@ -9,14 +9,16 @@ export type WatchHistoryEntry = WatchHistoryRow & {
 
 /**
  * Records a video watch in the watch_history table.
- * Fire-and-forget — errors are caught and logged.
+ * Returns true if the row was successfully persisted, false otherwise.
+ * Errors are caught and logged so callers can fall through without try/catch,
+ * but the boolean return lets them avoid updating local state on failure.
  */
 export async function recordWatch(
   userId: string,
   artistId: string,
   youtubeVideoId: string,
   videoTitle: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const { error } = await supabase.from("watch_history").insert([
       {
@@ -29,9 +31,13 @@ export async function recordWatch(
 
     if (error) {
       console.warn("[watchHistory] recordWatch error:", error.message)
+      return false
     }
+
+    return true
   } catch (err) {
     console.warn("[watchHistory] recordWatch error:", err)
+    return false
   }
 }
 

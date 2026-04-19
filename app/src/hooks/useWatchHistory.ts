@@ -44,15 +44,18 @@ export function useWatchHistory(artistId: string | null) {
         const artist = await findOrCreateArtist(artistName)
         if (!artist) return
 
-        await recordWatchService(
+        const ok = await recordWatchService(
           resolvedUser.id,
           artist.id,
           video.id,
           video.title,
         )
 
-        // Optimistically mark as watched without waiting for a re-fetch
-        setWatchedVideoIds((prev) => new Set([...prev, video.id]))
+        // Only mark as watched after the row is actually persisted.
+        // Otherwise the badge and /history page diverge on refresh.
+        if (ok) {
+          setWatchedVideoIds((prev) => new Set([...prev, video.id]))
+        }
       } catch (err) {
         console.warn("[useWatchHistory] recordWatch failed:", err)
       }
