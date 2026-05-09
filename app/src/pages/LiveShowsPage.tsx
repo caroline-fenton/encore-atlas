@@ -4,7 +4,6 @@ import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
 import { useArtistConcerts } from "../hooks/useVideos"
 import { useArtistPage } from "../hooks/useArtistPage"
-import { useArtistBio } from "../hooks/useArtistBio"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import { useWatchHistory } from "../hooks/useWatchHistory"
 import ArtistBio from "../components/shared/ArtistBio"
@@ -89,7 +88,6 @@ export default function LiveShowsPage() {
     waitForAuth,
   )
 
-  const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
   const { recommendations } = useRecommendations(user)
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(
     allVideos,
@@ -155,7 +153,10 @@ export default function LiveShowsPage() {
         )}
       </header>
 
-      <ArtistBio bio={bio} isLoading={bioLoading} />
+      <ArtistBio
+        context={artistPage.data?.artist.artist_context ?? null}
+        isLoading={isLoading}
+      />
 
       {!isLoading && allVideos.length > 0 && (
         <DecadeFilter
@@ -261,6 +262,7 @@ export default function LiveShowsPage() {
 
       <RecommendedArtists
         recommendations={recommendations}
+        relatedArtists={artistPage.data?.artist.artist_context?.relatedArtists}
         onSelectArtist={setSelectedArtist}
       />
     </div>

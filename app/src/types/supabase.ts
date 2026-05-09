@@ -39,6 +39,7 @@ export type Database = {
           created_at: string
           last_refreshed_at: string | null
           bio_metadata: BioMetadata | null
+          artist_context: ArtistContext | null
         }
         Insert: {
           id?: string
@@ -55,6 +56,7 @@ export type Database = {
           created_at?: string
           last_refreshed_at?: string | null
           bio_metadata?: BioMetadata | null
+          artist_context?: ArtistContext | null
         }
         Update: {
           name?: string
@@ -68,6 +70,7 @@ export type Database = {
           is_curated?: boolean
           last_refreshed_at?: string | null
           bio_metadata?: BioMetadata | null
+          artist_context?: ArtistContext | null
         }
         Relationships: []
       }
@@ -227,4 +230,14 @@ export type BioMetadata = {
   influences:      string[] | null
   collaborations:  string[] | null
   side_projects:   string[] | null
+}
+
+export type ArtistContext = {
+  genre: string[]
+  city: string | null
+  yearsActive: string | null
+  knownFor: string[]
+  associatedWith: string[]
+  sceneSummary: string
+  relatedArtists: Array<{ name: string; reason: string }>
 }

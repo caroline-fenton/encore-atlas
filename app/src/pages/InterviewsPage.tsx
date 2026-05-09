@@ -3,7 +3,7 @@ import { useRef, useState, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
 import { useArtistInterviews } from "../hooks/useVideos"
-import { useArtistBio } from "../hooks/useArtistBio"
+import { useArtistContext } from "../hooks/useArtistContext"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import ArtistBio from "../components/shared/ArtistBio"
 import DecadeFilter from "../components/shared/DecadeFilter"
@@ -18,7 +18,7 @@ export default function InterviewsPage() {
 
   const { videos: allVideos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
     useArtistInterviews(selectedArtistName)
-  const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
+  const { context, isLoading: contextLoading } = useArtistContext(selectedArtistName)
   const { filtered: videos, selectedDecade, setSelectedDecade } = useDecadeFilter(allVideos, selectedArtistName)
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
@@ -49,7 +49,7 @@ export default function InterviewsPage() {
         </div>
       </header>
 
-      <ArtistBio bio={bio} isLoading={bioLoading} />
+      <ArtistBio context={context} isLoading={contextLoading} />
 
       {!isLoading && allVideos.length > 0 && (
         <DecadeFilter

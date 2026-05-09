@@ -83,32 +83,51 @@ function parseDuration(iso: string): string {
   return `${minutes}:${pad(seconds)}`
 }
 
-// Claude API call for tagging + blurb + bio metadata
+// Claude API call for artist context
 async function claudeTag(
   artistName: string,
   videoTitles: string[],
   apiKey: string,
 ): Promise<ClaudeTagResult> {
-  const prompt = `You are a music expert. Given the artist name and a list of their live performance video titles from YouTube, provide the following as a JSON object:
-
-1. "tags": An array of 3-7 genre/style tags (lowercase, e.g. ["jazz", "fusion", "instrumental"])
-2. "blurb": A 2-3 sentence description of the artist suitable for a concert discovery page. Focus on their live performance style and what makes their shows special.
-3. "decade": The primary decade they were/are most active (e.g. "1990s", "2010s")
-4. "related_artists": An array of 3-5 related artist names that fans would also enjoy seeing live
-5. "bio_metadata": An object with what you know about the artist's background. Use null for any field you are genuinely unsure about — do not guess:
-   - "origin_city": City they formed in (e.g. "Austin"), or null
-   - "origin_region": State or country (e.g. "Texas" or "UK"), or null
-   - "formation_year": Year formed as an integer (e.g. 1994), or null
-   - "active_end_year": Year disbanded as an integer, or null if still active or unknown
-   - "influences": Array of 3-5 artist names they have cited as influences, or null
-   - "collaborations": Array of artist names they have notably collaborated with, or null
-   - "side_projects": Array of notable side project names from their members, or null
+  const prompt = `
+You are generating concise artist context for Encore Atlas, a music rabbit-hole and live performance discovery app.
 
 Artist: ${artistName}
-Video titles:
+
+Video titles from YouTube (for context):
 ${videoTitles.map((t) => `- ${t}`).join("\n")}
 
-Respond with ONLY valid JSON, no markdown formatting or code blocks. Use null for any bio_metadata fields you are unsure about.`
+Return ONLY valid JSON. Do not include markdown.
+
+Use this schema:
+{
+  "genre": string[],
+  "city": string | null,
+  "yearsActive": string | null,
+  "knownFor": string[],
+  "associatedWith": string[],
+  "sceneSummary": string,
+  "relatedArtists": [
+    {
+      "name": string,
+      "reason": string
+    }
+  ]
+}
+
+Guidelines:
+- Keep the tone editorial, specific, and music-literate.
+- Avoid generic biography language like "is an American band formed in..."
+- Focus on scenes, eras, live energy, cultural adjacency, and rabbit-hole usefulness.
+- "genre" should be 2-5 concise labels.
+- "knownFor" should be 3-5 short phrases.
+- "associatedWith" can include scenes, eras, labels, cities, movements, or adjacent artists.
+- "sceneSummary" should be 1-2 sentences max.
+- "relatedArtists" should include 8-12 artists a curious listener might search next.
+- For each related artist, give a short reason under 12 words.
+- If you are uncertain about a field, use null or a cautious phrase rather than inventing facts.
+- Do not copy text from Wikipedia or any source verbatim.
+`
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -119,7 +138,7 @@ Respond with ONLY valid JSON, no markdown formatting or code blocks. Use null fo
     },
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
+      max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     }),
   })
@@ -127,7 +146,7 @@ Respond with ONLY valid JSON, no markdown formatting or code blocks. Use null fo
   if (!res.ok) {
     const body = await res.text()
     console.error(`Claude API error (${res.status}): ${body}`)
-    return { tags: [], blurb: null, decade: null, related_artists: [] }
+    return { tags: [], blurb: null, decade: null, related_artists: [], artist_context: null }
   }
 
   const data = await res.json()
@@ -139,32 +158,33 @@ Respond with ONLY valid JSON, no markdown formatting or code blocks. Use null fo
   try {
     const parsed = JSON.parse(text)
 
-    let bio_metadata: BioMetadata | null = null
-    if (parsed.bio_metadata && typeof parsed.bio_metadata === "object") {
-      const bm = parsed.bio_metadata
-      bio_metadata = {
-        origin_city:     typeof bm.origin_city     === "string"  ? bm.origin_city     : null,
-        origin_region:   typeof bm.origin_region   === "string"  ? bm.origin_region   : null,
-        formation_year:  typeof bm.formation_year  === "number"  ? bm.formation_year  : null,
-        active_end_year: typeof bm.active_end_year === "number"  ? bm.active_end_year : null,
-        influences:      Array.isArray(bm.influences)     ? bm.influences     : null,
-        collaborations:  Array.isArray(bm.collaborations) ? bm.collaborations : null,
-        side_projects:   Array.isArray(bm.side_projects)  ? bm.side_projects  : null,
-      }
+    const artist_context: ArtistContext = {
+      genre: Array.isArray(parsed.genre) ? parsed.genre : [],
+      city: typeof parsed.city === "string" ? parsed.city : null,
+      yearsActive: typeof parsed.yearsActive === "string" ? parsed.yearsActive : null,
+      knownFor: Array.isArray(parsed.knownFor) ? parsed.knownFor : [],
+      associatedWith: Array.isArray(parsed.associatedWith) ? parsed.associatedWith : [],
+      sceneSummary: typeof parsed.sceneSummary === "string" ? parsed.sceneSummary : "",
+      relatedArtists: Array.isArray(parsed.relatedArtists)
+        ? parsed.relatedArtists
+            .filter((r: unknown) => r && typeof (r as { name?: unknown }).name === "string")
+            .map((r: { name: string; reason?: string }) => ({
+              name: r.name,
+              reason: typeof r.reason === "string" ? r.reason : "",
+            }))
+        : [],
     }
 
     return {
-      tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-      blurb: typeof parsed.blurb === "string" ? parsed.blurb : null,
-      decade: typeof parsed.decade === "string" ? parsed.decade : null,
-      related_artists: Array.isArray(parsed.related_artists)
-        ? parsed.related_artists
-        : [],
-      bio_metadata,
+      tags: artist_context.genre,
+      blurb: artist_context.sceneSummary || null,
+      decade: null,
+      related_artists: artist_context.relatedArtists.map((r) => r.name),
+      artist_context,
     }
   } catch {
     console.error("Failed to parse Claude response:", text)
-    return { tags: [], blurb: null, decade: null, related_artists: [], bio_metadata: null }
+    return { tags: [], blurb: null, decade: null, related_artists: [], artist_context: null }
   }
 }
 
@@ -182,14 +202,14 @@ type YouTubeVideoDetail = {
   duration: string | null
 }
 
-type BioMetadata = {
-  origin_city: string | null
-  origin_region: string | null
-  formation_year: number | null
-  active_end_year: number | null
-  influences: string[] | null
-  collaborations: string[] | null
-  side_projects: string[] | null
+type ArtistContext = {
+  genre: string[]
+  city: string | null
+  yearsActive: string | null
+  knownFor: string[]
+  associatedWith: string[]
+  sceneSummary: string
+  relatedArtists: Array<{ name: string; reason: string }>
 }
 
 type ClaudeTagResult = {
@@ -197,7 +217,7 @@ type ClaudeTagResult = {
   blurb: string | null
   decade: string | null
   related_artists: string[]
-  bio_metadata: BioMetadata | null
+  artist_context: ArtistContext | null
 }
 
 type ArtistPageResponse = {
@@ -209,6 +229,7 @@ type ArtistPageResponse = {
     decade: string | null
     related_artists: string[] | null
     is_curated: boolean
+    artist_context: ArtistContext | null
   }
   videos: {
     id: string
@@ -286,6 +307,7 @@ Deno.serve(async (req) => {
           decade: existingArtist.decade,
           related_artists: existingArtist.related_artists,
           is_curated: existingArtist.is_curated,
+          artist_context: existingArtist.artist_context as ArtistContext | null,
         },
         videos: (videos ?? []).map((v) => ({
           id: v.id,
@@ -379,7 +401,8 @@ Deno.serve(async (req) => {
       blurb: tagResult.blurb,
       decade: tagResult.decade,
       related_artists: tagResult.related_artists,
-      bio_metadata: tagResult.bio_metadata,
+      bio_metadata: null,
+      artist_context: tagResult.artist_context,
       discovered_by: userId,
     }
 
@@ -467,6 +490,7 @@ Deno.serve(async (req) => {
         decade: tagResult.decade,
         related_artists: tagResult.related_artists,
         is_curated: false,
+        artist_context: tagResult.artist_context,
       },
       videos: videoRows.map((v) => ({
         id: "", // generated by DB
