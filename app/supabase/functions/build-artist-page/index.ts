@@ -83,19 +83,59 @@ function parseDuration(iso: string): string {
   return `${minutes}:${pad(seconds)}`
 }
 
-// Claude API call for tagging + blurb + bio metadata
+// Wikipedia REST API fetch
+type WikipediaResult = {
+  extract: string
+  thumbnailUrl: string | null
+  pageUrl: string
+} | null
+
+async function fetchWikipedia(artistName: string): Promise<WikipediaResult> {
+  try {
+    const normalized = artistName
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+    const title = encodeURIComponent(normalized.replace(/\s+/g, "_"))
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${title}`,
+      { headers: { "Api-User-Agent": "EncoreAtlas/1.0" } },
+    )
+    if (!res.ok) return null
+
+    const data = await res.json()
+    if (data.type === "disambiguation") return null
+
+    return {
+      extract: data.extract ?? "",
+      thumbnailUrl: data.thumbnail?.source ?? null,
+      pageUrl:
+        data.content_urls?.desktop?.page ??
+        `https://en.wikipedia.org/wiki/${title}`,
+    }
+  } catch {
+    return null
+  }
+}
+
+// Claude API call for tagging + blurb + bio + bio metadata
 async function claudeTag(
   artistName: string,
   videoTitles: string[],
+  wikipediaExtract: string | null,
   apiKey: string,
 ): Promise<ClaudeTagResult> {
-  const prompt = `You are a music expert. Given the artist name and a list of their live performance video titles from YouTube, provide the following as a JSON object:
+  const wikiContext = wikipediaExtract
+    ? `\nWikipedia summary (use as reference, do not copy verbatim):\n${wikipediaExtract}\n`
+    : ""
+
+  const prompt = `You are a music expert. Given the artist name, a list of their live performance video titles from YouTube, and optionally a Wikipedia summary for reference, provide the following as a JSON object:
 
 1. "tags": An array of 3-7 genre/style tags (lowercase, e.g. ["jazz", "fusion", "instrumental"])
 2. "blurb": A 2-3 sentence description of the artist suitable for a concert discovery page. Focus on their live performance style and what makes their shows special.
-3. "decade": The primary decade they were/are most active (e.g. "1990s", "2010s")
-4. "related_artists": An array of 3-5 related artist names that fans would also enjoy seeing live
-5. "bio_metadata": An object with what you know about the artist's background. Use null for any field you are genuinely unsure about — do not guess:
+3. "bio": A 3-5 sentence original biographical summary of the artist. Cover their origins, musical style, and significance. Write in your own words — do not copy from the Wikipedia summary.
+4. "decade": The primary decade they were/are most active (e.g. "1990s", "2010s")
+5. "related_artists": An array of 3-5 related artist names that fans would also enjoy seeing live
+6. "bio_metadata": An object with what you know about the artist's background. Use null for any field you are genuinely unsure about — do not guess:
    - "origin_city": City they formed in (e.g. "Austin"), or null
    - "origin_region": State or country (e.g. "Texas" or "UK"), or null
    - "formation_year": Year formed as an integer (e.g. 1994), or null
@@ -107,7 +147,7 @@ async function claudeTag(
 Artist: ${artistName}
 Video titles:
 ${videoTitles.map((t) => `- ${t}`).join("\n")}
-
+${wikiContext}
 Respond with ONLY valid JSON, no markdown formatting or code blocks. Use null for any bio_metadata fields you are unsure about.`
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -119,7 +159,7 @@ Respond with ONLY valid JSON, no markdown formatting or code blocks. Use null fo
     },
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
+      max_tokens: 768,
       messages: [{ role: "user", content: prompt }],
     }),
   })
@@ -127,7 +167,7 @@ Respond with ONLY valid JSON, no markdown formatting or code blocks. Use null fo
   if (!res.ok) {
     const body = await res.text()
     console.error(`Claude API error (${res.status}): ${body}`)
-    return { tags: [], blurb: null, decade: null, related_artists: [] }
+    return { tags: [], blurb: null, bio: null, decade: null, related_artists: [] }
   }
 
   const data = await res.json()
@@ -156,6 +196,7 @@ Respond with ONLY valid JSON, no markdown formatting or code blocks. Use null fo
     return {
       tags: Array.isArray(parsed.tags) ? parsed.tags : [],
       blurb: typeof parsed.blurb === "string" ? parsed.blurb : null,
+      bio: typeof parsed.bio === "string" ? parsed.bio : null,
       decade: typeof parsed.decade === "string" ? parsed.decade : null,
       related_artists: Array.isArray(parsed.related_artists)
         ? parsed.related_artists
@@ -164,7 +205,7 @@ Respond with ONLY valid JSON, no markdown formatting or code blocks. Use null fo
     }
   } catch {
     console.error("Failed to parse Claude response:", text)
-    return { tags: [], blurb: null, decade: null, related_artists: [], bio_metadata: null }
+    return { tags: [], blurb: null, bio: null, decade: null, related_artists: [], bio_metadata: null }
   }
 }
 
@@ -195,6 +236,7 @@ type BioMetadata = {
 type ClaudeTagResult = {
   tags: string[]
   blurb: string | null
+  bio: string | null
   decade: string | null
   related_artists: string[]
   bio_metadata: BioMetadata | null
@@ -206,6 +248,8 @@ type ArtistPageResponse = {
     name: string
     tags: string[] | null
     blurb: string | null
+    bio: string | null
+    bio_image_url: string | null
     decade: string | null
     related_artists: string[] | null
     is_curated: boolean
@@ -283,6 +327,8 @@ Deno.serve(async (req) => {
           name: existingArtist.name,
           tags: existingArtist.tags,
           blurb: existingArtist.blurb,
+          bio: existingArtist.bio,
+          bio_image_url: existingArtist.wikipedia_thumbnail_url,
           decade: existingArtist.decade,
           related_artists: existingArtist.related_artists,
           is_curated: existingArtist.is_curated,
@@ -363,9 +409,12 @@ Deno.serve(async (req) => {
     const videoIds = topResults.map((r) => r.id.videoId)
     const details = await youtubeVideoDetails(videoIds, youtubeApiKey)
 
-    // Call Claude for tagging
+    // Fetch Wikipedia for context, then pass to Claude for bio generation
     const videoTitles = topResults.map((r) => r.snippet.title)
-    const tagResult = await claudeTag(artist_name, videoTitles, anthropicApiKey)
+    const wiki = await fetchWikipedia(artist_name)
+    const tagResult = await claudeTag(
+      artist_name, videoTitles, wiki?.extract ?? null, anthropicApiKey,
+    )
 
     // ── WRITE TO DATABASE ──
 
@@ -377,9 +426,13 @@ Deno.serve(async (req) => {
       tags: tagResult.tags,
       tag_source: "llm" as const,
       blurb: tagResult.blurb,
+      bio: tagResult.bio,
       decade: tagResult.decade,
       related_artists: tagResult.related_artists,
       bio_metadata: tagResult.bio_metadata,
+      wikipedia_extract: wiki?.extract ?? null,
+      wikipedia_thumbnail_url: wiki?.thumbnailUrl ?? null,
+      wikipedia_url: wiki?.pageUrl ?? null,
       discovered_by: userId,
     }
 
@@ -464,6 +517,8 @@ Deno.serve(async (req) => {
         name: normalizedName,
         tags: tagResult.tags,
         blurb: tagResult.blurb,
+        bio: tagResult.bio,
+        bio_image_url: wiki?.thumbnailUrl ?? null,
         decade: tagResult.decade,
         related_artists: tagResult.related_artists,
         is_curated: false,
