@@ -27,7 +27,7 @@ export function useRecommendations(user: User | null) {
     let cancelled = false
     setIsLoading(true)
 
-    getRecommendations(user.id).then((results) => {
+    getRecommendations().then((results) => {
       if (!cancelled) {
         setRecommendations(results)
         setIsLoading(false)

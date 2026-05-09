@@ -206,7 +206,7 @@ export type Database = {
     }
     Functions: {
       get_recommendations: {
-        Args: { p_user_id: string; p_limit?: number }
+        Args: { p_limit?: number }
         Returns: {
           id: string
           name: string

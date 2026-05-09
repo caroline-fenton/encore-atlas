@@ -28,10 +28,14 @@ create index if not exists idx_artists_tags_gin
 --
 -- Returns only fully-built artist pages (last_refreshed_at IS NOT NULL).
 -- Returns nothing if the user has no watch history (empty CROSS JOIN).
+--
+-- Security: uses auth.uid() directly rather than accepting a caller-supplied
+-- UUID. SECURITY INVOKER means the existing watch_history RLS policies
+-- (SELECT WHERE user_id = auth.uid()) apply normally — callers can only
+-- ever see recommendations derived from their own watch history.
 
 create or replace function public.get_recommendations(
-  p_user_id uuid,
-  p_limit   int default 10
+  p_limit int default 10
 )
 returns table (
   id          uuid,
@@ -42,13 +46,13 @@ returns table (
 )
 language sql
 stable
-security definer
-set search_path = public
+-- SECURITY INVOKER (default): run as the calling user so RLS on
+-- watch_history enforces data isolation automatically.
 as $$
   with watched_artist_ids as (
     select distinct artist_id
     from   watch_history
-    where  user_id = p_user_id
+    where  user_id = auth.uid()   -- bound to the caller; not caller-supplied
   ),
   watched_artists as (
     select a.id, a.name, a.tags, a.bio_metadata
@@ -131,5 +135,5 @@ as $$
   limit     p_limit;
 $$;
 
-grant execute on function public.get_recommendations(uuid, int) to authenticated;
-grant execute on function public.get_recommendations(uuid, int) to anon;
+grant execute on function public.get_recommendations(int) to authenticated;
+grant execute on function public.get_recommendations(int) to anon;
