@@ -22,11 +22,13 @@ export function useArtistBio(artistName: string) {
     const normalized = artistName.trim().toLowerCase()
     const escaped = normalized.replace(/%/g, "\\%").replace(/_/g, "\\_")
 
-    supabase
-      .from("artists")
-      .select("bio, wikipedia_thumbnail_url")
-      .ilike("name", escaped)
-      .maybeSingle()
+    Promise.resolve(
+      supabase
+        .from("artists")
+        .select("bio, wikipedia_thumbnail_url")
+        .ilike("name", escaped)
+        .maybeSingle(),
+    )
       .then(({ data: artist }) => {
         if (!cancelled) {
           setData({
