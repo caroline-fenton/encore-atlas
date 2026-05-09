@@ -10,7 +10,7 @@ export default function MusicVideoCard({ video, onSelect }: Props) {
     <button
       type="button"
       onClick={() => onSelect(video)}
-      className="flex w-full overflow-hidden rounded-lg border border-black/10 bg-white/45 text-left shadow-[0_1px_0_rgba(0,0,0,0.03)] transition hover:bg-white/60"
+      className="flex w-full overflow-hidden border border-black/10 bg-white/45 text-left shadow-[0_1px_0_rgba(0,0,0,0.03)] transition hover:bg-white/60"
     >
       <div className="relative h-[96px] w-[156px] shrink-0 overflow-hidden bg-black/5">
         <img

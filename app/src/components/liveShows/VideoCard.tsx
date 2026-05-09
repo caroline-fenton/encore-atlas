@@ -20,7 +20,7 @@ export default function VideoCard({ video, onSelect, isWatched = false }: Props)
       onClick={() => onSelect(video)}
       className="block w-full text-left"
     >
-      <div className="group flex overflow-hidden rounded-lg border border-black/10 bg-white/45 shadow-[0_1px_0_rgba(0,0,0,0.03)] transition hover:bg-white/60">
+      <div className="group flex overflow-hidden border border-black/10 bg-white/45 shadow-[0_1px_0_rgba(0,0,0,0.03)] transition hover:bg-white/60">
         <div className="relative h-[96px] w-[156px] max-w-[40%] shrink-0 overflow-hidden bg-black/5">
           <img
             src={video.thumbnailUrl}
