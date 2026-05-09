@@ -65,74 +65,81 @@ as $$
     where  a.id           not in (select artist_id from watched_artist_ids)
       and  a.last_refreshed_at is not null   -- only fully-built pages
   )
-  select
-    c.id,
-    c.name,
-    c.tags,
-    c.blurb,
-    (
-      -- Layer 1: tag similarity
-      -- ARRAY(unnest INTERSECT unnest) gives the actual shared elements;
-      -- ARRAY_LENGTH returns null for an empty array, so COALESCE to 0.
-      coalesce(sum(
-        coalesce(
-          array_length(
-            array(select unnest(c.tags) intersect select unnest(wa.tags)),
-            1
-          ),
-          0
-        ) * 10
-      ), 0)
+  -- Score every candidate against every watched artist, then filter to
+  -- only those with genuine similarity (total_score > 0). Without this
+  -- filter, zero-score artists (completely unrelated genres) fill the
+  -- LIMIT when the DB doesn't have enough truly similar artists yet.
+  scored as (
+    select
+      c.id,
+      c.name,
+      c.tags,
+      c.blurb,
+      (
+        -- Layer 1: tag similarity
+        coalesce(sum(
+          coalesce(
+            array_length(
+              array(select unnest(c.tags) intersect select unnest(wa.tags)),
+              1
+            ),
+            0
+          ) * 10
+        ), 0)
 
-      +
-
-      -- Layer 2: bio-derived scene adjacency
-      coalesce(sum(
-        -- Geography
-        case
-          when c.bio_metadata->>'origin_city' is not null
-           and c.bio_metadata->>'origin_city' = wa.bio_metadata->>'origin_city'
-          then 25
-          when c.bio_metadata->>'origin_region' is not null
-           and c.bio_metadata->>'origin_region' = wa.bio_metadata->>'origin_region'
-          then 15
-          else 0
-        end
         +
-        -- Era (formation year proximity)
-        case
-          when coalesce(c.bio_metadata->>'formation_year', '')  != ''
-           and coalesce(wa.bio_metadata->>'formation_year', '') != ''
-           and abs(
-                 cast(c.bio_metadata->>'formation_year'  as int)
-               - cast(wa.bio_metadata->>'formation_year' as int)
-               ) < 3
-          then 20
-          when coalesce(c.bio_metadata->>'formation_year', '')  != ''
-           and coalesce(wa.bio_metadata->>'formation_year', '') != ''
-           and abs(
-                 cast(c.bio_metadata->>'formation_year'  as int)
-               - cast(wa.bio_metadata->>'formation_year' as int)
-               ) < 8
-          then 10
-          else 0
-        end
-        +
-        -- Influence relationships (candidate was influenced by watched artist)
-        case
-          when c.bio_metadata->'influences' is not null
-           and c.bio_metadata->'influences' ?| array[wa.name]
-          then 30
-          else 0
-        end
-      ), 0)
-    )::int as total_score
 
-  from      candidates     c
-  cross join watched_artists wa
-  group by  c.id, c.name, c.tags, c.blurb
-  order by  total_score desc
-  limit     p_limit;
+        -- Layer 2: bio-derived scene adjacency
+        coalesce(sum(
+          -- Geography
+          case
+            when c.bio_metadata->>'origin_city' is not null
+             and c.bio_metadata->>'origin_city' = wa.bio_metadata->>'origin_city'
+            then 25
+            when c.bio_metadata->>'origin_region' is not null
+             and c.bio_metadata->>'origin_region' = wa.bio_metadata->>'origin_region'
+            then 15
+            else 0
+          end
+          +
+          -- Era (formation year proximity)
+          case
+            when coalesce(c.bio_metadata->>'formation_year', '')  != ''
+             and coalesce(wa.bio_metadata->>'formation_year', '') != ''
+             and abs(
+                   cast(c.bio_metadata->>'formation_year'  as int)
+                 - cast(wa.bio_metadata->>'formation_year' as int)
+                 ) < 3
+            then 20
+            when coalesce(c.bio_metadata->>'formation_year', '')  != ''
+             and coalesce(wa.bio_metadata->>'formation_year', '') != ''
+             and abs(
+                   cast(c.bio_metadata->>'formation_year'  as int)
+                 - cast(wa.bio_metadata->>'formation_year' as int)
+                 ) < 8
+            then 10
+            else 0
+          end
+          +
+          -- Influence relationships (candidate was influenced by watched artist)
+          case
+            when c.bio_metadata->'influences' is not null
+             and c.bio_metadata->'influences' ?| array[wa.name]
+            then 30
+            else 0
+          end
+        ), 0)
+      )::int as total_score
+
+    from      candidates     c
+    cross join watched_artists wa
+    group by  c.id, c.name, c.tags, c.blurb
+  )
+  select id, name, tags, blurb, total_score
+  from   scored
+  where  total_score > 0
+  order by total_score desc
+  limit    p_limit;
 $$;
 
 grant execute on function public.get_recommendations(int) to authenticated;
