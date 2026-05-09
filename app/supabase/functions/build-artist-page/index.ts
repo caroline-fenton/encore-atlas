@@ -83,12 +83,51 @@ function parseDuration(iso: string): string {
   return `${minutes}:${pad(seconds)}`
 }
 
+// Wikipedia REST API fetch
+type WikipediaResult = {
+  extract: string
+  thumbnailUrl: string | null
+  pageUrl: string
+} | null
+
+async function fetchWikipedia(artistName: string): Promise<WikipediaResult> {
+  try {
+    const normalized = artistName
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+    const title = encodeURIComponent(normalized.replace(/\s+/g, "_"))
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${title}`,
+      { headers: { "Api-User-Agent": "EncoreAtlas/1.0" } },
+    )
+    if (!res.ok) return null
+
+    const data = await res.json()
+    if (data.type === "disambiguation") return null
+
+    return {
+      extract: data.extract ?? "",
+      thumbnailUrl: data.thumbnail?.source ?? null,
+      pageUrl:
+        data.content_urls?.desktop?.page ??
+        `https://en.wikipedia.org/wiki/${title}`,
+    }
+  } catch {
+    return null
+  }
+}
+
 // Claude API call for artist context
 async function claudeTag(
   artistName: string,
   videoTitles: string[],
+  wikipediaExtract: string | null,
   apiKey: string,
 ): Promise<ClaudeTagResult> {
+  const wikiContext = wikipediaExtract
+    ? `\nWikipedia summary (use as factual reference, do not copy verbatim):\n${wikipediaExtract}\n`
+    : ""
+
   const prompt = `
 You are generating concise artist context for Encore Atlas, a music rabbit-hole and live performance discovery app.
 
@@ -96,7 +135,7 @@ Artist: ${artistName}
 
 Video titles from YouTube (for context):
 ${videoTitles.map((t) => `- ${t}`).join("\n")}
-
+${wikiContext}
 Return ONLY valid JSON. Do not include markdown.
 
 Use this schema:
@@ -226,6 +265,8 @@ type ArtistPageResponse = {
     name: string
     tags: string[] | null
     blurb: string | null
+    bio: string | null
+    bio_image_url: string | null
     decade: string | null
     related_artists: string[] | null
     is_curated: boolean
@@ -304,6 +345,8 @@ Deno.serve(async (req) => {
           name: existingArtist.name,
           tags: existingArtist.tags,
           blurb: existingArtist.blurb,
+          bio: existingArtist.bio,
+          bio_image_url: existingArtist.wikipedia_thumbnail_url,
           decade: existingArtist.decade,
           related_artists: existingArtist.related_artists,
           is_curated: existingArtist.is_curated,
@@ -385,9 +428,12 @@ Deno.serve(async (req) => {
     const videoIds = topResults.map((r) => r.id.videoId)
     const details = await youtubeVideoDetails(videoIds, youtubeApiKey)
 
-    // Call Claude for tagging
+    // Fetch Wikipedia for context, then pass to Claude for bio generation
     const videoTitles = topResults.map((r) => r.snippet.title)
-    const tagResult = await claudeTag(artist_name, videoTitles, anthropicApiKey)
+    const wiki = await fetchWikipedia(artist_name)
+    const tagResult = await claudeTag(
+      artist_name, videoTitles, wiki?.extract ?? null, anthropicApiKey,
+    )
 
     // ── WRITE TO DATABASE ──
 
@@ -403,6 +449,9 @@ Deno.serve(async (req) => {
       related_artists: tagResult.related_artists,
       bio_metadata: null,
       artist_context: tagResult.artist_context,
+      wikipedia_extract: wiki?.extract ?? null,
+      wikipedia_thumbnail_url: wiki?.thumbnailUrl ?? null,
+      wikipedia_url: wiki?.pageUrl ?? null,
       discovered_by: userId,
     }
 
@@ -487,6 +536,8 @@ Deno.serve(async (req) => {
         name: normalizedName,
         tags: tagResult.tags,
         blurb: tagResult.blurb,
+        bio: tagResult.bio,
+        bio_image_url: wiki?.thumbnailUrl ?? null,
         decade: tagResult.decade,
         related_artists: tagResult.related_artists,
         is_curated: false,

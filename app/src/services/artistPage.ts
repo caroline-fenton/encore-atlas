@@ -16,6 +16,8 @@ export type ArtistPageData = {
     name: string
     tags: string[] | null
     blurb: string | null
+    bio: string | null
+    bio_image_url: string | null
     decade: string | null
     related_artists: string[] | null
     is_curated: boolean
@@ -70,6 +72,8 @@ export async function getCachedArtistPage(
       name: artist.name,
       tags: artist.tags,
       blurb: artist.blurb,
+      bio: artist.bio,
+      bio_image_url: artist.wikipedia_thumbnail_url,
       decade: artist.decade,
       related_artists: artist.related_artists,
       is_curated: artist.is_curated,
