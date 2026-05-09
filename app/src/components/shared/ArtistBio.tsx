@@ -1,15 +1,14 @@
 import { useState } from "react"
-import type { ArtistBio as ArtistBioType } from "../../services/wikipedia"
 
 const COLLAPSED_LENGTH = 200
 
-export default function ArtistBio({
-  bio,
-  isLoading,
-}: {
-  bio: ArtistBioType | null
+export type ArtistBioProps = {
+  bio: string | null
+  imageUrl?: string | null
   isLoading: boolean
-}) {
+}
+
+export default function ArtistBio({ bio, imageUrl, isLoading }: ArtistBioProps) {
   const [expanded, setExpanded] = useState(false)
 
   if (isLoading) {
@@ -27,17 +26,17 @@ export default function ArtistBio({
 
   if (!bio) return null
 
-  const isLong = bio.extract.length > COLLAPSED_LENGTH
+  const isLong = bio.length > COLLAPSED_LENGTH
   const displayText =
     isLong && !expanded
-      ? bio.extract.slice(0, COLLAPSED_LENGTH).replace(/\s+\S*$/, "") + "..."
-      : bio.extract
+      ? bio.slice(0, COLLAPSED_LENGTH).replace(/\s+\S*$/, "") + "..."
+      : bio
 
   return (
     <div className="flex items-start gap-5">
-      {bio.thumbnailUrl && (
+      {imageUrl && (
         <img
-          src={bio.thumbnailUrl}
+          src={imageUrl}
           alt=""
           className="hidden sm:block h-20 w-20 shrink-0 rounded-full object-cover"
         />
@@ -55,14 +54,6 @@ export default function ArtistBio({
             </button>
           )}
         </p>
-        <a
-          href={bio.pageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 inline-block font-typewriter text-[10px] uppercase tracking-[0.25em] text-black/35 hover:text-black/55"
-        >
-          Source: Wikipedia
-        </a>
       </div>
     </div>
   )

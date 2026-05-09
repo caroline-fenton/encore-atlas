@@ -18,7 +18,7 @@ export default function MusicVideosPage() {
 
   const { videos: allVideos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
     useArtistMusicVideos(selectedArtistName)
-  const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
+  const { bio, imageUrl, isLoading: bioLoading } = useArtistBio(selectedArtistName)
   const { filtered: videos, selectedDecade, setSelectedDecade } = useDecadeFilter(allVideos, selectedArtistName)
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
@@ -54,7 +54,7 @@ export default function MusicVideosPage() {
         </div>
       </header>
 
-      <ArtistBio bio={bio} isLoading={bioLoading} />
+      <ArtistBio bio={bio} imageUrl={imageUrl} isLoading={bioLoading} />
 
       {!isLoading && allVideos.length > 0 && (
         <DecadeFilter
