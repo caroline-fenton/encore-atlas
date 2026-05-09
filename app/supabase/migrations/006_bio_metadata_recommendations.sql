@@ -64,7 +64,7 @@ as $$
     from   artists a
     where  a.id           not in (select artist_id from watched_artist_ids)
       and  a.last_refreshed_at is not null   -- only fully-built pages
-  )
+  ),
   -- Score every candidate against every watched artist, then filter to
   -- only those with genuine similarity (total_score > 0). Without this
   -- filter, zero-score artists (completely unrelated genres) fill the
