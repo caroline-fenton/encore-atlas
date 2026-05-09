@@ -30,6 +30,7 @@ export type Database = {
           tags: string[] | null
           tag_source: string | null
           blurb: string | null
+          bio: string | null
           decade: string | null
           related_artists: string[] | null
           youtube_channel_id: string | null
@@ -39,6 +40,9 @@ export type Database = {
           created_at: string
           last_refreshed_at: string | null
           bio_metadata: BioMetadata | null
+          wikipedia_extract: string | null
+          wikipedia_thumbnail_url: string | null
+          wikipedia_url: string | null
         }
         Insert: {
           id?: string
@@ -46,6 +50,7 @@ export type Database = {
           tags?: string[]
           tag_source?: string
           blurb?: string | null
+          bio?: string | null
           decade?: string | null
           related_artists?: string[] | null
           youtube_channel_id?: string | null
@@ -55,12 +60,16 @@ export type Database = {
           created_at?: string
           last_refreshed_at?: string | null
           bio_metadata?: BioMetadata | null
+          wikipedia_extract?: string | null
+          wikipedia_thumbnail_url?: string | null
+          wikipedia_url?: string | null
         }
         Update: {
           name?: string
           tags?: string[]
           tag_source?: string
           blurb?: string | null
+          bio?: string | null
           decade?: string | null
           related_artists?: string[] | null
           youtube_channel_id?: string | null
@@ -68,6 +77,9 @@ export type Database = {
           is_curated?: boolean
           last_refreshed_at?: string | null
           bio_metadata?: BioMetadata | null
+          wikipedia_extract?: string | null
+          wikipedia_thumbnail_url?: string | null
+          wikipedia_url?: string | null
         }
         Relationships: []
       }
