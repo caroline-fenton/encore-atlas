@@ -43,7 +43,7 @@ export default function ArtistBio({
         />
       )}
       <div className="flex-1">
-        <p className="font-typewriter text-sm leading-relaxed text-black/65">
+        <p className="font-sans text-sm leading-relaxed text-black/65">
           {displayText}
           {isLong && (
             <button

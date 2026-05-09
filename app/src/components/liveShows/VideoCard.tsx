@@ -1,4 +1,3 @@
-import DurationBadge from "./DurationBadge"
 import type { Video } from "../../types/video"
 
 type Props = {
@@ -29,13 +28,6 @@ export default function VideoCard({ video, onSelect, isWatched = false }: Props)
             className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
           />
 
-          <div className="absolute bottom-2 right-2">
-            <DurationBadge
-              value={video.duration}
-              className="border border-black/10 bg-white/80 text-black/70"
-            />
-          </div>
-
           {isWatched && (
             <div className="absolute left-2 top-2 rounded-sm bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/90">
               Watched
@@ -46,6 +38,11 @@ export default function VideoCard({ video, onSelect, isWatched = false }: Props)
         <div className="flex flex-1 flex-col justify-center px-5 py-4">
           <div className="text-[15px] font-semibold tracking-[0.02em] text-black/80">
             {video.title}
+            {video.duration && (
+              <span className="ml-2 text-[11px] font-normal text-black/40">
+                {video.duration}
+              </span>
+            )}
           </div>
           <div className="mt-0.5 text-[11px] text-black/40">
             {video.channelTitle}

@@ -44,12 +44,12 @@ export default function RecommendedArtists({
 
             {rec.tags && rec.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
-                {rec.tags.slice(0, 3).map((tag) => (
+                {rec.tags.slice(0, 3).map((tag, i) => (
                   <span
                     key={tag}
-                    className="rounded-full border border-black/10 bg-white/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-black/45"
+                    className="text-[9px] font-semibold uppercase tracking-[0.15em] text-black/45"
                   >
-                    {tag}
+                    {i > 0 && "·"} {tag}
                   </span>
                 ))}
               </div>

@@ -16,11 +16,6 @@ export default function VideoHero({ video }: Props) {
           className="h-full w-full"
         />
       </div>
-
-      {/* duration pill */}
-      <div className="absolute right-4 top-4 rounded-full border border-black/10 bg-[#f6f1e8]/90 px-3 py-1 text-xs font-semibold tracking-[0.08em] text-black/65 backdrop-blur">
-        {video.duration}
-      </div>
     </div>
   )
 }

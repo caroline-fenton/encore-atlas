@@ -122,7 +122,7 @@ export default function LiveShowsPage() {
   if (artistPage.isBuilding) {
     return (
       <div className="space-y-8 pb-10">
-        <header className="text-center">
+        <header>
           <h1 className="font-display text-5xl md:text-6xl font-normal tracking-[0.22em] leading-none text-black/80 uppercase">
             {selectedArtistName}
           </h1>
@@ -134,7 +134,7 @@ export default function LiveShowsPage() {
 
   return (
     <div className="space-y-8 pb-10">
-      <header className="text-center">
+      <header>
         <h1 className="font-display text-5xl md:text-6xl font-normal tracking-[0.22em] leading-none text-black/80 uppercase">
           {selectedArtistName}
         </h1>
@@ -142,13 +142,13 @@ export default function LiveShowsPage() {
           Live Performances
         </div>
         {useCached && artistPage.data?.artist.tags && (
-          <div className="mt-2 flex flex-wrap justify-center gap-2">
-            {artistPage.data.artist.tags.map((tag) => (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {artistPage.data.artist.tags.map((tag, i) => (
               <span
                 key={tag}
-                className="rounded-full border border-black/10 bg-white/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-black/50"
+                className="text-[10px] font-semibold uppercase tracking-[0.15em] text-black/50"
               >
-                {tag}
+                {i > 0 && "·"} {tag}
               </span>
             ))}
           </div>

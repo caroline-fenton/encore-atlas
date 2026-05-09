@@ -40,7 +40,7 @@ export default function InterviewsPage() {
 
   return (
     <div className="space-y-8 pb-10">
-      <header className="text-center">
+      <header>
         <h1 className="font-display text-5xl md:text-6xl font-normal tracking-[0.22em] leading-none text-black/80 uppercase">
           {selectedArtistName}
         </h1>

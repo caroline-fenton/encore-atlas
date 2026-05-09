@@ -1,4 +1,3 @@
-import DurationBadge from "../liveShows/DurationBadge"
 import type { Video } from "../../types/video"
 
 type Props = {
@@ -19,18 +18,17 @@ export default function MusicVideoCard({ video, onSelect }: Props) {
           alt={video.title}
           className="h-full w-full object-cover"
         />
-        <div className="absolute bottom-2 right-2">
-          <DurationBadge
-            value={video.duration}
-            className="border border-black/10 bg-white/80 text-black/70"
-          />
-        </div>
       </div>
 
       <div className="flex flex-1 items-center px-5 py-4">
         <div className="min-w-0 flex-1">
           <div className="text-[15px] font-semibold tracking-[0.02em] text-black/80 line-clamp-2">
             {video.title}
+            {video.duration && (
+              <span className="ml-2 text-[11px] font-normal text-black/40">
+                {video.duration}
+              </span>
+            )}
           </div>
           <div className="mt-0.5 text-[11px] text-black/40">
             {video.channelTitle}
