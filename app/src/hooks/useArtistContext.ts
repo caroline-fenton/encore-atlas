@@ -28,15 +28,17 @@ export function useArtistContext(artistName: string) {
       .select("artist_context")
       .ilike("name", escaped)
       .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) {
-          setContext((data?.artist_context as ArtistContext) ?? null)
-          setIsLoading(false)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setIsLoading(false)
-      })
+      .then(
+        ({ data }) => {
+          if (!cancelled) {
+            setContext((data?.artist_context as ArtistContext) ?? null)
+            setIsLoading(false)
+          }
+        },
+        () => {
+          if (!cancelled) setIsLoading(false)
+        },
+      )
 
     return () => {
       cancelled = true
