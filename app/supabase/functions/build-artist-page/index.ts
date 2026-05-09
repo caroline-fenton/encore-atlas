@@ -83,7 +83,7 @@ function parseDuration(iso: string): string {
   return `${minutes}:${pad(seconds)}`
 }
 
-// Claude API call for tagging + blurb
+// Claude API call for tagging + blurb + bio metadata
 async function claudeTag(
   artistName: string,
   videoTitles: string[],
@@ -95,12 +95,20 @@ async function claudeTag(
 2. "blurb": A 2-3 sentence description of the artist suitable for a concert discovery page. Focus on their live performance style and what makes their shows special.
 3. "decade": The primary decade they were/are most active (e.g. "1990s", "2010s")
 4. "related_artists": An array of 3-5 related artist names that fans would also enjoy seeing live
+5. "bio_metadata": An object with what you know about the artist's background. Use null for any field you are genuinely unsure about — do not guess:
+   - "origin_city": City they formed in (e.g. "Austin"), or null
+   - "origin_region": State or country (e.g. "Texas" or "UK"), or null
+   - "formation_year": Year formed as an integer (e.g. 1994), or null
+   - "active_end_year": Year disbanded as an integer, or null if still active or unknown
+   - "influences": Array of 3-5 artist names they have cited as influences, or null
+   - "collaborations": Array of artist names they have notably collaborated with, or null
+   - "side_projects": Array of notable side project names from their members, or null
 
 Artist: ${artistName}
 Video titles:
 ${videoTitles.map((t) => `- ${t}`).join("\n")}
 
-Respond with ONLY valid JSON, no markdown formatting or code blocks.`
+Respond with ONLY valid JSON, no markdown formatting or code blocks. Use null for any bio_metadata fields you are unsure about.`
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -130,6 +138,21 @@ Respond with ONLY valid JSON, no markdown formatting or code blocks.`
 
   try {
     const parsed = JSON.parse(text)
+
+    let bio_metadata: BioMetadata | null = null
+    if (parsed.bio_metadata && typeof parsed.bio_metadata === "object") {
+      const bm = parsed.bio_metadata
+      bio_metadata = {
+        origin_city:     typeof bm.origin_city     === "string"  ? bm.origin_city     : null,
+        origin_region:   typeof bm.origin_region   === "string"  ? bm.origin_region   : null,
+        formation_year:  typeof bm.formation_year  === "number"  ? bm.formation_year  : null,
+        active_end_year: typeof bm.active_end_year === "number"  ? bm.active_end_year : null,
+        influences:      Array.isArray(bm.influences)     ? bm.influences     : null,
+        collaborations:  Array.isArray(bm.collaborations) ? bm.collaborations : null,
+        side_projects:   Array.isArray(bm.side_projects)  ? bm.side_projects  : null,
+      }
+    }
+
     return {
       tags: Array.isArray(parsed.tags) ? parsed.tags : [],
       blurb: typeof parsed.blurb === "string" ? parsed.blurb : null,
@@ -137,10 +160,11 @@ Respond with ONLY valid JSON, no markdown formatting or code blocks.`
       related_artists: Array.isArray(parsed.related_artists)
         ? parsed.related_artists
         : [],
+      bio_metadata,
     }
   } catch {
     console.error("Failed to parse Claude response:", text)
-    return { tags: [], blurb: null, decade: null, related_artists: [] }
+    return { tags: [], blurb: null, decade: null, related_artists: [], bio_metadata: null }
   }
 }
 
@@ -158,11 +182,22 @@ type YouTubeVideoDetail = {
   duration: string | null
 }
 
+type BioMetadata = {
+  origin_city: string | null
+  origin_region: string | null
+  formation_year: number | null
+  active_end_year: number | null
+  influences: string[] | null
+  collaborations: string[] | null
+  side_projects: string[] | null
+}
+
 type ClaudeTagResult = {
   tags: string[]
   blurb: string | null
   decade: string | null
   related_artists: string[]
+  bio_metadata: BioMetadata | null
 }
 
 type ArtistPageResponse = {
@@ -344,6 +379,7 @@ Deno.serve(async (req) => {
       blurb: tagResult.blurb,
       decade: tagResult.decade,
       related_artists: tagResult.related_artists,
+      bio_metadata: tagResult.bio_metadata,
       discovered_by: userId,
     }
 

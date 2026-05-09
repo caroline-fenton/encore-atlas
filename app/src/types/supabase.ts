@@ -38,6 +38,7 @@ export type Database = {
           discovered_by: string | null
           created_at: string
           last_refreshed_at: string | null
+          bio_metadata: BioMetadata | null
         }
         Insert: {
           id?: string
@@ -53,6 +54,7 @@ export type Database = {
           discovered_by?: string | null
           created_at?: string
           last_refreshed_at?: string | null
+          bio_metadata?: BioMetadata | null
         }
         Update: {
           name?: string
@@ -65,6 +67,7 @@ export type Database = {
           musicbrainz_id?: string | null
           is_curated?: boolean
           last_refreshed_at?: string | null
+          bio_metadata?: BioMetadata | null
         }
         Relationships: []
       }
@@ -202,7 +205,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_recommendations: {
+        Args: { p_limit?: number }
+        Returns: {
+          id: string
+          name: string
+          tags: string[] | null
+          blurb: string | null
+          total_score: number
+        }[]
+      }
     }
   }
+}
+
+export type BioMetadata = {
+  origin_city:     string | null
+  origin_region:   string | null
+  formation_year:  number | null
+  active_end_year: number | null
+  influences:      string[] | null
+  collaborations:  string[] | null
+  side_projects:   string[] | null
 }

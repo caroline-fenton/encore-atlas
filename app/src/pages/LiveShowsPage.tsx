@@ -16,6 +16,8 @@ import VideoCardSkeleton from "../components/shared/VideoCardSkeleton"
 import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
 import BuildingState from "../components/shared/BuildingState"
+import RecommendedArtists from "../components/shared/RecommendedArtists"
+import { useRecommendations } from "../hooks/useRecommendations"
 
 /**
  * Maps cached artist_videos rows to the Video type used by display components.
@@ -47,7 +49,7 @@ function mapCachedVideos(
 }
 
 export default function LiveShowsPage() {
-  const { selectedArtistName, user, waitForAuth } =
+  const { selectedArtistName, setSelectedArtist, user, waitForAuth } =
     useOutletContext<AppOutletContext>()
 
   // Try the lazy curation pipeline first
@@ -88,6 +90,7 @@ export default function LiveShowsPage() {
   )
 
   const { bio, isLoading: bioLoading } = useArtistBio(selectedArtistName)
+  const { recommendations } = useRecommendations(user)
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(
     allVideos,
     selectedArtistName,
@@ -255,6 +258,11 @@ export default function LiveShowsPage() {
           )}
         </>
       )}
+
+      <RecommendedArtists
+        recommendations={recommendations}
+        onSelectArtist={setSelectedArtist}
+      />
     </div>
   )
 }
