@@ -10,30 +10,24 @@ export default function MusicVideoCard({ video, onSelect }: Props) {
     <button
       type="button"
       onClick={() => onSelect(video)}
-      className="flex w-full overflow-hidden border border-black/10 bg-white/45 text-left shadow-[0_1px_0_rgba(0,0,0,0.03)] transition hover:bg-white/60"
+      className="group block w-full text-left"
     >
-      <div className="relative h-[96px] w-[156px] shrink-0 overflow-hidden bg-black/5">
+      <div className="relative overflow-hidden bg-black/5">
         <img
           src={video.thumbnailUrl}
           alt={video.title}
-          className="h-full w-full object-cover"
+          className="aspect-video w-full object-cover transition duration-300 group-hover:scale-[1.02]"
         />
       </div>
 
-      <div className="flex flex-1 items-center px-5 py-4">
-        <div className="min-w-0 flex-1">
-          <div className="text-[15px] font-semibold tracking-[0.02em] text-black/80 line-clamp-2">
-            {video.title}
-            {video.duration && (
-              <span className="ml-2 text-[11px] font-normal text-black/40">
-                {video.duration}
-              </span>
-            )}
-          </div>
-          <div className="mt-0.5 text-[11px] text-black/40">
-            {video.channelTitle}
-          </div>
+      <div className="mt-2">
+        <div className="text-[13px] font-semibold tracking-[0.02em] text-black/80">
+          {video.title}
+          {video.duration && (
+            <span className="ml-2 text-[11px] font-normal text-black/40">{video.duration}</span>
+          )}
         </div>
+        <div className="mt-0.5 text-[11px] text-black/40">{video.channelTitle}</div>
       </div>
     </button>
   )
