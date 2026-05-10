@@ -100,9 +100,9 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
               href={store.url}
               target="_blank"
               rel="noreferrer"
-              className="group flex items-center justify-between border border-stone-200 bg-white/60 px-3 py-2.5 transition hover:border-[#7a2d2b]/30 hover:shadow-sm"
+              className="group flex items-center justify-between py-1 transition"
             >
-              <span className="font-display text-xs tracking-[0.08em] text-black/70 group-hover:text-[#7a2d2b]">
+              <span className="font-display text-xs tracking-[0.08em] text-black/65 group-hover:text-[#7a2d2b]">
                 {store.name}
               </span>
               <ExternalLink className="h-3 w-3 text-black/30 group-hover:text-[#7a2d2b]" />
