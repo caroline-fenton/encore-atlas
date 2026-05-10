@@ -1,4 +1,5 @@
 import type { Video } from "../../types/video"
+import { decodeHtml } from "../../utils/decodeHtml"
 
 type Props = {
   video: Video
@@ -34,7 +35,7 @@ export default function VideoCard({ video, onSelect, isWatched = false }: Props)
 
       <div className="mt-2">
         <div className="text-[13px] font-semibold tracking-[0.02em] text-black/80">
-          {video.title}
+          {decodeHtml(video.title)}
           {video.duration && (
             <span className="ml-2 text-[11px] font-normal text-black/40">{video.duration}</span>
           )}

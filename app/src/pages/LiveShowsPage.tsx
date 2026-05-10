@@ -18,6 +18,7 @@ import EmptyState from "../components/shared/EmptyState"
 import BuildingState from "../components/shared/BuildingState"
 import RecommendedArtists from "../components/shared/RecommendedArtists"
 import { useRecommendations } from "../hooks/useRecommendations"
+import { decodeHtml } from "../utils/decodeHtml"
 
 /**
  * Maps cached artist_videos rows to the Video type used by display components.
@@ -212,7 +213,7 @@ export default function LiveShowsPage() {
 
             <div className="py-4">
               <div className="font-display text-2xl tracking-[0.12em] text-black/75">
-                {activeVideo.title}
+                {decodeHtml(activeVideo.title)}
               </div>
               <div className="mt-1 text-xs text-black/40">
                 {activeVideo.channelTitle}
@@ -226,18 +227,19 @@ export default function LiveShowsPage() {
                 <section className="space-y-4">
                   {more.length > 0 && (
                     <>
-                      <div className="font-display text-2xl tracking-[0.12em] text-black/75">
-                        MORE LIVE SETS
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/35">
+                        More Live Sets
                       </div>
 
                       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        {more.map((v) => (
-                          <VideoCard
-                            key={v.id}
-                            video={v}
-                            onSelect={handleSelectVideo}
-                            isWatched={watchedVideoIds.has(v.id)}
-                          />
+                        {more.map((v, i) => (
+                          <div key={v.id} style={{ transform: `translateY(${[0, 22, 8, 30, -4, 18][i % 6]}px)` }}>
+                            <VideoCard
+                              video={v}
+                              onSelect={handleSelectVideo}
+                              isWatched={watchedVideoIds.has(v.id)}
+                            />
+                          </div>
                         ))}
                       </div>
                     </>
