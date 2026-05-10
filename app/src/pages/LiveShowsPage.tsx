@@ -7,6 +7,7 @@ import { useArtistPage } from "../hooks/useArtistPage"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import { useWatchHistory } from "../hooks/useWatchHistory"
 import ArtistBio from "../components/shared/ArtistBio"
+import MerchSidebar from "../components/shared/MerchSidebar"
 import DecadeFilter from "../components/shared/DecadeFilter"
 import VideoHero from "../components/liveShows/VideoHero"
 import VideoCard from "../components/liveShows/VideoCard"
@@ -48,7 +49,7 @@ function mapCachedVideos(
 }
 
 export default function LiveShowsPage() {
-  const { selectedArtistName, setSelectedArtist, user, waitForAuth } =
+  const { selectedArtistId, selectedArtistName, setSelectedArtist, user, waitForAuth } =
     useOutletContext<AppOutletContext>()
 
   // Try the lazy curation pipeline first
@@ -136,9 +137,6 @@ export default function LiveShowsPage() {
         <h1 className="font-display text-5xl md:text-6xl font-normal tracking-[0.22em] leading-none text-black/80 uppercase">
           {selectedArtistName}
         </h1>
-        <div className="mt-3 font-typewriter text-xs uppercase tracking-[0.35em] text-black/55">
-          Live Performances
-        </div>
         {useCached && artistPage.data?.artist.tags && (
           <div className="mt-2 flex flex-wrap gap-2">
             {artistPage.data.artist.tags.map((tag, i) => (
@@ -222,41 +220,49 @@ export default function LiveShowsPage() {
             </div>
           </section>
 
-          {(more.length > 0 || hasMore) && (
-            <section className="space-y-4">
-              {more.length > 0 && (
-                <>
-                  <div className="font-display text-2xl tracking-[0.12em] text-black/75">
-                    MORE LIVE SETS
-                  </div>
+          <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
+            <div className="flex-1 min-w-0">
+              {(more.length > 0 || hasMore) && (
+                <section className="space-y-4">
+                  {more.length > 0 && (
+                    <>
+                      <div className="font-display text-2xl tracking-[0.12em] text-black/75">
+                        MORE LIVE SETS
+                      </div>
 
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    {more.map((v) => (
-                      <VideoCard
-                        key={v.id}
-                        video={v}
-                        onSelect={handleSelectVideo}
-                        isWatched={watchedVideoIds.has(v.id)}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        {more.map((v) => (
+                          <VideoCard
+                            key={v.id}
+                            video={v}
+                            onSelect={handleSelectVideo}
+                            isWatched={watchedVideoIds.has(v.id)}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
 
-              {hasMore && (
-                <div className="pt-2 text-center">
-                  <button
-                    type="button"
-                    onClick={loadMore}
-                    disabled={isLoadingMore}
-                    className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
-                  >
-                    {isLoadingMore ? "Loading..." : "Load More"}
-                  </button>
-                </div>
+                  {hasMore && (
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={loadMore}
+                        disabled={isLoadingMore}
+                        className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
+                      >
+                        {isLoadingMore ? "Loading..." : "Load More"}
+                      </button>
+                    </div>
+                  )}
+                </section>
               )}
-            </section>
-          )}
+            </div>
+
+            <aside className="w-full lg:w-72 lg:shrink-0">
+              <MerchSidebar artistId={selectedArtistId} artistName={selectedArtistName} />
+            </aside>
+          </div>
         </>
       )}
 
