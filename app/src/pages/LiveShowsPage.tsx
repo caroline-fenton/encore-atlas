@@ -227,7 +227,7 @@ export default function LiveShowsPage() {
                 <section className="space-y-4">
                   {more.length > 0 && (
                     <>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/40">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/65">
                         More Live Sets
                       </div>
 

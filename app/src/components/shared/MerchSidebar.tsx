@@ -73,7 +73,7 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/40">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/65">
         Merch
       </div>
 
