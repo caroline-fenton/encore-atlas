@@ -72,7 +72,7 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
   const stores = getStoreLinks(artistName)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pl-6">
       <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/65">
         Merch
       </div>
@@ -92,23 +92,18 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
         </div>
       ))}
 
-      <div className="space-y-2">
-        <div className="space-y-1.5">
-          {stores.map((store) => (
-            <a
-              key={store.name}
-              href={store.url}
-              target="_blank"
-              rel="noreferrer"
-              className="group flex items-center justify-between py-1 transition"
-            >
-              <span className="font-display text-xs tracking-[0.08em] text-black/65 group-hover:text-[#7a2d2b]">
-                {store.name}
-              </span>
-              <ExternalLink className="h-3 w-3 text-black/30 group-hover:text-[#7a2d2b]" />
-            </a>
-          ))}
-        </div>
+      <div className="space-y-1.5">
+        {stores.map((store) => (
+          <a
+            key={store.name}
+            href={store.url}
+            target="_blank"
+            rel="noreferrer"
+            className="group block py-0.5 font-display text-xs tracking-[0.08em] text-black/65 transition hover:text-[#7a2d2b]"
+          >
+            {store.name}
+          </a>
+        ))}
       </div>
     </div>
   )
