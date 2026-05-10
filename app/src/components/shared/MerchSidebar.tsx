@@ -73,7 +73,7 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/35">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/40">
         Merch
       </div>
 
@@ -93,9 +93,6 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
       ))}
 
       <div className="space-y-2">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/40">
-          Browse Stores
-        </div>
         <div className="space-y-1.5">
           {stores.map((store) => (
             <a
