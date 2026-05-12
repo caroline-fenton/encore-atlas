@@ -11,7 +11,6 @@ const tabs = [
   { to: "/", label: "Live Shows", end: true },
   { to: "/music-videos", label: "Music Videos", end: false },
   { to: "/interviews", label: "Interviews", end: false },
-  { to: "/merch", label: "Merch", end: false },
   { to: "/history", label: "History", end: false },
 ] as const
 

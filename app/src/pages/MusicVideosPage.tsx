@@ -3,7 +3,7 @@ import { useRef, useState, useEffect, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
 import { useArtistMusicVideos } from "../hooks/useVideos"
-import { useArtistBio } from "../hooks/useArtistBio"
+import { useArtistContext } from "../hooks/useArtistContext"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import ArtistBio from "../components/shared/ArtistBio"
 import DecadeFilter from "../components/shared/DecadeFilter"
@@ -18,7 +18,7 @@ export default function MusicVideosPage() {
 
   const { videos: allVideos, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
     useArtistMusicVideos(selectedArtistName)
-  const { bio, imageUrl, isLoading: bioLoading } = useArtistBio(selectedArtistName)
+  const { context, isLoading: contextLoading } = useArtistContext(selectedArtistName)
   const { filtered: videos, selectedDecade, setSelectedDecade } = useDecadeFilter(allVideos, selectedArtistName)
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
@@ -45,7 +45,7 @@ export default function MusicVideosPage() {
 
   return (
     <div className="space-y-8 pb-10">
-      <header className="text-center">
+      <header>
         <h1 className="font-display text-5xl md:text-6xl font-normal tracking-[0.22em] leading-none text-black/80 uppercase">
           {selectedArtistName}
         </h1>
@@ -54,7 +54,7 @@ export default function MusicVideosPage() {
         </div>
       </header>
 
-      <ArtistBio bio={bio} imageUrl={imageUrl} isLoading={bioLoading} />
+      <ArtistBio context={context} isLoading={contextLoading} />
 
       {!isLoading && allVideos.length > 0 && (
         <DecadeFilter

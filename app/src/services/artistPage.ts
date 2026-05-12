@@ -1,5 +1,15 @@
 import { supabase } from "./supabase"
 
+export type ArtistContext = {
+  genre: string[]
+  city: string | null
+  yearsActive: string | null
+  knownFor: string[]
+  associatedWith: string[]
+  sceneSummary: string
+  relatedArtists: Array<{ name: string; reason: string }>
+}
+
 export type ArtistPageData = {
   artist: {
     id: string
@@ -11,6 +21,7 @@ export type ArtistPageData = {
     decade: string | null
     related_artists: string[] | null
     is_curated: boolean
+    artist_context: ArtistContext | null
   }
   videos: {
     id: string
@@ -66,6 +77,7 @@ export async function getCachedArtistPage(
       decade: artist.decade,
       related_artists: artist.related_artists,
       is_curated: artist.is_curated,
+      artist_context: (artist.artist_context as ArtistContext) ?? null,
     },
     videos: (videos ?? []).map((v) => ({
       id: v.id,
