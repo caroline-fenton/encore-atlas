@@ -21,8 +21,11 @@ export default function InterviewStrip({ videos, onSelect }: Props) {
   }
 
   return (
-    <div className="relative -mx-6 bg-[#A6AD3C] py-5">
-      <div className="mx-6 mb-3">
+    <div
+      className="relative bg-[#A6AD3C] py-5"
+      style={{ width: "100vw", left: "50%", marginLeft: "-50vw" }}
+    >
+      <div className="mx-auto max-w-5xl px-6 mb-3">
         <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/50">
           Interviews
         </div>
