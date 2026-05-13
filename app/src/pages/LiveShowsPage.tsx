@@ -2,7 +2,7 @@ import { useOutletContext } from "react-router-dom"
 import { useRef, useState, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
-import { useArtistConcerts } from "../hooks/useVideos"
+import { useArtistConcerts, useArtistInterviews } from "../hooks/useVideos"
 import { useArtistPage } from "../hooks/useArtistPage"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import { useWatchHistory } from "../hooks/useWatchHistory"
@@ -17,6 +17,7 @@ import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
 import BuildingState from "../components/shared/BuildingState"
 import RecommendedArtists from "../components/shared/RecommendedArtists"
+import InterviewStrip from "../components/liveShows/InterviewStrip"
 import { useRecommendations } from "../hooks/useRecommendations"
 import { decodeHtml } from "../utils/decodeHtml"
 
@@ -90,6 +91,7 @@ export default function LiveShowsPage() {
     waitForAuth,
   )
 
+  const { videos: interviewVideos } = useArtistInterviews(selectedArtistName)
   const { recommendations } = useRecommendations(user)
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(
     allVideos,
@@ -232,7 +234,7 @@ export default function LiveShowsPage() {
                       </div>
 
                       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        {more.map((v, i) => (
+                        {more.slice(0, 2).map((v, i) => (
                           <div key={v.id} style={{ transform: `translateY(${[0, 22, 8, 30, -4, 18][i % 6]}px)` }}>
                             <VideoCard
                               video={v}
@@ -242,6 +244,25 @@ export default function LiveShowsPage() {
                           </div>
                         ))}
                       </div>
+
+                      <InterviewStrip
+                        videos={interviewVideos}
+                        onSelect={handleSelectVideo}
+                      />
+
+                      {more.length > 2 && (
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                          {more.slice(2).map((v, i) => (
+                            <div key={v.id} style={{ transform: `translateY(${[0, 22, 8, 30, -4, 18][i % 6]}px)` }}>
+                              <VideoCard
+                                video={v}
+                                onSelect={handleSelectVideo}
+                                isWatched={watchedVideoIds.has(v.id)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </>
                   )}
 
