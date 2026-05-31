@@ -10,15 +10,12 @@ import ArtistBio from "../components/shared/ArtistBio"
 import MerchSidebar from "../components/shared/MerchSidebar"
 import DecadeFilter from "../components/shared/DecadeFilter"
 import VideoHero from "../components/liveShows/VideoHero"
-import VideoCard from "../components/liveShows/VideoCard"
 import VideoHeroSkeleton from "../components/shared/VideoHeroSkeleton"
 import VideoCardSkeleton from "../components/shared/VideoCardSkeleton"
 import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
 import BuildingState from "../components/shared/BuildingState"
-import RecommendedArtists from "../components/shared/RecommendedArtists"
-import InterviewStrip from "../components/liveShows/InterviewStrip"
-import { useRecommendations } from "../hooks/useRecommendations"
+import ContentCards from "../components/liveShows/ContentCards"
 import { decodeHtml } from "../utils/decodeHtml"
 
 /**
@@ -92,7 +89,6 @@ export default function LiveShowsPage() {
   )
 
   const { videos: interviewVideos } = useArtistInterviews(selectedArtistName)
-  const { recommendations } = useRecommendations(user)
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(
     allVideos,
     selectedArtistName,
@@ -209,85 +205,36 @@ export default function LiveShowsPage() {
       )}
 
       {!error && !isLoading && activeVideo && (
-        <>
-          <section className="space-y-4" ref={heroRef}>
-            <VideoHero video={activeVideo} />
+        <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
+          <div className="flex-1 min-w-0 space-y-4">
+            <section className="space-y-4" ref={heroRef}>
+              <VideoHero video={activeVideo} />
 
-            <div className="py-4">
-              <div className="font-display text-2xl tracking-[0.12em] text-black/75">
-                {decodeHtml(activeVideo.title)}
-              </div>
-              <div className="mt-1 text-xs text-black/40">
-                {activeVideo.channelTitle}
-              </div>
-            </div>
-          </section>
-
-          {(more.length > 0 || hasMore) && (
-            <>
-              <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
-                <div className="flex-1 min-w-0 space-y-4">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/65">
-                    More Live Sets
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    {more.slice(0, 2).map((v) => (
-                      <VideoCard
-                        key={v.id}
-                        video={v}
-                        onSelect={handleSelectVideo}
-                        isWatched={watchedVideoIds.has(v.id)}
-                      />
-                    ))}
-                  </div>
+              <div className="py-4">
+                <div className="font-display text-2xl tracking-[0.12em] text-black/75">
+                  {decodeHtml(activeVideo.title)}
                 </div>
-
-                <aside className="w-full lg:w-72 lg:shrink-0">
-                  <MerchSidebar artistId={selectedArtistId} artistName={selectedArtistName} />
-                </aside>
+                <div className="mt-1 text-xs text-black/40">
+                  {activeVideo.channelTitle}
+                </div>
               </div>
+            </section>
+          </div>
 
-              <InterviewStrip
-                videos={interviewVideos}
-                onSelect={handleSelectVideo}
-              />
-
-              {more.length > 2 && (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {more.slice(2).map((v) => (
-                    <VideoCard
-                      key={v.id}
-                      video={v}
-                      onSelect={handleSelectVideo}
-                      isWatched={watchedVideoIds.has(v.id)}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {hasMore && (
-                <div className="pt-2 text-center">
-                  <button
-                    type="button"
-                    onClick={loadMore}
-                    disabled={isLoadingMore}
-                    className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
-                  >
-                    {isLoadingMore ? "Loading..." : "Load More"}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </>
+          <aside className="w-full lg:w-80 lg:shrink-0">
+            <ContentCards
+              liveVideos={more}
+              interviewVideos={interviewVideos}
+              relatedArtists={artistPage.data?.artist.artist_context?.relatedArtists ?? []}
+              onSelectVideo={handleSelectVideo}
+              onSelectArtist={setSelectedArtist}
+              watchedVideoIds={watchedVideoIds}
+            />
+          </aside>
+        </div>
       )}
 
-      <RecommendedArtists
-        recommendations={recommendations}
-        relatedArtists={artistPage.data?.artist.artist_context?.relatedArtists}
-        onSelectArtist={setSelectedArtist}
-      />
+      <MerchSidebar artistId={selectedArtistId} artistName={selectedArtistName} />
     </div>
   )
 }
