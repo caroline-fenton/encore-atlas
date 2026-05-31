@@ -3,23 +3,11 @@ import type { Video } from "../../types/video"
 import { decodeHtml } from "../../utils/decodeHtml"
 import ContentCard from "./ContentCard"
 
-type RelatedArtist = { name: string; reason: string }
-
 type Props = {
   liveVideos: Video[]
   interviewVideos: Video[]
-  relatedArtists: RelatedArtist[]
   onSelectVideo: (video: Video) => void
-  onSelectArtist: (artist: { id: string; name: string }) => void
   watchedVideoIds: Set<string>
-}
-
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
 }
 
 function VideoThumbnail({
@@ -77,9 +65,7 @@ function VideoGrid({ children }: { children: React.ReactNode }) {
 export default function ContentCards({
   liveVideos,
   interviewVideos,
-  relatedArtists,
   onSelectVideo,
-  onSelectArtist,
   watchedVideoIds,
 }: Props) {
   const [expanded, setExpanded] = useState<string | null>("live")
@@ -195,37 +181,6 @@ export default function ContentCards({
         </ContentCard>
       )}
 
-      {/* Recommended Artists */}
-      {relatedArtists.length > 0 && (
-        <ContentCard
-          title="Recommended Artists"
-          isExpanded={true}
-          variant="cream"
-        >
-          <div className="space-y-3">
-            {relatedArtists.map((artist) => (
-              <button
-                key={artist.name}
-                type="button"
-                onClick={() =>
-                  onSelectArtist({
-                    id: toSlug(artist.name),
-                    name: artist.name.toUpperCase(),
-                  })
-                }
-                className="group block w-full text-left"
-              >
-                <div className="text-sm font-semibold text-black/70 group-hover:text-[#7a2d2b] transition">
-                  {artist.name}
-                </div>
-                <div className="text-[12px] text-black/40">
-                  {artist.reason}
-                </div>
-              </button>
-            ))}
-          </div>
-        </ContentCard>
-      )}
     </div>
   )
 }

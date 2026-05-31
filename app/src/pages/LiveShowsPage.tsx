@@ -206,25 +206,55 @@ export default function LiveShowsPage() {
 
       {!error && !isLoading && activeVideo && (
         <>
-          <section className="space-y-4" ref={heroRef}>
-            <VideoHero video={activeVideo} />
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
+            <section className="flex-[4] min-w-0 space-y-4" ref={heroRef}>
+              <VideoHero video={activeVideo} />
 
-            <div className="py-4">
-              <div className="font-display text-2xl tracking-[0.12em] text-black/75">
-                {decodeHtml(activeVideo.title)}
+              <div className="py-4">
+                <div className="font-display text-2xl tracking-[0.12em] text-black/75">
+                  {decodeHtml(activeVideo.title)}
+                </div>
+                <div className="mt-1 text-xs text-black/40">
+                  {activeVideo.channelTitle}
+                </div>
               </div>
-              <div className="mt-1 text-xs text-black/40">
-                {activeVideo.channelTitle}
-              </div>
-            </div>
-          </section>
+            </section>
+
+            {(artistPage.data?.artist.artist_context?.relatedArtists?.length ?? 0) > 0 && (
+              <aside className="w-full lg:flex-1 lg:shrink-0">
+                <div className="text-sm font-semibold uppercase tracking-[0.2em] text-black/65 mb-4">
+                  Recommended
+                </div>
+                <div className="space-y-3">
+                  {artistPage.data!.artist.artist_context!.relatedArtists.map((artist) => (
+                    <button
+                      key={artist.name}
+                      type="button"
+                      onClick={() =>
+                        setSelectedArtist({
+                          id: artist.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+                          name: artist.name.toUpperCase(),
+                        })
+                      }
+                      className="group block w-full text-left"
+                    >
+                      <div className="font-handwritten text-lg text-black/70 group-hover:text-[#7a2d2b] transition leading-tight">
+                        {artist.name}
+                      </div>
+                      <div className="text-[11px] text-black/35 mt-0.5">
+                        {artist.reason}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </aside>
+            )}
+          </div>
 
           <ContentCards
             liveVideos={more}
             interviewVideos={interviewVideos}
-            relatedArtists={artistPage.data?.artist.artist_context?.relatedArtists ?? []}
             onSelectVideo={handleSelectVideo}
-            onSelectArtist={setSelectedArtist}
             watchedVideoIds={watchedVideoIds}
           />
         </>
