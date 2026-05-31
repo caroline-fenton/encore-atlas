@@ -57,8 +57,8 @@ function VideoThumbnail({
           </span>
         )}
       </div>
-      <div className="mt-1.5">
-        <div className="line-clamp-2 text-[11px] font-semibold leading-tight text-white/60">
+      <div className="mt-2">
+        <div className="line-clamp-2 text-[13px] font-semibold leading-snug text-white/60">
           {decodeHtml(video.title)}
         </div>
       </div>
@@ -115,13 +115,13 @@ export default function ContentCards({
                       className="aspect-video w-full object-cover opacity-70 transition group-hover:opacity-100"
                     />
                     {v.duration && (
-                      <span className="absolute bottom-1 right-1 bg-black/70 px-1 py-0.5 text-[9px] text-white">
+                      <span className="absolute bottom-1 right-1 bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
                         {v.duration}
                       </span>
                     )}
                   </div>
                   <div className="mt-1">
-                    <div className="line-clamp-1 text-[10px] text-white/50">
+                    <div className="line-clamp-1 text-[12px] text-white/50">
                       {decodeHtml(v.title)}
                     </div>
                   </div>
@@ -168,13 +168,13 @@ export default function ContentCards({
                       className="aspect-video w-full object-cover opacity-70 transition group-hover:opacity-100"
                     />
                     {v.duration && (
-                      <span className="absolute bottom-1 right-1 bg-black/70 px-1 py-0.5 text-[9px] text-white">
+                      <span className="absolute bottom-1 right-1 bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
                         {v.duration}
                       </span>
                     )}
                   </div>
                   <div className="mt-1">
-                    <div className="line-clamp-1 text-[10px] text-white/50">
+                    <div className="line-clamp-1 text-[12px] text-white/50">
                       {decodeHtml(v.title)}
                     </div>
                   </div>
@@ -199,16 +199,10 @@ export default function ContentCards({
       {relatedArtists.length > 0 && (
         <ContentCard
           title="Recommended Artists"
-          isExpanded={expanded === "recommended"}
-          onToggle={() => toggle("recommended")}
-          preview={
-            <div className="text-[10px] text-white/40 truncate">
-              {relatedArtists.slice(0, 3).map((a) => a.name).join(", ")}
-              {relatedArtists.length > 3 && ` +${relatedArtists.length - 3}`}
-            </div>
-          }
+          isExpanded={true}
+          variant="cream"
         >
-          <div className="space-y-1.5">
+          <div className="space-y-3">
             {relatedArtists.map((artist) => (
               <button
                 key={artist.name}
@@ -221,10 +215,10 @@ export default function ContentCards({
                 }
                 className="group block w-full text-left"
               >
-                <div className="text-[12px] font-semibold text-white/70 group-hover:text-white transition">
+                <div className="text-sm font-semibold text-black/70 group-hover:text-[#7a2d2b] transition">
                   {artist.name}
                 </div>
-                <div className="text-[10px] text-white/30">
+                <div className="text-[12px] text-black/40">
                   {artist.reason}
                 </div>
               </button>
