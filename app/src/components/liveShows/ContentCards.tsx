@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState } from "react"
 import type { Video } from "../../types/video"
 import { decodeHtml } from "../../utils/decodeHtml"
 import ContentCard from "./ContentCard"
@@ -35,8 +35,7 @@ function VideoThumbnail({
     <button
       type="button"
       onClick={() => onSelect(video)}
-      className="group flex-none text-left"
-      style={{ width: "160px" }}
+      className="group block w-full text-left"
     >
       <div className="relative overflow-hidden">
         <img
@@ -48,18 +47,18 @@ function VideoThumbnail({
           ].join(" ")}
         />
         {video.duration && (
-          <span className="absolute bottom-1 right-1 bg-black/70 px-1 py-0.5 text-[9px] text-white">
+          <span className="absolute bottom-1 right-1 bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
             {video.duration}
           </span>
         )}
         {isWatched && (
-          <span className="absolute top-1 left-1 bg-white/20 px-1 py-0.5 text-[8px] uppercase tracking-wider text-white/70">
+          <span className="absolute top-1 left-1 bg-white/20 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/70">
             Watched
           </span>
         )}
       </div>
-      <div className="mt-1">
-        <div className="line-clamp-2 text-[10px] leading-tight text-white/60">
+      <div className="mt-1.5">
+        <div className="line-clamp-2 text-[11px] font-semibold leading-tight text-white/60">
           {decodeHtml(video.title)}
         </div>
       </div>
@@ -67,15 +66,9 @@ function VideoThumbnail({
   )
 }
 
-function HorizontalScroll({ children }: { children: React.ReactNode }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-
+function VideoGrid({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      ref={scrollRef}
-      className="flex gap-3 overflow-x-auto"
-      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-    >
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
       {children}
     </div>
   )
@@ -121,7 +114,7 @@ export default function ContentCards({
             </div>
           }
         >
-          <HorizontalScroll>
+          <VideoGrid>
             {liveVideos.map((v) => (
               <VideoThumbnail
                 key={v.id}
@@ -130,7 +123,7 @@ export default function ContentCards({
                 isWatched={watchedVideoIds.has(v.id)}
               />
             ))}
-          </HorizontalScroll>
+          </VideoGrid>
         </ContentCard>
       )}
 
@@ -158,7 +151,7 @@ export default function ContentCards({
             </div>
           }
         >
-          <HorizontalScroll>
+          <VideoGrid>
             {interviewVideos.map((v) => (
               <VideoThumbnail
                 key={v.id}
@@ -166,7 +159,7 @@ export default function ContentCards({
                 onSelect={onSelectVideo}
               />
             ))}
-          </HorizontalScroll>
+          </VideoGrid>
         </ContentCard>
       )}
 

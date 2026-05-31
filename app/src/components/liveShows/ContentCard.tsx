@@ -41,7 +41,7 @@ export default function ContentCard({
       <div
         className={[
           "transition-all duration-300 ease-in-out",
-          isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0",
+          isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0",
         ].join(" ")}
         style={{ overflow: isExpanded ? "visible" : "hidden" }}
       >
