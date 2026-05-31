@@ -97,20 +97,36 @@ export default function ContentCards({
           isExpanded={expanded === "live"}
           onToggle={() => toggle("live")}
           preview={
-            <div className="flex gap-2">
-              {liveVideos.slice(0, 2).map((v) => (
-                <img
+            <div className="grid grid-cols-3 gap-3 md:grid-cols-4">
+              {liveVideos.slice(0, 4).map((v) => (
+                <button
                   key={v.id}
-                  src={v.thumbnailUrl}
-                  alt={v.title}
-                  className="h-10 w-16 object-cover opacity-70"
-                />
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSelectVideo(v)
+                  }}
+                  className="group block text-left"
+                >
+                  <div className="relative overflow-hidden">
+                    <img
+                      src={v.thumbnailUrl}
+                      alt={v.title}
+                      className="aspect-video w-full object-cover opacity-70 transition group-hover:opacity-100"
+                    />
+                    {v.duration && (
+                      <span className="absolute bottom-1 right-1 bg-black/70 px-1 py-0.5 text-[9px] text-white">
+                        {v.duration}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1">
+                    <div className="line-clamp-1 text-[10px] text-white/50">
+                      {decodeHtml(v.title)}
+                    </div>
+                  </div>
+                </button>
               ))}
-              {liveVideos.length > 2 && (
-                <span className="flex items-center text-[10px] text-white/30">
-                  +{liveVideos.length - 2}
-                </span>
-              )}
             </div>
           }
         >
@@ -134,20 +150,36 @@ export default function ContentCards({
           isExpanded={expanded === "interviews"}
           onToggle={() => toggle("interviews")}
           preview={
-            <div className="flex gap-2">
-              {interviewVideos.slice(0, 2).map((v) => (
-                <img
+            <div className="grid grid-cols-3 gap-3 md:grid-cols-4">
+              {interviewVideos.slice(0, 4).map((v) => (
+                <button
                   key={v.id}
-                  src={v.thumbnailUrl}
-                  alt={v.title}
-                  className="h-10 w-16 object-cover opacity-70"
-                />
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSelectVideo(v)
+                  }}
+                  className="group block text-left"
+                >
+                  <div className="relative overflow-hidden">
+                    <img
+                      src={v.thumbnailUrl}
+                      alt={v.title}
+                      className="aspect-video w-full object-cover opacity-70 transition group-hover:opacity-100"
+                    />
+                    {v.duration && (
+                      <span className="absolute bottom-1 right-1 bg-black/70 px-1 py-0.5 text-[9px] text-white">
+                        {v.duration}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1">
+                    <div className="line-clamp-1 text-[10px] text-white/50">
+                      {decodeHtml(v.title)}
+                    </div>
+                  </div>
+                </button>
               ))}
-              {interviewVideos.length > 2 && (
-                <span className="flex items-center text-[10px] text-white/30">
-                  +{interviewVideos.length - 2}
-                </span>
-              )}
             </div>
           }
         >
