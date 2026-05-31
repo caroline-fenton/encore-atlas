@@ -205,33 +205,29 @@ export default function LiveShowsPage() {
       )}
 
       {!error && !isLoading && activeVideo && (
-        <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
-          <div className="flex-1 min-w-0 space-y-4">
-            <section className="space-y-4" ref={heroRef}>
-              <VideoHero video={activeVideo} />
+        <>
+          <section className="space-y-4" ref={heroRef}>
+            <VideoHero video={activeVideo} />
 
-              <div className="py-4">
-                <div className="font-display text-2xl tracking-[0.12em] text-black/75">
-                  {decodeHtml(activeVideo.title)}
-                </div>
-                <div className="mt-1 text-xs text-black/40">
-                  {activeVideo.channelTitle}
-                </div>
+            <div className="py-4">
+              <div className="font-display text-2xl tracking-[0.12em] text-black/75">
+                {decodeHtml(activeVideo.title)}
               </div>
-            </section>
-          </div>
+              <div className="mt-1 text-xs text-black/40">
+                {activeVideo.channelTitle}
+              </div>
+            </div>
+          </section>
 
-          <aside className="w-full lg:w-80 lg:shrink-0">
-            <ContentCards
-              liveVideos={more}
-              interviewVideos={interviewVideos}
-              relatedArtists={artistPage.data?.artist.artist_context?.relatedArtists ?? []}
-              onSelectVideo={handleSelectVideo}
-              onSelectArtist={setSelectedArtist}
-              watchedVideoIds={watchedVideoIds}
-            />
-          </aside>
-        </div>
+          <ContentCards
+            liveVideos={more}
+            interviewVideos={interviewVideos}
+            relatedArtists={artistPage.data?.artist.artist_context?.relatedArtists ?? []}
+            onSelectVideo={handleSelectVideo}
+            onSelectArtist={setSelectedArtist}
+            watchedVideoIds={watchedVideoIds}
+          />
+        </>
       )}
 
       <MerchSidebar artistId={selectedArtistId} artistName={selectedArtistName} />

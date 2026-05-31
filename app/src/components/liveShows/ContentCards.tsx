@@ -38,7 +38,7 @@ function VideoThumbnail({
       className="group flex-none text-left"
       style={{ width: "160px" }}
     >
-      <div className="relative overflow-hidden rounded-sm">
+      <div className="relative overflow-hidden">
         <img
           src={video.thumbnailUrl}
           alt={video.title}
@@ -110,7 +110,7 @@ export default function ContentCards({
                   key={v.id}
                   src={v.thumbnailUrl}
                   alt={v.title}
-                  className="h-10 w-16 rounded-sm object-cover opacity-70"
+                  className="h-10 w-16 object-cover opacity-70"
                 />
               ))}
               {liveVideos.length > 2 && (
@@ -147,7 +147,7 @@ export default function ContentCards({
                   key={v.id}
                   src={v.thumbnailUrl}
                   alt={v.title}
-                  className="h-10 w-16 rounded-sm object-cover opacity-70"
+                  className="h-10 w-16 object-cover opacity-70"
                 />
               ))}
               {interviewVideos.length > 2 && (

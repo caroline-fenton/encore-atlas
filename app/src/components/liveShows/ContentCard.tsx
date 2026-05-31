@@ -17,13 +17,13 @@ export default function ContentCard({
   preview,
 }: Props) {
   return (
-    <div className="overflow-hidden rounded-sm bg-[#2a2522] transition-all duration-300">
+    <div className="overflow-hidden bg-[#2a2522] transition-all duration-300">
       <button
         type="button"
         onClick={onToggle}
         className="flex w-full items-center justify-between px-4 py-3"
       >
-        <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/70">
+        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
           {title}
         </span>
         <ChevronDown
