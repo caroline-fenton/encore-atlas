@@ -207,18 +207,27 @@ export default function LiveShowsPage() {
       {!error && !isLoading && activeVideo && (
         <>
           <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
-            <section className="flex-[4] min-w-0 space-y-4" ref={heroRef}>
-              <VideoHero video={activeVideo} />
+            <div className="flex-[4] min-w-0 space-y-8">
+              <section className="space-y-4" ref={heroRef}>
+                <VideoHero video={activeVideo} />
 
-              <div className="py-4">
-                <div className="font-display text-2xl tracking-[0.12em] text-black/75">
-                  {decodeHtml(activeVideo.title)}
+                <div className="py-4">
+                  <div className="font-display text-2xl tracking-[0.12em] text-black/75">
+                    {decodeHtml(activeVideo.title)}
+                  </div>
+                  <div className="mt-1 text-xs text-black/40">
+                    {activeVideo.channelTitle}
+                  </div>
                 </div>
-                <div className="mt-1 text-xs text-black/40">
-                  {activeVideo.channelTitle}
-                </div>
-              </div>
-            </section>
+              </section>
+
+              <ContentCards
+                liveVideos={more}
+                interviewVideos={interviewVideos}
+                onSelectVideo={handleSelectVideo}
+                watchedVideoIds={watchedVideoIds}
+              />
+            </div>
 
             {(artistPage.data?.artist.artist_context?.relatedArtists?.length ?? 0) > 0 && (
               <aside className="w-full lg:flex-1 lg:shrink-0">
@@ -250,13 +259,6 @@ export default function LiveShowsPage() {
               </aside>
             )}
           </div>
-
-          <ContentCards
-            liveVideos={more}
-            interviewVideos={interviewVideos}
-            onSelectVideo={handleSelectVideo}
-            watchedVideoIds={watchedVideoIds}
-          />
         </>
       )}
 
