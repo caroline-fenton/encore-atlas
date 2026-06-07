@@ -244,7 +244,7 @@ export default function LiveShowsPage() {
                             name: artist.name.toUpperCase(),
                           })
                         }
-                        className="group relative aspect-square p-1.5"
+                        className="group relative aspect-square border border-black/70"
                         style={{
                           backgroundColor: [
                             "#c44536", "#8b5e3c", "#4a7c59", "#2d6a8f",
@@ -254,7 +254,7 @@ export default function LiveShowsPage() {
                         }}
                       >
                         {/* White border inset */}
-                        <div className="absolute inset-[5px] border-2 border-white/80" />
+                        <div className="absolute inset-[4px] border-2 border-white/80" />
                         {/* Grain overlay */}
                         <div
                           className="absolute inset-0 opacity-[0.08] mix-blend-multiply"
@@ -263,7 +263,10 @@ export default function LiveShowsPage() {
                           }}
                         />
                         <div className="absolute inset-0 flex items-center justify-center p-4">
-                          <span className="font-display text-center text-lg leading-none tracking-[0.08em] text-white/90 group-hover:text-white transition uppercase">
+                          <span
+                            className="font-display text-center text-xl leading-none tracking-[0.06em] text-white/90 group-hover:text-white transition uppercase"
+                            style={{ transform: "scaleY(1.3)", transformOrigin: "center" }}
+                          >
                             {artist.name}
                           </span>
                         </div>
