@@ -244,7 +244,7 @@ export default function LiveShowsPage() {
                             name: artist.name.toUpperCase(),
                           })
                         }
-                        className="group relative aspect-square border border-black/70"
+                        className="group relative aspect-square border-[3px] border-black/70"
                         style={{
                           backgroundColor: [
                             "#c44536", "#8b5e3c", "#4a7c59", "#2d6a8f",
@@ -253,8 +253,8 @@ export default function LiveShowsPage() {
                           ][i % 12],
                         }}
                       >
-                        {/* White border inset */}
-                        <div className="absolute inset-[6px] border-[2.5px] border-white/80" />
+                        {/* White border — flush against the dark outer border */}
+                        <div className="absolute inset-0 border-[5px] border-white/80" />
                         {/* Grain overlay */}
                         <div
                           className="absolute inset-0 opacity-[0.08] mix-blend-multiply"
@@ -262,12 +262,13 @@ export default function LiveShowsPage() {
                             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
                           }}
                         />
-                        <div className="absolute inset-[10px] flex items-center justify-center">
+                        <div className="absolute inset-[8px] flex items-center justify-center overflow-hidden">
                           <span
                             className={[
-                              "font-display text-center leading-none tracking-[0.06em] text-white/90 group-hover:text-white transition uppercase",
-                              artist.name.length > 20 ? "text-sm" :
-                              artist.name.length > 14 ? "text-base" : "text-xl",
+                              "font-display text-center leading-[1.1] tracking-[0.04em] text-white/90 group-hover:text-white transition uppercase break-words w-full",
+                              artist.name.length > 22 ? "text-xs" :
+                              artist.name.length > 16 ? "text-sm" :
+                              artist.name.length > 10 ? "text-base" : "text-xl",
                             ].join(" ")}
                             style={{ transform: "scaleY(1.3)", transformOrigin: "center" }}
                           >
