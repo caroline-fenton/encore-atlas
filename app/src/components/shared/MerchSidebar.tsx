@@ -2,6 +2,44 @@ import { getMerchForArtist, getCategoryLabel, getStoreLinks } from "../../data/m
 import type { MerchItem } from "../../types/merch"
 import { ExternalLink, ShoppingBag } from "lucide-react"
 
+function BandcampLogo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 580 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M27.3 20h525.4L502.7 80H27.3z" fillOpacity="0" />
+      <text x="40" y="72" fontFamily="Arial, sans-serif" fontWeight="700" fontSize="64" letterSpacing="2">
+        bandcamp
+      </text>
+    </svg>
+  )
+}
+
+function AmazonLogo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 500 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <text x="20" y="72" fontFamily="Arial, sans-serif" fontWeight="700" fontSize="64" letterSpacing="1">
+        amazon
+      </text>
+      <path d="M20 82 C120 95, 280 98, 410 78" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function RedbubbleLogo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 600 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <text x="20" y="72" fontFamily="Arial, sans-serif" fontWeight="700" fontSize="64" letterSpacing="1">
+        redbubble
+      </text>
+    </svg>
+  )
+}
+
+const storeLogo: Record<string, React.FC<{ className?: string }>> = {
+  Bandcamp: BandcampLogo,
+  Amazon: AmazonLogo,
+  Redbubble: RedbubbleLogo,
+}
+
 function FeaturedCard({ item }: { item: MerchItem }) {
   return (
     <a
@@ -70,10 +108,11 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
   const { featured, byCategory } = getMerchForArtist(artistId)
   const categories = Object.keys(byCategory)
   const stores = getStoreLinks(artistName)
+  const hasCuratedMerch = featured || categories.length > 0
 
   return (
-    <div className="space-y-5 pl-6">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/65">
+    <div className="space-y-5">
+      <div className="text-sm font-semibold uppercase tracking-[0.2em] text-black/65">
         Merch
       </div>
 
@@ -92,18 +131,27 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
         </div>
       ))}
 
-      <div className="space-y-1.5">
-        {stores.map((store) => (
-          <a
-            key={store.name}
-            href={store.url}
-            target="_blank"
-            rel="noreferrer"
-            className="group block py-0.5 font-display text-xs tracking-[0.08em] text-black/65 transition hover:text-[#7a2d2b]"
-          >
-            {store.name}
-          </a>
-        ))}
+      <div className="space-y-3">
+        {stores.map((store) => {
+          const Logo = storeLogo[store.name]
+          return (
+            <a
+              key={store.name}
+              href={store.url}
+              target="_blank"
+              rel="noreferrer"
+              className="group block text-black/40 transition hover:text-[#7a2d2b]"
+            >
+              {!hasCuratedMerch && Logo ? (
+                <Logo className="h-6 w-auto" />
+              ) : (
+                <span className="font-display text-xs tracking-[0.08em]">
+                  {store.name}
+                </span>
+              )}
+            </a>
+          )
+        })}
       </div>
     </div>
   )
