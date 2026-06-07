@@ -244,24 +244,26 @@ export default function LiveShowsPage() {
                             name: artist.name.toUpperCase(),
                           })
                         }
-                        className="group relative aspect-square overflow-hidden"
+                        className="group relative aspect-square p-1.5"
                         style={{
                           backgroundColor: [
-                            "#c44536", "#8b5e3c", "#4a7c59", "#2d6a8f",
-                            "#7a4988", "#b5651d", "#3d5a80", "#944e3c",
-                            "#5c6d3f", "#8f3b4a", "#6b7b3a", "#3b6978",
+                            "#5bc0eb", "#e8a87c", "#d5e68d", "#f4a6d7",
+                            "#95dab6", "#f7d488", "#b8d4e3", "#f2b880",
+                            "#a8d8ea", "#e6c79c", "#c4e3cb", "#eab8d1",
                           ][i % 12],
                         }}
                       >
+                        {/* White border inset */}
+                        <div className="absolute inset-[5px] border-2 border-white/80" />
                         {/* Grain overlay */}
                         <div
-                          className="absolute inset-0 opacity-[0.12] mix-blend-overlay"
+                          className="absolute inset-0 opacity-[0.08] mix-blend-multiply"
                           style={{
                             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
                           }}
                         />
-                        <div className="absolute inset-0 flex items-center justify-center p-2">
-                          <span className="font-display text-center text-lg leading-none tracking-[0.08em] text-white/90 group-hover:text-white transition uppercase">
+                        <div className="absolute inset-0 flex items-center justify-center p-4">
+                          <span className="font-display text-center text-lg leading-none tracking-[0.08em] text-black/85 group-hover:text-black transition uppercase">
                             {artist.name}
                           </span>
                         </div>
