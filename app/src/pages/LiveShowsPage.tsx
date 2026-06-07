@@ -254,7 +254,7 @@ export default function LiveShowsPage() {
                         }}
                       >
                         {/* White border inset */}
-                        <div className="absolute inset-[4px] border-2 border-white/80" />
+                        <div className="absolute inset-[6px] border-[2.5px] border-white/80" />
                         {/* Grain overlay */}
                         <div
                           className="absolute inset-0 opacity-[0.08] mix-blend-multiply"
@@ -262,9 +262,13 @@ export default function LiveShowsPage() {
                             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
                           }}
                         />
-                        <div className="absolute inset-0 flex items-center justify-center p-4">
+                        <div className="absolute inset-[10px] flex items-center justify-center">
                           <span
-                            className="font-display text-center text-xl leading-none tracking-[0.06em] text-white/90 group-hover:text-white transition uppercase"
+                            className={[
+                              "font-display text-center leading-none tracking-[0.06em] text-white/90 group-hover:text-white transition uppercase",
+                              artist.name.length > 20 ? "text-sm" :
+                              artist.name.length > 14 ? "text-base" : "text-xl",
+                            ].join(" ")}
                             style={{ transform: "scaleY(1.3)", transformOrigin: "center" }}
                           >
                             {artist.name}
