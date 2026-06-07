@@ -93,16 +93,20 @@ export default function LiveShowsPage() {
     selectedArtistName,
   )
 
-  const featured = filtered.length > 0 ? filtered[0] : null
-  const more = filtered.length > 1 ? filtered.slice(1) : []
+  // Hero always uses the first video from the full list (unfiltered).
+  // Decade filter only affects "More Live Sets".
+  const featured = allVideos.length > 0 ? allVideos[0] : null
+  const more = selectedDecade
+    ? filtered.filter((v) => v.id !== featured?.id)
+    : allVideos.length > 1 ? allVideos.slice(1) : []
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
-  const resetKey = `${featured?.id}::${selectedDecade}`
-  const [prevResetKey, setPrevResetKey] = useState(resetKey)
+  const prevArtistRef = useRef(selectedArtistName)
 
-  if (prevResetKey !== resetKey) {
-    setPrevResetKey(resetKey)
+  // Only reset nowPlaying when the artist changes, not on decade filter
+  if (prevArtistRef.current !== selectedArtistName) {
+    prevArtistRef.current = selectedArtistName
     setNowPlaying(null)
   }
 
