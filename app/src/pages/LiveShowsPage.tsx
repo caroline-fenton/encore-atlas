@@ -229,8 +229,8 @@ export default function LiveShowsPage() {
                   <div className="text-sm font-semibold uppercase tracking-[0.2em] text-black/65 mb-4">
                     Recommended
                   </div>
-                  <div className="space-y-3">
-                    {artistPage.data!.artist.artist_context!.relatedArtists.map((artist) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {artistPage.data!.artist.artist_context!.relatedArtists.map((artist, i) => (
                       <button
                         key={artist.name}
                         type="button"
@@ -240,13 +240,26 @@ export default function LiveShowsPage() {
                             name: artist.name.toUpperCase(),
                           })
                         }
-                        className="group block w-full text-left"
+                        className="group relative aspect-square overflow-hidden"
+                        style={{
+                          backgroundColor: [
+                            "#c44536", "#8b5e3c", "#4a7c59", "#2d6a8f",
+                            "#7a4988", "#b5651d", "#3d5a80", "#944e3c",
+                            "#5c6d3f", "#8f3b4a", "#6b7b3a", "#3b6978",
+                          ][i % 12],
+                        }}
                       >
-                        <div className="font-handwritten text-lg text-black/70 group-hover:text-[#7a2d2b] transition leading-tight">
-                          {artist.name}
-                        </div>
-                        <div className="text-[11px] text-black/35 mt-0.5">
-                          {artist.reason}
+                        {/* Grain overlay */}
+                        <div
+                          className="absolute inset-0 opacity-[0.12] mix-blend-overlay"
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+                          }}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center p-2">
+                          <span className="font-display text-center text-lg leading-none tracking-[0.08em] text-white/90 group-hover:text-white transition uppercase">
+                            {artist.name}
+                          </span>
                         </div>
                       </button>
                     ))}
