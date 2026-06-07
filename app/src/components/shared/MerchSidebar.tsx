@@ -2,44 +2,6 @@ import { getMerchForArtist, getCategoryLabel, getStoreLinks } from "../../data/m
 import type { MerchItem } from "../../types/merch"
 import { ExternalLink, ShoppingBag } from "lucide-react"
 
-function BandcampLogo({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 580 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <path d="M27.3 20h525.4L502.7 80H27.3z" fillOpacity="0" />
-      <text x="40" y="72" fontFamily="Arial, sans-serif" fontWeight="700" fontSize="64" letterSpacing="2">
-        bandcamp
-      </text>
-    </svg>
-  )
-}
-
-function AmazonLogo({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 500 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <text x="20" y="72" fontFamily="Arial, sans-serif" fontWeight="700" fontSize="64" letterSpacing="1">
-        amazon
-      </text>
-      <path d="M20 82 C120 95, 280 98, 410 78" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function RedbubbleLogo({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 600 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <text x="20" y="72" fontFamily="Arial, sans-serif" fontWeight="700" fontSize="64" letterSpacing="1">
-        redbubble
-      </text>
-    </svg>
-  )
-}
-
-const storeLogo: Record<string, React.FC<{ className?: string }>> = {
-  Bandcamp: BandcampLogo,
-  Amazon: AmazonLogo,
-  Redbubble: RedbubbleLogo,
-}
-
 function FeaturedCard({ item }: { item: MerchItem }) {
   return (
     <a
@@ -132,26 +94,22 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
       ))}
 
       <div className="space-y-3">
-        {stores.map((store) => {
-          const Logo = storeLogo[store.name]
-          return (
-            <a
-              key={store.name}
-              href={store.url}
-              target="_blank"
-              rel="noreferrer"
-              className="group block text-black/40 transition hover:text-[#7a2d2b]"
-            >
-              {!hasCuratedMerch && Logo ? (
-                <Logo className="h-6 w-auto" />
-              ) : (
-                <span className="font-display text-xs tracking-[0.08em]">
-                  {store.name}
-                </span>
-              )}
-            </a>
-          )
-        })}
+        {stores.map((store) => (
+          <a
+            key={store.name}
+            href={store.url}
+            target="_blank"
+            rel="noreferrer"
+            className="group block text-black/40 transition hover:text-[#7a2d2b]"
+          >
+            <span className={hasCuratedMerch
+              ? "font-display text-xs tracking-[0.08em]"
+              : "text-base font-bold tracking-wide lowercase"
+            }>
+              {store.name}
+            </span>
+          </a>
+        ))}
       </div>
     </div>
   )
