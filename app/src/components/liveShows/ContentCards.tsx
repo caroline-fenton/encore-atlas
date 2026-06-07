@@ -2,12 +2,16 @@ import { useState } from "react"
 import type { Video } from "../../types/video"
 import { decodeHtml } from "../../utils/decodeHtml"
 import ContentCard from "./ContentCard"
+import DecadeFilter from "../shared/DecadeFilter"
 
 type Props = {
   liveVideos: Video[]
   interviewVideos: Video[]
   onSelectVideo: (video: Video) => void
   watchedVideoIds: Set<string>
+  allVideos: Video[]
+  selectedDecade: string | null
+  onSelectDecade: (decade: string | null) => void
 }
 
 function VideoThumbnail({
@@ -67,6 +71,9 @@ export default function ContentCards({
   interviewVideos,
   onSelectVideo,
   watchedVideoIds,
+  allVideos,
+  selectedDecade,
+  onSelectDecade,
 }: Props) {
   const [expanded, setExpanded] = useState<string | null>("live")
 
@@ -116,16 +123,25 @@ export default function ContentCards({
             </div>
           }
         >
-          <VideoGrid>
-            {liveVideos.map((v) => (
-              <VideoThumbnail
-                key={v.id}
-                video={v}
-                onSelect={onSelectVideo}
-                isWatched={watchedVideoIds.has(v.id)}
+          <div className="space-y-4">
+            {allVideos.length > 0 && (
+              <DecadeFilter
+                videos={allVideos}
+                selected={selectedDecade}
+                onSelect={onSelectDecade}
               />
-            ))}
-          </VideoGrid>
+            )}
+            <VideoGrid>
+              {liveVideos.map((v) => (
+                <VideoThumbnail
+                  key={v.id}
+                  video={v}
+                  onSelect={onSelectVideo}
+                  isWatched={watchedVideoIds.has(v.id)}
+                />
+              ))}
+            </VideoGrid>
+          </div>
         </ContentCard>
       )}
 

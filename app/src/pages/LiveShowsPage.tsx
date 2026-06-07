@@ -155,14 +155,6 @@ export default function LiveShowsPage() {
         isLoading={isLoading}
       />
 
-      {!isLoading && allVideos.length > 0 && (
-        <DecadeFilter
-          videos={allVideos}
-          selected={selectedDecade}
-          onSelect={setSelectedDecade}
-        />
-      )}
-
       {error && <ErrorState message={error} onRetry={retry} />}
 
       {!error && isLoading && (
@@ -226,6 +218,9 @@ export default function LiveShowsPage() {
                 interviewVideos={interviewVideos}
                 onSelectVideo={handleSelectVideo}
                 watchedVideoIds={watchedVideoIds}
+                allVideos={allVideos}
+                selectedDecade={selectedDecade}
+                onSelectDecade={setSelectedDecade}
               />
             </div>
 
