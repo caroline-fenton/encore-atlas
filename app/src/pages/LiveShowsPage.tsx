@@ -247,9 +247,9 @@ export default function LiveShowsPage() {
                         className="group relative aspect-square p-1.5"
                         style={{
                           backgroundColor: [
-                            "#5bc0eb", "#e8a87c", "#d5e68d", "#f4a6d7",
-                            "#95dab6", "#f7d488", "#b8d4e3", "#f2b880",
-                            "#a8d8ea", "#e6c79c", "#c4e3cb", "#eab8d1",
+                            "#c44536", "#8b5e3c", "#4a7c59", "#2d6a8f",
+                            "#7a4988", "#b5651d", "#3d5a80", "#944e3c",
+                            "#5c6d3f", "#8f3b4a", "#6b7b3a", "#3b6978",
                           ][i % 12],
                         }}
                       >
@@ -263,7 +263,7 @@ export default function LiveShowsPage() {
                           }}
                         />
                         <div className="absolute inset-0 flex items-center justify-center p-4">
-                          <span className="font-display text-center text-lg leading-none tracking-[0.08em] text-black/85 group-hover:text-black transition uppercase">
+                          <span className="font-display text-center text-lg leading-none tracking-[0.08em] text-white/90 group-hover:text-white transition uppercase">
                             {artist.name}
                           </span>
                         </div>
