@@ -40,13 +40,13 @@ function VideoThumbnail({
           </span>
         )}
         {isWatched && (
-          <span className="absolute top-1 left-1 bg-white/20 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/70">
+          <span className="absolute top-1 left-1 bg-white/20 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-black/60">
             Watched
           </span>
         )}
       </div>
       <div className="mt-2">
-        <div className="line-clamp-2 text-[13px] font-semibold leading-snug text-white/60">
+        <div className="line-clamp-2 text-[13px] font-semibold leading-snug text-black/70">
           {decodeHtml(video.title)}
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function ContentCards({
                     )}
                   </div>
                   <div className="mt-1">
-                    <div className="line-clamp-1 text-[12px] text-white/50">
+                    <div className="line-clamp-1 text-[12px] text-black/50">
                       {decodeHtml(v.title)}
                     </div>
                   </div>
@@ -160,7 +160,7 @@ export default function ContentCards({
                     )}
                   </div>
                   <div className="mt-1">
-                    <div className="line-clamp-1 text-[12px] text-white/50">
+                    <div className="line-clamp-1 text-[12px] text-black/50">
                       {decodeHtml(v.title)}
                     </div>
                   </div>
