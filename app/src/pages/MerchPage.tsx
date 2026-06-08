@@ -10,7 +10,7 @@ function MerchCard({ item }: { item: MerchItem }) {
       href={item.storeUrl}
       target="_blank"
       rel="noreferrer"
-      className="group flex gap-4 rounded-sm border border-stone-200 bg-white/60 p-4 transition hover:border-[#7a2d2b]/30 hover:shadow-sm"
+      className="group flex gap-4 rounded-sm border border-stone-200 bg-white/60 p-4 transition hover:border-[#d94f43]/30 hover:shadow-sm"
     >
       <img
         src={item.imageUrl}
@@ -20,7 +20,7 @@ function MerchCard({ item }: { item: MerchItem }) {
 
       <div className="flex flex-1 flex-col justify-between py-0.5">
         <div>
-          <h3 className="font-display text-sm tracking-[0.08em] text-black/80 group-hover:text-[#7a2d2b]">
+          <h3 className="font-display text-sm tracking-[0.08em] text-black/80 group-hover:text-[#d94f43]">
             {item.name}
           </h3>
           {item.description && (
@@ -45,7 +45,7 @@ function FeaturedMerchCard({ item }: { item: MerchItem }) {
       href={item.storeUrl}
       target="_blank"
       rel="noreferrer"
-      className="group relative flex flex-col overflow-hidden rounded-sm border border-stone-200 bg-white/60 transition hover:border-[#7a2d2b]/30 hover:shadow-sm sm:flex-row"
+      className="group relative flex flex-col overflow-hidden rounded-sm border border-stone-200 bg-white/60 transition hover:border-[#d94f43]/30 hover:shadow-sm sm:flex-row"
     >
       <img
         src={item.imageUrl}
@@ -55,11 +55,11 @@ function FeaturedMerchCard({ item }: { item: MerchItem }) {
 
       <div className="flex flex-1 flex-col justify-between p-6">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-sm bg-[#7a2d2b]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7a2d2b]">
+          <div className="inline-flex items-center gap-2 rounded-sm bg-[#d94f43]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#d94f43]">
             <ShoppingBag className="h-3 w-3" />
             Featured
           </div>
-          <h3 className="mt-3 font-display text-xl tracking-[0.1em] text-black/80 group-hover:text-[#7a2d2b]">
+          <h3 className="mt-3 font-display text-xl tracking-[0.1em] text-black/80 group-hover:text-[#d94f43]">
             {item.name}
           </h3>
           {item.description && (
@@ -97,12 +97,12 @@ function BrowseStores({ artistName }: { artistName: string }) {
             href={store.url}
             target="_blank"
             rel="noreferrer"
-            className="group flex items-center justify-between rounded-sm border border-stone-200 bg-white/60 px-5 py-4 transition hover:border-[#7a2d2b]/30 hover:shadow-sm"
+            className="group flex items-center justify-between rounded-sm border border-stone-200 bg-white/60 px-5 py-4 transition hover:border-[#d94f43]/30 hover:shadow-sm"
           >
-            <span className="font-display text-sm tracking-[0.08em] text-black/70 group-hover:text-[#7a2d2b]">
+            <span className="font-display text-sm tracking-[0.08em] text-black/70 group-hover:text-[#d94f43]">
               {store.name}
             </span>
-            <ExternalLink className="h-4 w-4 text-black/30 group-hover:text-[#7a2d2b]" />
+            <ExternalLink className="h-4 w-4 text-black/30 group-hover:text-[#d94f43]" />
           </a>
         ))}
       </div>

@@ -43,9 +43,9 @@ export default function RecommendedArtists({
                   name: artist.name.toUpperCase(),
                 })
               }
-              className="group flex flex-col gap-1.5 rounded-sm border border-stone-200 bg-white/40 px-4 py-3 text-left transition-colors hover:border-[#7a2d2b]/30 hover:bg-white/70"
+              className="group flex flex-col gap-1.5 rounded-sm border border-stone-200 bg-white/40 px-4 py-3 text-left transition-colors hover:border-[#d94f43]/30 hover:bg-white/70"
             >
-              <span className="font-display text-base tracking-[0.12em] text-black/80 group-hover:text-[#7a2d2b]">
+              <span className="font-display text-base tracking-[0.12em] text-black/80 group-hover:text-[#d94f43]">
                 {artist.name.toUpperCase()}
               </span>
               {artist.reason && (
@@ -77,9 +77,9 @@ export default function RecommendedArtists({
                 name: rec.name.toUpperCase(),
               })
             }
-            className="group flex flex-col gap-2 rounded-sm border border-stone-200 bg-white/40 px-4 py-3 text-left transition-colors hover:border-[#7a2d2b]/30 hover:bg-white/70"
+            className="group flex flex-col gap-2 rounded-sm border border-stone-200 bg-white/40 px-4 py-3 text-left transition-colors hover:border-[#d94f43]/30 hover:bg-white/70"
           >
-            <span className="font-display text-base tracking-[0.12em] text-black/80 group-hover:text-[#7a2d2b]">
+            <span className="font-display text-base tracking-[0.12em] text-black/80 group-hover:text-[#d94f43]">
               {rec.name.toUpperCase()}
             </span>
 

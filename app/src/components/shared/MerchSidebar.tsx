@@ -8,7 +8,7 @@ function FeaturedCard({ item }: { item: MerchItem }) {
       href={item.storeUrl}
       target="_blank"
       rel="noreferrer"
-      className="group flex flex-col overflow-hidden border border-stone-200 bg-white/60 transition hover:border-[#7a2d2b]/30 hover:shadow-sm"
+      className="group flex flex-col overflow-hidden border border-stone-200 bg-white/60 transition hover:border-[#d94f43]/30 hover:shadow-sm"
     >
       <img
         src={item.imageUrl}
@@ -16,11 +16,11 @@ function FeaturedCard({ item }: { item: MerchItem }) {
         className="h-36 w-full object-cover"
       />
       <div className="p-3 space-y-1.5">
-        <div className="inline-flex items-center gap-1.5 bg-[#7a2d2b]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#7a2d2b]">
+        <div className="inline-flex items-center gap-1.5 bg-[#d94f43]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#d94f43]">
           <ShoppingBag className="h-2.5 w-2.5" />
           Featured
         </div>
-        <div className="font-display text-sm tracking-[0.08em] text-black/80 group-hover:text-[#7a2d2b]">
+        <div className="font-display text-sm tracking-[0.08em] text-black/80 group-hover:text-[#d94f43]">
           {item.name}
         </div>
         {item.description && (
@@ -41,7 +41,7 @@ function ItemCard({ item }: { item: MerchItem }) {
       href={item.storeUrl}
       target="_blank"
       rel="noreferrer"
-      className="group flex gap-3 border border-stone-200 bg-white/60 p-3 transition hover:border-[#7a2d2b]/30 hover:shadow-sm"
+      className="group flex gap-3 border border-stone-200 bg-white/60 p-3 transition hover:border-[#d94f43]/30 hover:shadow-sm"
     >
       <img
         src={item.imageUrl}
@@ -49,7 +49,7 @@ function ItemCard({ item }: { item: MerchItem }) {
         className="h-14 w-14 shrink-0 object-cover"
       />
       <div className="flex min-w-0 flex-col justify-between py-0.5">
-        <div className="font-display text-xs tracking-[0.08em] text-black/80 group-hover:text-[#7a2d2b] leading-snug">
+        <div className="font-display text-xs tracking-[0.08em] text-black/80 group-hover:text-[#d94f43] leading-snug">
           {item.name}
         </div>
         <div className="flex items-center gap-1 text-[10px] font-typewriter text-black/40">
