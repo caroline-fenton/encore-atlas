@@ -16,7 +16,6 @@ import EmptyState from "../components/shared/EmptyState"
 import BuildingState from "../components/shared/BuildingState"
 import ContentCards from "../components/liveShows/ContentCards"
 import ArtistLocationMap from "../components/shared/ArtistLocationMap"
-import { decodeHtml } from "../utils/decodeHtml"
 
 /**
  * Maps cached artist_videos rows to the Video type used by display components.
@@ -210,14 +209,6 @@ export default function LiveShowsPage() {
               <section className="space-y-4" ref={heroRef}>
                 <VideoHero video={activeVideo} />
 
-                <div className="py-4">
-                  <div className="font-display text-2xl tracking-[0.12em] text-black/75">
-                    {decodeHtml(activeVideo.title)}
-                  </div>
-                  <div className="mt-1 text-xs text-black/40">
-                    {activeVideo.channelTitle}
-                  </div>
-                </div>
               </section>
 
               <ContentCards
