@@ -276,8 +276,8 @@ export default function LiveShowsPage() {
                                 className={[
                                   "font-display text-center tracking-[0.04em] transition block",
                                   "text-black/85 group-hover:text-black",
-                                  longestWord > 10 ? "text-base" :
-                                  longestWord > 7 ? "text-lg" : "text-2xl",
+                                  longestWord > 10 ? "text-xl" :
+                                  longestWord > 7 ? "text-2xl" : "text-4xl",
                                 ].join(" ")}
                                 style={{
                                   transform: "scaleY(1.3)",
