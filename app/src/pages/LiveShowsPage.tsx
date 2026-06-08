@@ -244,7 +244,7 @@ export default function LiveShowsPage() {
                             name: artist.name.toUpperCase(),
                           })
                         }
-                        className="group relative aspect-square border border-black/50"
+                        className="group relative aspect-square border border-black/50 shadow-md"
                         style={{
                           backgroundColor: [
                             "#c44536", "#5bc0eb", "#d5e68d",
