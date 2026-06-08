@@ -2,23 +2,20 @@ import { useOutletContext } from "react-router-dom"
 import { useRef, useState, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
-import { useArtistConcerts } from "../hooks/useVideos"
+import { useArtistConcerts, useArtistInterviews, useArtistMusicVideos } from "../hooks/useVideos"
 import { useArtistPage } from "../hooks/useArtistPage"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import { useWatchHistory } from "../hooks/useWatchHistory"
 import ArtistBio from "../components/shared/ArtistBio"
 import MerchSidebar from "../components/shared/MerchSidebar"
-import DecadeFilter from "../components/shared/DecadeFilter"
 import VideoHero from "../components/liveShows/VideoHero"
-import VideoCard from "../components/liveShows/VideoCard"
 import VideoHeroSkeleton from "../components/shared/VideoHeroSkeleton"
 import VideoCardSkeleton from "../components/shared/VideoCardSkeleton"
 import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
 import BuildingState from "../components/shared/BuildingState"
-import RecommendedArtists from "../components/shared/RecommendedArtists"
-import { useRecommendations } from "../hooks/useRecommendations"
-import { decodeHtml } from "../utils/decodeHtml"
+import ContentCards from "../components/liveShows/ContentCards"
+import ArtistLocationMap from "../components/shared/ArtistLocationMap"
 
 /**
  * Maps cached artist_videos rows to the Video type used by display components.
@@ -90,22 +87,27 @@ export default function LiveShowsPage() {
     waitForAuth,
   )
 
-  const { recommendations } = useRecommendations(user)
+  const { videos: interviewVideos } = useArtistInterviews(selectedArtistName)
+  const { videos: musicVideos } = useArtistMusicVideos(selectedArtistName)
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(
     allVideos,
     selectedArtistName,
   )
 
-  const featured = filtered.length > 0 ? filtered[0] : null
-  const more = filtered.length > 1 ? filtered.slice(1) : []
+  // Hero always uses the first video from the full list (unfiltered).
+  // Decade filter only affects "More Live Sets".
+  const featured = allVideos.length > 0 ? allVideos[0] : null
+  const more = selectedDecade
+    ? filtered.filter((v) => v.id !== featured?.id)
+    : allVideos.length > 1 ? allVideos.slice(1) : []
 
   const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
   const heroRef = useRef<HTMLDivElement>(null)
-  const resetKey = `${featured?.id}::${selectedDecade}`
-  const [prevResetKey, setPrevResetKey] = useState(resetKey)
+  const prevArtistRef = useRef(selectedArtistName)
 
-  if (prevResetKey !== resetKey) {
-    setPrevResetKey(resetKey)
+  // Only reset nowPlaying when the artist changes, not on decade filter
+  if (prevArtistRef.current !== selectedArtistName) {
+    prevArtistRef.current = selectedArtistName
     setNowPlaying(null)
   }
 
@@ -139,15 +141,18 @@ export default function LiveShowsPage() {
           {selectedArtistName}
         </h1>
         {useCached && artistPage.data?.artist.tags && (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-black/50">
             {artistPage.data.artist.tags.map((tag, i) => (
-              <span
-                key={tag}
-                className="text-[10px] font-semibold uppercase tracking-[0.15em] text-black/50"
-              >
+              <span key={tag}>
                 {i > 0 && "·"} {tag}
               </span>
             ))}
+            {artistPage.data?.artist.artist_context?.city && (
+              <span>· {artistPage.data.artist.artist_context.city}</span>
+            )}
+            {artistPage.data?.artist.artist_context?.yearsActive && (
+              <span>· {artistPage.data.artist.artist_context.yearsActive}</span>
+            )}
           </div>
         )}
       </header>
@@ -156,14 +161,6 @@ export default function LiveShowsPage() {
         context={artistPage.data?.artist.artist_context ?? null}
         isLoading={isLoading}
       />
-
-      {!isLoading && allVideos.length > 0 && (
-        <DecadeFilter
-          videos={allVideos}
-          selected={selectedDecade}
-          onSelect={setSelectedDecade}
-        />
-      )}
 
       {error && <ErrorState message={error} onRetry={retry} />}
 
@@ -199,7 +196,7 @@ export default function LiveShowsPage() {
             type="button"
             onClick={loadMore}
             disabled={isLoadingMore}
-            className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
+            className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#d94f43]/30 hover:text-[#d94f43] disabled:opacity-50"
           >
             {isLoadingMore ? "Loading..." : "Load More"}
           </button>
@@ -208,71 +205,106 @@ export default function LiveShowsPage() {
 
       {!error && !isLoading && activeVideo && (
         <>
-          <section className="space-y-4" ref={heroRef}>
-            <VideoHero video={activeVideo} />
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
+            <div className="flex-[4] min-w-0 space-y-8">
+              <section className="space-y-4" ref={heroRef}>
+                <VideoHero video={activeVideo} />
 
-            <div className="py-4">
-              <div className="font-display text-2xl tracking-[0.12em] text-black/75">
-                {decodeHtml(activeVideo.title)}
-              </div>
-              <div className="mt-1 text-xs text-black/40">
-                {activeVideo.channelTitle}
-              </div>
+              </section>
+
+              <ContentCards
+                liveVideos={more}
+                interviewVideos={interviewVideos}
+                musicVideos={musicVideos}
+                onSelectVideo={handleSelectVideo}
+                watchedVideoIds={watchedVideoIds}
+                allVideos={allVideos}
+                selectedDecade={selectedDecade}
+                onSelectDecade={setSelectedDecade}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
+              />
             </div>
-          </section>
 
-          <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
-            <div className="flex-1 min-w-0">
-              {(more.length > 0 || hasMore) && (
-                <section className="space-y-4">
-                  {more.length > 0 && (
-                    <>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/65">
-                        More Live Sets
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        {more.map((v, i) => (
-                          <div key={v.id} style={{ transform: `translateY(${[0, 22, 8, 30, -4, 18][i % 6]}px)` }}>
-                            <VideoCard
-                              video={v}
-                              onSelect={handleSelectVideo}
-                              isWatched={watchedVideoIds.has(v.id)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {hasMore && (
-                    <div className="pt-2 text-center">
-                      <button
-                        type="button"
-                        onClick={loadMore}
-                        disabled={isLoadingMore}
-                        className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:border-[#7a2d2b]/30 hover:text-[#7a2d2b] disabled:opacity-50"
-                      >
-                        {isLoadingMore ? "Loading..." : "Load More"}
-                      </button>
-                    </div>
-                  )}
-                </section>
+            <aside className="w-full lg:flex-1 lg:shrink-0 space-y-10">
+              {artistPage.data?.artist.artist_context?.city && (
+                <ArtistLocationMap
+                  city={artistPage.data.artist.artist_context.city}
+                  colorIndex={0}
+                />
               )}
-            </div>
 
-            <aside className="w-full lg:w-72 lg:shrink-0">
+              {(artistPage.data?.artist.artist_context?.relatedArtists?.length ?? 0) > 0 && (
+                <div>
+                  <div className="font-display text-xl tracking-[0.1em] text-black/80 uppercase mb-4">
+                    Same Vibe
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
+                    {artistPage.data!.artist.artist_context!.relatedArtists.map((artist, i) => (
+                      <button
+                        key={artist.name}
+                        type="button"
+                        onClick={() =>
+                          setSelectedArtist({
+                            id: artist.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+                            name: artist.name.toUpperCase(),
+                          })
+                        }
+                        className="group relative aspect-square border border-black/50 shadow-md"
+                        style={{
+                          backgroundColor: [
+                            "#d94f43", "#4db8e8", "#c2d44a",
+                            "#3580b0", "#f07cbf", "#5a9a6e",
+                            "#eba264", "#9256a8", "#6fd4a2",
+                            "#a8612e", "#62d4eb", "#b0456a",
+                          ][i % 12],
+                        }}
+                      >
+                        {/* White border — flush against the dark outer border */}
+                        <div className="absolute inset-0 border-[5px] border-white/80" />
+                        {/* Grain overlay */}
+                        <div
+                          className="absolute inset-0 opacity-[0.08] mix-blend-multiply"
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+                          }}
+                        />
+                        <div className="absolute inset-[8px] flex flex-col items-center justify-center overflow-hidden">
+                          {artist.name.toUpperCase().split(/\s+/).map((word, wi) => {
+                            const longestWord = Math.max(...artist.name.split(/\s+/).map(w => w.length))
+                            return (
+                              <span
+                                key={wi}
+                                className={[
+                                  "font-display text-center tracking-[0.04em] transition block",
+                                  "text-black/85 group-hover:text-black",
+                                  longestWord > 10 ? "text-xl" :
+                                  longestWord > 7 ? "text-2xl" : "text-4xl",
+                                ].join(" ")}
+                                style={{
+                                  transform: "scaleY(1.3)",
+                                  transformOrigin: "center",
+                                  WebkitTextStroke: "0.5px rgba(255,255,255,0.4)",
+                                  lineHeight: "1.05",
+                                }}
+                              >
+                                {word}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <MerchSidebar artistId={selectedArtistId} artistName={selectedArtistName} />
             </aside>
           </div>
         </>
       )}
-
-      <RecommendedArtists
-        recommendations={recommendations}
-        relatedArtists={artistPage.data?.artist.artist_context?.relatedArtists}
-        onSelectArtist={setSelectedArtist}
-      />
     </div>
   )
 }

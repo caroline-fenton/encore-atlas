@@ -68,6 +68,7 @@ export default {
       },
       fontFamily: {
         display: ["Bebas Neue", "sans-serif"],
+        handwritten: ["Caveat", "cursive"],
         typewriter: ["Special Elite", "cursive"],
         sans: ["Source Sans 3", "sans-serif"],
       },

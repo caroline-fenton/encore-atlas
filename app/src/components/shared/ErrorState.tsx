@@ -11,7 +11,7 @@ export default function ErrorState({ message, onRetry }: Props) {
         <button
           type="button"
           onClick={onRetry}
-          className="mt-4 inline-flex items-center border border-[#7a2d2b] bg-transparent px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-[#7a2d2b] hover:bg-[#7a2d2b]/5"
+          className="mt-4 inline-flex items-center border border-[#d94f43] bg-transparent px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-[#d94f43] hover:bg-[#d94f43]/5"
         >
           Try Again
         </button>

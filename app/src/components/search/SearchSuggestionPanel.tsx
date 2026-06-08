@@ -58,7 +58,7 @@ export default function SearchSuggestionPanel({
                 className={[
                   "flex w-full items-center px-3 py-2 text-left text-sm",
                   itemIdx === highlightedIndex
-                    ? "bg-[#7a2d2b]/10 text-[#7a2d2b]"
+                    ? "bg-[#d94f43]/10 text-[#d94f43]"
                     : "text-black/75 hover:bg-black/5",
                 ].join(" ")}
                 onMouseDown={(e) => {
@@ -90,7 +90,7 @@ export default function SearchSuggestionPanel({
                 className={[
                   "flex items-center px-3 py-2",
                   itemIdx === highlightedIndex
-                    ? "bg-[#7a2d2b]/10"
+                    ? "bg-[#d94f43]/10"
                     : "hover:bg-black/5",
                 ].join(" ")}
                 data-index={itemIdx}
@@ -100,7 +100,7 @@ export default function SearchSuggestionPanel({
                   className={[
                     "flex-1 text-left text-sm",
                     itemIdx === highlightedIndex
-                      ? "text-[#7a2d2b]"
+                      ? "text-[#d94f43]"
                       : "text-black/75",
                   ].join(" ")}
                   onMouseDown={(e) => {
