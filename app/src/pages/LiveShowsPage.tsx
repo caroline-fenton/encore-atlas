@@ -230,8 +230,8 @@ export default function LiveShowsPage() {
             <aside className="w-full lg:flex-1 lg:shrink-0 space-y-10">
               {(artistPage.data?.artist.artist_context?.relatedArtists?.length ?? 0) > 0 && (
                 <div>
-                  <div className="text-sm font-semibold uppercase tracking-[0.2em] text-black/65 mb-4">
-                    Recommended
+                  <div className="text-sm font-semibold uppercase tracking-[0.2em] text-black mb-4">
+                    Same Vibe
                   </div>
                   <div className="grid grid-cols-3 gap-2 lg:grid-cols-2">
                     {artistPage.data!.artist.artist_context!.relatedArtists.map((artist, i) => (
