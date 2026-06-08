@@ -89,12 +89,12 @@ function VideoCard({
       className="group flex-none text-left"
       style={{ width: "260px" }}
     >
-      <div className="relative overflow-hidden">
+      <div className="relative h-[146px] overflow-hidden">
         <img
           src={video.thumbnailUrl}
           alt={video.title}
           className={[
-            "aspect-video w-full object-cover transition duration-300 group-hover:scale-[1.03]",
+            "h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]",
             isWatched ? "opacity-50" : "",
           ].join(" ")}
         />
