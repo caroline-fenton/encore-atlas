@@ -93,7 +93,9 @@ function VideoCard({
       className="group flex-none text-left"
       style={{ width: "260px" }}
     >
-      <div className="relative h-[146px] overflow-hidden">
+      <div className="relative h-[146px] border border-black/50 shadow-md">
+        {/* White inset border */}
+        <div className="absolute inset-0 border-[3px] border-white/80 z-10 pointer-events-none" />
         <img
           src={video.thumbnailUrl}
           alt={video.title}
@@ -103,25 +105,20 @@ function VideoCard({
           ].join(" ")}
         />
         {video.duration && (
-          <span className="absolute bottom-1.5 right-1.5 bg-black/75 px-1.5 py-0.5 text-[10px] text-white">
+          <span className="absolute bottom-2 right-2 z-10 bg-black/75 px-1.5 py-0.5 text-[10px] text-white">
             {video.duration}
           </span>
         )}
         {isWatched && (
-          <span className="absolute top-1.5 left-1.5 bg-black/50 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white">
+          <span className="absolute top-2 left-2 z-10 bg-black/50 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white">
             Watched
           </span>
         )}
       </div>
-      <div className="mt-2.5">
+      <div className="mt-2.5 h-[40px]">
         <div className="line-clamp-2 text-sm font-semibold leading-snug text-black/80">
           {decodeHtml(video.title)}
         </div>
-        {video.channelTitle && (
-          <div className="mt-0.5 text-[11px] text-black/40">
-            {video.channelTitle}
-          </div>
-        )}
       </div>
     </button>
   )
