@@ -244,7 +244,7 @@ export default function LiveShowsPage() {
                             name: artist.name.toUpperCase(),
                           })
                         }
-                        className="group relative aspect-square border-[3px] border-black/70"
+                        className="group relative aspect-square border border-black/50"
                         style={{
                           backgroundColor: [
                             "#c44536", "#5bc0eb", "#d5e68d",
@@ -267,7 +267,6 @@ export default function LiveShowsPage() {
                           <span
                             className={[
                               "font-display text-center leading-[1.1] tracking-[0.04em] transition uppercase break-words w-full",
-                              // dark=true → white text, dark=false → black text
                               [true, false, false, true, false, true, false, true, false, true, false, true][i % 12]
                                 ? "text-white/90 group-hover:text-white"
                                 : "text-black/85 group-hover:text-black",
@@ -275,7 +274,13 @@ export default function LiveShowsPage() {
                               artist.name.length > 16 ? "text-sm" :
                               artist.name.length > 10 ? "text-base" : "text-xl",
                             ].join(" ")}
-                            style={{ transform: "scaleY(1.3)", transformOrigin: "center" }}
+                            style={{
+                              transform: "scaleY(1.3)",
+                              transformOrigin: "center",
+                              WebkitTextStroke: [true, false, false, true, false, true, false, true, false, true, false, true][i % 12]
+                                ? "0.5px rgba(0,0,0,0.3)"
+                                : "0.5px rgba(255,255,255,0.4)",
+                            }}
                           >
                             {artist.name}
                           </span>
