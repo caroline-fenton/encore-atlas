@@ -235,7 +235,7 @@ export default function LiveShowsPage() {
                   <div className="text-sm font-semibold uppercase tracking-[0.2em] text-black mb-4">
                     Same Vibe
                   </div>
-                  <div className="grid grid-cols-3 gap-2 lg:grid-cols-2">
+                  <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
                     {artistPage.data!.artist.artist_context!.relatedArtists.map((artist, i) => (
                       <button
                         key={artist.name}
@@ -249,10 +249,10 @@ export default function LiveShowsPage() {
                         className="group relative aspect-square border border-black/50 shadow-md"
                         style={{
                           backgroundColor: [
-                            "#c44536", "#5bc0eb", "#d5e68d",
-                            "#2d6a8f", "#f4a6d7", "#4a7c59",
-                            "#e8a87c", "#7a4988", "#95dab6",
-                            "#8b5e3c", "#b5e3f0", "#8f3b4a",
+                            "#d94f43", "#4db8e8", "#c2d44a",
+                            "#3580b0", "#f07cbf", "#5a9a6e",
+                            "#eba264", "#9256a8", "#6fd4a2",
+                            "#a8612e", "#62d4eb", "#b0456a",
                           ][i % 12],
                         }}
                       >
@@ -269,9 +269,7 @@ export default function LiveShowsPage() {
                           <span
                             className={[
                               "font-display text-center leading-[1.1] tracking-[0.04em] transition uppercase break-words w-full",
-                              [true, false, false, true, false, true, false, true, false, true, false, true][i % 12]
-                                ? "text-white/90 group-hover:text-white"
-                                : "text-black/85 group-hover:text-black",
+                              "text-black/85 group-hover:text-black",
                               artist.name.length > 22 ? "text-xs" :
                               artist.name.length > 16 ? "text-sm" :
                               artist.name.length > 10 ? "text-base" : "text-xl",
@@ -279,9 +277,7 @@ export default function LiveShowsPage() {
                             style={{
                               transform: "scaleY(1.3)",
                               transformOrigin: "center",
-                              WebkitTextStroke: [true, false, false, true, false, true, false, true, false, true, false, true][i % 12]
-                                ? "0.5px rgba(0,0,0,0.3)"
-                                : "0.5px rgba(255,255,255,0.4)",
+                              WebkitTextStroke: "0.5px rgba(255,255,255,0.4)",
                             }}
                           >
                             {artist.name}
