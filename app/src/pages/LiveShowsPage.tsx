@@ -263,6 +263,16 @@ export default function LiveShowsPage() {
                             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
                           }}
                         />
+                        {/* Worn crease lines */}
+                        <div
+                          className="absolute inset-0 opacity-[0.12]"
+                          style={{
+                            backgroundImage: [
+                              `linear-gradient(${32 + (i * 17) % 40}deg, transparent 48%, rgba(255,255,255,0.6) 49%, rgba(255,255,255,0.6) 49.5%, transparent 50%)`,
+                              `linear-gradient(${155 + (i * 23) % 50}deg, transparent 62%, rgba(255,255,255,0.4) 62.5%, rgba(255,255,255,0.4) 63%, transparent 63.5%)`,
+                            ].join(", "),
+                          }}
+                        />
                         <div className="absolute inset-[8px] flex items-center justify-center overflow-hidden">
                           <span
                             className={[
