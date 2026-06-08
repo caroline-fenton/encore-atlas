@@ -267,23 +267,29 @@ export default function LiveShowsPage() {
                             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
                           }}
                         />
-                        <div className="absolute inset-[8px] flex items-center justify-center overflow-hidden">
-                          <span
-                            className={[
-                              "font-display text-center leading-[1.1] tracking-[0.04em] transition uppercase break-words w-full",
-                              "text-black/85 group-hover:text-black",
-                              artist.name.length > 22 ? "text-xs" :
-                              artist.name.length > 16 ? "text-sm" :
-                              artist.name.length > 10 ? "text-base" : "text-xl",
-                            ].join(" ")}
-                            style={{
-                              transform: "scaleY(1.3)",
-                              transformOrigin: "center",
-                              WebkitTextStroke: "0.5px rgba(255,255,255,0.4)",
-                            }}
-                          >
-                            {artist.name}
-                          </span>
+                        <div className="absolute inset-[8px] flex flex-col items-center justify-center overflow-hidden">
+                          {artist.name.toUpperCase().split(/\s+/).map((word, wi) => {
+                            const longestWord = Math.max(...artist.name.split(/\s+/).map(w => w.length))
+                            return (
+                              <span
+                                key={wi}
+                                className={[
+                                  "font-display text-center tracking-[0.04em] transition block",
+                                  "text-black/85 group-hover:text-black",
+                                  longestWord > 10 ? "text-base" :
+                                  longestWord > 7 ? "text-lg" : "text-2xl",
+                                ].join(" ")}
+                                style={{
+                                  transform: "scaleY(1.3)",
+                                  transformOrigin: "center",
+                                  WebkitTextStroke: "0.5px rgba(255,255,255,0.4)",
+                                  lineHeight: "1.05",
+                                }}
+                              >
+                                {word}
+                              </span>
+                            )
+                          })}
                         </div>
                       </button>
                     ))}
