@@ -94,22 +94,27 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
       ))}
 
       <div className="space-y-3">
-        {stores.map((store) => (
-          <a
-            key={store.name}
-            href={store.url}
-            target="_blank"
-            rel="noreferrer"
-            className="group block text-black/40 transition hover:text-[#7a2d2b]"
-          >
-            <span className={hasCuratedMerch
-              ? "font-display text-xs tracking-[0.08em]"
-              : "text-base font-bold tracking-wide lowercase"
-            }>
-              {store.name}
-            </span>
-          </a>
-        ))}
+        {stores.map((store, i) => {
+          const hoverColor = ["#d94f43", "#4db8e8", "#5a9a6e"][i % 3]
+          return (
+            <a
+              key={store.name}
+              href={store.url}
+              target="_blank"
+              rel="noreferrer"
+              className="group block text-black/40 transition"
+              onMouseEnter={(e) => { e.currentTarget.style.color = hoverColor }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "" }}
+            >
+              <span className={hasCuratedMerch
+                ? "font-display text-xs tracking-[0.08em]"
+                : "text-base font-bold tracking-wide lowercase"
+              }>
+                {store.name}
+              </span>
+            </a>
+          )
+        })}
       </div>
     </div>
   )

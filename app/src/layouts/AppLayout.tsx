@@ -117,23 +117,29 @@ export default function AppLayout() {
 
         <nav className="mx-auto max-w-5xl px-6 pb-5">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-xs font-semibold uppercase tracking-[0.25em]">
-            {tabs.map((t) => (
-              <NavLink
-                key={t.to}
-                to={t.to}
-                end={t.end}
-                className={({ isActive }) =>
-                  [
-                    "inline-flex items-center border-b-2 pb-1",
-                    isActive
-                      ? "border-[#7a2d2b] text-[#7a2d2b]"
-                      : "border-transparent text-black/55 hover:text-black/75",
-                  ].join(" ")
-                }
-              >
-                {t.label}
-              </NavLink>
-            ))}
+            {tabs.map((t, i) => {
+              const color = ["#d94f43", "#9256a8", "#3580b0"][i % 3]
+              return (
+                <NavLink
+                  key={t.to}
+                  to={t.to}
+                  end={t.end}
+                  className={({ isActive }) =>
+                    [
+                      "inline-flex items-center border-b-2 pb-1",
+                      isActive
+                        ? ""
+                        : "border-transparent text-black/55 hover:text-black/75",
+                    ].join(" ")
+                  }
+                  style={({ isActive }) =>
+                    isActive ? { borderColor: color, color } : undefined
+                  }
+                >
+                  {t.label}
+                </NavLink>
+              )
+            })}
           </div>
         </nav>
       </header>
