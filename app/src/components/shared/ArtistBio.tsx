@@ -19,15 +19,8 @@ export default function ArtistBio({ context, isLoading }: Props) {
 
   if (!context?.sceneSummary) return null
 
-  const meta = [context.city, context.yearsActive].filter(Boolean).join(" · ")
-
   return (
-    <div className="space-y-2">
-      {meta && (
-        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black/40">
-          {meta}
-        </div>
-      )}
+    <div>
       <p className="font-sans text-sm leading-relaxed text-black/65">
         {context.sceneSummary}
       </p>

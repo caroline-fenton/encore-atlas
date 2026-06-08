@@ -140,15 +140,18 @@ export default function LiveShowsPage() {
           {selectedArtistName}
         </h1>
         {useCached && artistPage.data?.artist.tags && (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-black/50">
             {artistPage.data.artist.tags.map((tag, i) => (
-              <span
-                key={tag}
-                className="text-[10px] font-semibold uppercase tracking-[0.15em] text-black/50"
-              >
+              <span key={tag}>
                 {i > 0 && "·"} {tag}
               </span>
             ))}
+            {artistPage.data?.artist.artist_context?.city && (
+              <span>· {artistPage.data.artist.artist_context.city}</span>
+            )}
+            {artistPage.data?.artist.artist_context?.yearsActive && (
+              <span>· {artistPage.data.artist.artist_context.yearsActive}</span>
+            )}
           </div>
         )}
       </header>
