@@ -31,11 +31,6 @@ export default function ArtistBio({ context, isLoading }: Props) {
       <p className="font-sans text-sm leading-relaxed text-black/65">
         {context.sceneSummary}
       </p>
-      {context.knownFor.length > 0 && (
-        <p className="text-[11px] text-black/40">
-          {context.knownFor.join(" · ")}
-        </p>
-      )}
     </div>
   )
 }
