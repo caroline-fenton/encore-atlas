@@ -247,10 +247,10 @@ export default function LiveShowsPage() {
                         className="group relative aspect-square border border-black/50 shadow-md"
                         style={{
                           backgroundColor: [
-                            "#d92b2b", "#0ea5e9", "#8bc220",
-                            "#1d4ed8", "#e844a0", "#059669",
-                            "#f59e0b", "#7c3aed", "#10b981",
-                            "#c2410c", "#06b6d4", "#be185d",
+                            "#c44536", "#5bc0eb", "#d5e68d",
+                            "#2d6a8f", "#f4a6d7", "#4a7c59",
+                            "#e8a87c", "#7a4988", "#95dab6",
+                            "#8b5e3c", "#b5e3f0", "#8f3b4a",
                           ][i % 12],
                         }}
                       >
@@ -267,7 +267,7 @@ export default function LiveShowsPage() {
                           <span
                             className={[
                               "font-display text-center leading-[1.1] tracking-[0.04em] transition uppercase break-words w-full",
-                              [true, true, false, true, true, true, false, true, true, true, true, true][i % 12]
+                              [true, false, false, true, false, true, false, true, false, true, false, true][i % 12]
                                 ? "text-white/90 group-hover:text-white"
                                 : "text-black/85 group-hover:text-black",
                               artist.name.length > 22 ? "text-xs" :
@@ -277,7 +277,7 @@ export default function LiveShowsPage() {
                             style={{
                               transform: "scaleY(1.3)",
                               transformOrigin: "center",
-                              WebkitTextStroke: [true, true, false, true, true, true, false, true, true, true, true, true][i % 12]
+                              WebkitTextStroke: [true, false, false, true, false, true, false, true, false, true, false, true][i % 12]
                                 ? "0.5px rgba(0,0,0,0.3)"
                                 : "0.5px rgba(255,255,255,0.4)",
                             }}
