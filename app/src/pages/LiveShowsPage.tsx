@@ -15,6 +15,7 @@ import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
 import BuildingState from "../components/shared/BuildingState"
 import ContentCards from "../components/liveShows/ContentCards"
+import ArtistLocationMap from "../components/shared/ArtistLocationMap"
 import { decodeHtml } from "../utils/decodeHtml"
 
 /**
@@ -231,6 +232,13 @@ export default function LiveShowsPage() {
             </div>
 
             <aside className="w-full lg:flex-1 lg:shrink-0 space-y-10">
+              {artistPage.data?.artist.artist_context?.city && (
+                <ArtistLocationMap
+                  city={artistPage.data.artist.artist_context.city}
+                  colorIndex={0}
+                />
+              )}
+
               {(artistPage.data?.artist.artist_context?.relatedArtists?.length ?? 0) > 0 && (
                 <div>
                   <div className="text-sm font-semibold uppercase tracking-[0.2em] text-black mb-4">
