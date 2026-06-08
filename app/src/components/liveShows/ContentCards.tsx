@@ -13,6 +13,9 @@ type Props = {
   allVideos: Video[]
   selectedDecade: string | null
   onSelectDecade: (decade: string | null) => void
+  hasMore?: boolean
+  isLoadingMore?: boolean
+  onLoadMore?: () => void
 }
 
 function CardStrip({
@@ -133,22 +136,35 @@ export default function ContentCards({
   allVideos,
   selectedDecade,
   onSelectDecade,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
 }: Props) {
   return (
     <div className="space-y-10">
-      {/* More Live Sets */}
-      {liveVideos.length > 0 && (
+      {/* More Live Sets — always show if there are videos or a decade filter */}
+      {(liveVideos.length > 0 || allVideos.length > 1 || hasMore) && (
         <div className="space-y-4">
-          <CardStrip title="More Live Sets">
-            {liveVideos.map((v) => (
-              <VideoCard
-                key={v.id}
-                video={v}
-                onSelect={onSelectVideo}
-                isWatched={watchedVideoIds.has(v.id)}
-              />
-            ))}
-          </CardStrip>
+          {liveVideos.length > 0 ? (
+            <CardStrip title="More Live Sets">
+              {liveVideos.map((v) => (
+                <VideoCard
+                  key={v.id}
+                  video={v}
+                  onSelect={onSelectVideo}
+                  isWatched={watchedVideoIds.has(v.id)}
+                />
+              ))}
+            </CardStrip>
+          ) : (
+            <div>
+              <div className="h-1 bg-black/80" />
+              <h3 className="font-display text-xl tracking-[0.1em] text-black/80 uppercase pt-4 pb-3">
+                More Live Sets
+              </h3>
+              <p className="text-sm text-black/40">No sets from this decade.</p>
+            </div>
+          )}
 
           {allVideos.length > 0 && (
             <DecadeFilter
@@ -156,6 +172,19 @@ export default function ContentCards({
               selected={selectedDecade}
               onSelect={onSelectDecade}
             />
+          )}
+
+          {hasMore && onLoadMore && (
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={onLoadMore}
+                disabled={isLoadingMore}
+                className="inline-flex items-center gap-2 border border-stone-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 hover:text-black/80 disabled:opacity-50"
+              >
+                {isLoadingMore ? "Loading..." : "Load More"}
+              </button>
+            </div>
           )}
         </div>
       )}

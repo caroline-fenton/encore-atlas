@@ -25,6 +25,7 @@ function ArtistLocationMap({ city, colorIndex = 0 }: Props) {
   useEffect(() => {
     if (!city) return
 
+    setCoords(null)
     let cancelled = false
 
     fetch(

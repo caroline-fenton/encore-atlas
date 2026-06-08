@@ -221,6 +221,9 @@ export default function LiveShowsPage() {
                 allVideos={allVideos}
                 selectedDecade={selectedDecade}
                 onSelectDecade={setSelectedDecade}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
               />
             </div>
 
