@@ -7,6 +7,7 @@ import DecadeFilter from "../shared/DecadeFilter"
 type Props = {
   liveVideos: Video[]
   interviewVideos: Video[]
+  musicVideos: Video[]
   onSelectVideo: (video: Video) => void
   watchedVideoIds: Set<string>
   allVideos: Video[]
@@ -126,6 +127,7 @@ function VideoCard({
 export default function ContentCards({
   liveVideos,
   interviewVideos,
+  musicVideos,
   onSelectVideo,
   watchedVideoIds,
   allVideos,
@@ -162,6 +164,19 @@ export default function ContentCards({
       {interviewVideos.length > 0 && (
         <CardStrip title="Interviews">
           {interviewVideos.map((v) => (
+            <VideoCard
+              key={v.id}
+              video={v}
+              onSelect={onSelectVideo}
+            />
+          ))}
+        </CardStrip>
+      )}
+
+      {/* Music Videos */}
+      {musicVideos.length > 0 && (
+        <CardStrip title="Music Videos">
+          {musicVideos.map((v) => (
             <VideoCard
               key={v.id}
               video={v}

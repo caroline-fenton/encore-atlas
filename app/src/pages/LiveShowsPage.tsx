@@ -2,7 +2,7 @@ import { useOutletContext } from "react-router-dom"
 import { useRef, useState, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
-import { useArtistConcerts, useArtistInterviews } from "../hooks/useVideos"
+import { useArtistConcerts, useArtistInterviews, useArtistMusicVideos } from "../hooks/useVideos"
 import { useArtistPage } from "../hooks/useArtistPage"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import { useWatchHistory } from "../hooks/useWatchHistory"
@@ -88,6 +88,7 @@ export default function LiveShowsPage() {
   )
 
   const { videos: interviewVideos } = useArtistInterviews(selectedArtistName)
+  const { videos: musicVideos } = useArtistMusicVideos(selectedArtistName)
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(
     allVideos,
     selectedArtistName,
@@ -214,6 +215,7 @@ export default function LiveShowsPage() {
               <ContentCards
                 liveVideos={more}
                 interviewVideos={interviewVideos}
+                musicVideos={musicVideos}
                 onSelectVideo={handleSelectVideo}
                 watchedVideoIds={watchedVideoIds}
                 allVideos={allVideos}
