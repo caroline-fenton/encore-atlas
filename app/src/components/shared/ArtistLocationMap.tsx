@@ -54,10 +54,10 @@ function ArtistLocationMap({ city, colorIndex = 0 }: Props) {
         projection="geoMercator"
         projectionConfig={{
           center: coords,
-          scale: 800,
+          scale: 200,
         }}
         width={400}
-        height={220}
+        height={280}
         style={{ width: "100%", height: "auto", display: "block" }}
       >
         <Geographies geography={GEO_URL}>
