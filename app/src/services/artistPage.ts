@@ -10,6 +10,18 @@ export type ArtistContext = {
   relatedArtists: Array<{ name: string; reason: string }>
 }
 
+export type ArtistVideo = {
+  id: string
+  youtube_video_id: string
+  title: string
+  description: string | null
+  thumbnail_url: string | null
+  published_at: string | null
+  view_count: number | null
+  duration: string | null
+  display_order: number
+}
+
 export type ArtistPageData = {
   artist: {
     id: string
@@ -23,17 +35,9 @@ export type ArtistPageData = {
     is_curated: boolean
     artist_context: ArtistContext | null
   }
-  videos: {
-    id: string
-    youtube_video_id: string
-    title: string
-    description: string | null
-    thumbnail_url: string | null
-    published_at: string | null
-    view_count: number | null
-    duration: string | null
-    display_order: number
-  }[]
+  videos: ArtistVideo[]
+  interview_videos: ArtistVideo[]
+  music_videos: ArtistVideo[]
   was_cache_hit: boolean
 }
 
@@ -60,11 +64,26 @@ export async function getCachedArtistPage(
     return null
   }
 
-  const { data: videos } = await supabase
+  const { data: allVideos } = await supabase
     .from("artist_videos")
     .select("*")
     .eq("artist_id", artist.id)
     .order("display_order", { ascending: true })
+
+  const toArtistVideo = (v: Record<string, unknown>): ArtistVideo => ({
+    id: v.id as string,
+    youtube_video_id: v.youtube_video_id as string,
+    title: v.title as string,
+    description: v.description as string | null,
+    thumbnail_url: v.thumbnail_url as string | null,
+    published_at: v.published_at as string | null,
+    view_count: v.view_count as number | null,
+    duration: v.duration as string | null,
+    display_order: v.display_order as number,
+  })
+
+  const byType = (type: string) =>
+    (allVideos ?? []).filter((v) => (v.video_type ?? "concert") === type).map(toArtistVideo)
 
   return {
     artist: {
@@ -79,17 +98,9 @@ export async function getCachedArtistPage(
       is_curated: artist.is_curated,
       artist_context: (artist.artist_context as ArtistContext) ?? null,
     },
-    videos: (videos ?? []).map((v) => ({
-      id: v.id,
-      youtube_video_id: v.youtube_video_id,
-      title: v.title,
-      description: v.description,
-      thumbnail_url: v.thumbnail_url,
-      published_at: v.published_at,
-      view_count: v.view_count,
-      duration: v.duration,
-      display_order: v.display_order,
-    })),
+    videos: byType("concert"),
+    interview_videos: byType("interview"),
+    music_videos: byType("music_video"),
     was_cache_hit: true,
   }
 }

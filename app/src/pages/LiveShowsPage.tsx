@@ -164,8 +164,22 @@ export default function LiveShowsPage() {
     waitForAuth,
   )
 
-  const { videos: interviewVideos } = useArtistInterviews(selectedArtistName)
-  const { videos: musicVideos } = useArtistMusicVideos(selectedArtistName)
+  // Use persisted data from the artist page cache when available; only fall
+  // back to live YouTube search if the pipeline didn't return these types.
+  const cachedInterviews = artistPage.data?.interview_videos
+  const cachedMusicVideos = artistPage.data?.music_videos
+  const { videos: liveInterviewVideos } = useArtistInterviews(
+    pipelineSettled && !cachedInterviews?.length ? selectedArtistName : "",
+  )
+  const { videos: liveMusicVideos } = useArtistMusicVideos(
+    pipelineSettled && !cachedMusicVideos?.length ? selectedArtistName : "",
+  )
+  const interviewVideos = cachedInterviews?.length
+    ? mapCachedVideos(cachedInterviews)
+    : liveInterviewVideos
+  const musicVideos = cachedMusicVideos?.length
+    ? mapCachedVideos(cachedMusicVideos)
+    : liveMusicVideos
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(
     allVideos,
     selectedArtistName,
