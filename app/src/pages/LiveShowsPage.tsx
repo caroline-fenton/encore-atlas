@@ -2,6 +2,7 @@ import { useOutletContext } from "react-router-dom"
 import { useRef, useState, useCallback } from "react"
 import type { AppOutletContext } from "../layouts/AppLayout"
 import type { Video } from "../types/video"
+import type { ArtistContext } from "../services/artistPage"
 import { useArtistConcerts, useArtistInterviews, useArtistMusicVideos } from "../hooks/useVideos"
 import { useArtistPage } from "../hooks/useArtistPage"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
@@ -30,6 +31,67 @@ function sameVibeTextSize(name: string): string {
   if (longestWord > 10) return "text-xs sm:text-sm lg:text-lg"
   if (longestWord > 7) return "text-base sm:text-lg lg:text-2xl"
   return "text-xl sm:text-2xl lg:text-4xl"
+}
+
+type RelatedArtist = NonNullable<ArtistContext["relatedArtists"]>[number]
+
+function SameVibeSection({
+  artists,
+  onSelectArtist,
+}: {
+  artists: RelatedArtist[]
+  onSelectArtist: (artist: { id: string; name: string }) => void
+}) {
+  return (
+    <div>
+      <div className="mb-4 font-display text-xl uppercase tracking-[0.1em] text-black/80">
+        Same Vibe
+      </div>
+      <div className="grid grid-cols-4 gap-2 lg:grid-cols-1">
+        {artists.map((artist, i) => (
+          <button
+            key={artist.name}
+            type="button"
+            aria-label={`View ${artist.name}`}
+            onClick={() =>
+              onSelectArtist({
+                id: artist.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+                name: artist.name.toUpperCase(),
+              })
+            }
+            className="group relative aspect-square min-w-0 border border-black/50 shadow-md"
+            style={{
+              backgroundColor: SAME_VIBE_COLORS[i % SAME_VIBE_COLORS.length],
+            }}
+          >
+            <div className="pointer-events-none absolute inset-0 border-[4px] border-white/80 sm:border-[5px]" />
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+              }}
+            />
+            <div className="absolute inset-[7px] flex flex-col items-center justify-center overflow-hidden px-0.5 sm:inset-[8px]">
+              {artist.name.toUpperCase().split(/\s+/).map((word, wi) => (
+                <span
+                  key={wi}
+                  className={[
+                    "block max-w-full font-display text-center leading-[0.95] tracking-[0.02em] text-black/85 transition group-hover:text-black",
+                    sameVibeTextSize(artist.name),
+                  ].join(" ")}
+                  style={{
+                    WebkitTextStroke: "0.5px rgba(255,255,255,0.4)",
+                  }}
+                >
+                  {word}
+                </span>
+              ))}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -219,76 +281,21 @@ export default function LiveShowsPage() {
 
       {!error && !isLoading && activeVideo && (
         <>
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
-            <section className="min-w-0 space-y-4" ref={heroRef}>
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-6">
+            <div className="min-w-0 flex-[4] space-y-8">
+              <section className="space-y-4" ref={heroRef}>
                 <VideoHero video={activeVideo} />
-            </section>
-
-            <aside className="space-y-8 lg:row-span-2 lg:space-y-10">
-              {artistContext?.city && (
-                <ArtistLocationMap
-                  city={artistContext.city}
-                  colorIndex={0}
-                />
-              )}
+              </section>
 
               {relatedArtists.length > 0 && (
-                <div>
-                  <div className="mb-4 font-display text-xl uppercase tracking-[0.1em] text-black/80">
-                    Same Vibe
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 lg:grid-cols-1">
-                    {relatedArtists.map((artist, i) => (
-                      <button
-                        key={artist.name}
-                        type="button"
-                        aria-label={`View ${artist.name}`}
-                        onClick={() =>
-                          setSelectedArtist({
-                            id: artist.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-                            name: artist.name.toUpperCase(),
-                          })
-                        }
-                        className="group relative aspect-square min-w-0 border border-black/50 shadow-md"
-                        style={{
-                          backgroundColor: SAME_VIBE_COLORS[i % SAME_VIBE_COLORS.length],
-                        }}
-                      >
-                        <div className="pointer-events-none absolute inset-0 border-[4px] border-white/80 sm:border-[5px]" />
-                        <div
-                          className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply"
-                          style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-                          }}
-                        />
-                        <div className="absolute inset-[7px] flex flex-col items-center justify-center overflow-hidden px-0.5 sm:inset-[8px]">
-                          {artist.name.toUpperCase().split(/\s+/).map((word, wi) => (
-                            <span
-                              key={wi}
-                              className={[
-                                "block max-w-full font-display text-center leading-[0.95] tracking-[0.02em] text-black/85 transition group-hover:text-black",
-                                sameVibeTextSize(artist.name),
-                              ].join(" ")}
-                              style={{
-                                WebkitTextStroke: "0.5px rgba(255,255,255,0.4)",
-                              }}
-                            >
-                              {word}
-                            </span>
-                          ))}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                <div className="lg:hidden">
+                  <SameVibeSection
+                    artists={relatedArtists}
+                    onSelectArtist={setSelectedArtist}
+                  />
                 </div>
               )}
 
-              <div className="hidden lg:block">
-                <MerchSidebar artistId={selectedArtistId} artistName={selectedArtistName} />
-              </div>
-            </aside>
-
-            <div className="min-w-0">
               <ContentCards
                 liveVideos={more}
                 interviewVideos={interviewVideos}
@@ -304,8 +311,28 @@ export default function LiveShowsPage() {
               />
             </div>
 
-            <aside className="lg:hidden">
-              <MerchSidebar artistId={selectedArtistId} artistName={selectedArtistName} />
+            <aside className="w-full lg:flex-1 lg:shrink-0">
+              <div className="hidden space-y-10 lg:block">
+                {artistContext?.city && (
+                  <ArtistLocationMap
+                    city={artistContext.city}
+                    colorIndex={0}
+                  />
+                )}
+
+                {relatedArtists.length > 0 && (
+                  <SameVibeSection
+                    artists={relatedArtists}
+                    onSelectArtist={setSelectedArtist}
+                  />
+                )}
+
+                <MerchSidebar artistId={selectedArtistId} artistName={selectedArtistName} />
+              </div>
+
+              <div className="lg:hidden">
+                <MerchSidebar artistId={selectedArtistId} artistName={selectedArtistName} />
+              </div>
             </aside>
           </div>
         </>
