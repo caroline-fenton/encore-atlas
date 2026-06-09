@@ -178,19 +178,21 @@ export default function LiveShowsPage() {
     ? filtered.filter((v) => v.id !== featured?.id)
     : allVideos.length > 1 ? allVideos.slice(1) : []
 
-  const [nowPlaying, setNowPlaying] = useState<{
-    artistName: string
-    video: Video
-  } | null>(null)
+  const [nowPlaying, setNowPlaying] = useState<Video | null>(null)
+  const [nowPlayingArtist, setNowPlayingArtist] = useState(selectedArtistName)
   const heroRef = useRef<HTMLDivElement>(null)
 
-  const activeVideo =
-    nowPlaying?.artistName === selectedArtistName ? nowPlaying.video : featured
+  if (nowPlayingArtist !== selectedArtistName) {
+    setNowPlayingArtist(selectedArtistName)
+    setNowPlaying(null)
+  }
+
+  const activeVideo = nowPlaying ?? featured
   const artistContext = artistPage.data?.artist.artist_context
   const relatedArtists = artistContext?.relatedArtists ?? []
 
   const handleSelectVideo = useCallback((video: Video) => {
-    setNowPlaying({ artistName: selectedArtistName, video })
+    setNowPlaying(video)
     heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     // Fire-and-forget: record the watch
     recordWatch(video, selectedArtistName).catch(() => {})
