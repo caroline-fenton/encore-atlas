@@ -495,13 +495,18 @@ Deno.serve(async (req) => {
 
     if (existingArtist) {
       // Artist row exists but wasn't fully built — update it
-      const { error: updateError } = await supabase
+      const { data: updatedArtists, error: updateError } = await supabase
         .from("artists")
         .update(artistData)
         .eq("id", existingArtist.id)
+        .eq("is_curated", false)
+        .select("id")
 
       if (updateError) {
         throw new Error(`Failed to update artist: ${updateError.message}`)
+      }
+      if (!updatedArtists?.length) {
+        throw new Error("Artist was curated while the public build was running")
       }
       artistId = existingArtist.id
     } else {
@@ -666,6 +671,7 @@ Deno.serve(async (req) => {
           video_types_synced: syncedTypes,
         })
         .eq("id", artistId)
+        .eq("is_curated", false)
     }
 
     const response: ArtistPageResponse = {

@@ -177,7 +177,9 @@ begin
         channel_title = excluded.channel_title;
   end if;
 
-  update public.artists set last_refreshed_at = now() where id = refresh_row.artist_id;
+  if 'videos' = any(refresh_row.scopes) then
+    update public.artists set last_refreshed_at = now() where id = refresh_row.artist_id;
+  end if;
   published := public.current_artist_content_snapshot(refresh_row.artist_id);
 
   update public.admin_content_refreshes

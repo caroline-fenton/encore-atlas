@@ -92,6 +92,8 @@ The first version intentionally uses a strict curated-content lock:
 - Video refreshes may be published for curated artists. Curated status does not
   prevent refreshing YouTube titles, thumbnails, view counts, durations, or
   other persisted video metadata.
+- Metadata-only and same-vibe-only publishes preserve an incomplete artist
+  page's build marker. Only a successful video publish marks it fully built.
 - Existing videos with `is_manually_added = true` cannot be removed by an
   automatic refresh. They can only be replaced through the explicit protected
   replacement workflow.
@@ -99,7 +101,8 @@ The first version intentionally uses a strict curated-content lock:
 - A preview cannot publish if the artist or video rows changed after the
   preview was generated.
 - The public lazy-build function treats curated artist rows as complete and
-  never overwrites them.
+  never overwrites them, including when a build was already in progress before
+  the artist became curated.
 
 Publishing runs through `publish_admin_content_refresh`, which applies all
 selected changes in one database transaction.

@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
 import {
   applyManualArtistEdits,
   concertVideos,
+  mergeManualVideos,
   normalizeVideoOrder,
   parseYouTubeVideoId,
   validatePublishRequest,
@@ -316,29 +317,6 @@ scene summary, and 8-12 useful related artists. Do not copy source text.
     related_artists: artist_context.relatedArtists.map((artist) => artist.name),
     artist_context,
   }
-}
-
-function mergeManualVideos(
-  generated: RefreshVideo[],
-  existing: Snapshot["videos"],
-): RefreshVideo[] {
-  const merged = [...generated]
-  const manualVideos = existing
-    .filter((video) =>
-      (video.video_type ?? "concert") === "concert"
-      && video.is_manually_added
-    )
-    .sort((a, b) => a.display_order - b.display_order)
-
-  for (const manual of manualVideos) {
-    const withoutDuplicate = merged.filter(
-      (video) => video.youtube_video_id !== manual.youtube_video_id,
-    )
-    const index = Math.min(manual.display_order, withoutDuplicate.length)
-    withoutDuplicate.splice(index, 0, manual)
-    merged.splice(0, merged.length, ...withoutDuplicate)
-  }
-  return normalizeVideoOrder(merged)
 }
 
 Deno.serve(async (request) => {

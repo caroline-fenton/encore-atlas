@@ -3,6 +3,7 @@ import test from "node:test"
 import {
   applyManualArtistEdits,
   concertVideos,
+  mergeManualVideos,
   normalizeVideoOrder,
   parseYouTubeVideoId,
   validatePublishRequest,
@@ -223,6 +224,38 @@ test("normalization preserves a protected replacement position after an earlier 
     proposedVideos: normalized,
     manualVideoReplacements: ["manualvideo"],
   }), [])
+})
+
+test("manual video merge preserves protection while refreshing YouTube metadata", () => {
+  const staleManual = {
+    ...video("manualvideo", true),
+    title: "Old title",
+    thumbnail_url: "old-thumbnail",
+    view_count: 10,
+    display_order: 1,
+  }
+  const freshGenerated = {
+    ...video("manualvideo"),
+    title: "Fresh title",
+    thumbnail_url: "fresh-thumbnail",
+    view_count: 20,
+    channel_title: "Fresh channel",
+  }
+
+  const merged = mergeManualVideos(
+    [video("generated01"), freshGenerated],
+    [staleManual],
+  )
+  const refreshedManual = merged.find(
+    (item) => item.youtube_video_id === "manualvideo",
+  )
+
+  assert.equal(refreshedManual?.is_manually_added, true)
+  assert.equal(refreshedManual?.display_order, 1)
+  assert.equal(refreshedManual?.title, "Fresh title")
+  assert.equal(refreshedManual?.thumbnail_url, "fresh-thumbnail")
+  assert.equal(refreshedManual?.view_count, 20)
+  assert.equal(refreshedManual?.channel_title, "Fresh channel")
 })
 
 test("live refresh policy leaves secondary video categories out of scope", () => {
