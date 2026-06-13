@@ -72,6 +72,53 @@ async function youtubeVideoDetails(
   return map
 }
 
+// --- Relevance filtering (mirrors src/services/youtube.ts + src/data/artistAliases.ts) ---
+
+const ARTIST_ALIASES: Record<string, string[]> = {
+  "freddie mercury": ["queen"],
+  "queen": ["freddie mercury"],
+  "beyonce": ["destinys child", "destiny's child"],
+  "bob marley": ["bob marley and the wailers", "the wailers"],
+  "fela kuti": ["fela kuti and africa 70", "africa 70"],
+}
+
+function getAliases(artistName: string): string[] {
+  return ARTIST_ALIASES[artistName.toLowerCase()] ?? []
+}
+
+function normalizeForMatch(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]/g, "")
+}
+
+function matchesArtistName(title: string, titleNorm: string, name: string): boolean {
+  const stripped = name.replace(/^the\s+/, "")
+  const strippedNorm = normalizeForMatch(stripped)
+  const nameNorm = normalizeForMatch(name)
+
+  return (
+    title.includes(stripped) ||
+    title.includes(name) ||
+    titleNorm.includes(strippedNorm) ||
+    titleNorm.includes(nameNorm)
+  )
+}
+
+function isRelevantResult(item: YouTubeSearchItem, artistName: string): boolean {
+  const title = item.snippet.title.toLowerCase()
+  const titleNorm = normalizeForMatch(title)
+
+  if (matchesArtistName(title, titleNorm, artistName.toLowerCase())) return true
+
+  for (const alias of getAliases(artistName)) {
+    if (matchesArtistName(title, titleNorm, alias.toLowerCase())) return true
+  }
+
+  return false
+}
+
 function parseDuration(iso: string): string {
   const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
   if (!match) return ""
@@ -490,6 +537,7 @@ Deno.serve(async (req) => {
       }
     })
 
+    let concertWriteOk = false
     if (concertRows.length > 0) {
       const { error: videoError } = await supabase
         .from("artist_videos")
@@ -498,18 +546,17 @@ Deno.serve(async (req) => {
       if (videoError) {
         console.error("Failed to insert concert videos:", videoError)
       } else {
-        // Only mark as fully built after videos are successfully persisted
-        await supabase
-          .from("artists")
-          .update({ last_refreshed_at: new Date().toISOString() })
-          .eq("id", artistId)
+        concertWriteOk = true
       }
     }
 
     // Only search for interviews and music videos for artists with enough
     // YouTube presence — obscure artists won't have this content and it's
     // not worth burning quota to find out.
-    if (concertRows.length >= 3) {
+    const needsSecondarySearches = concertRows.length >= 3
+    let secondarySearchesOk = true
+
+    if (needsSecondarySearches) {
       const secondarySearches: Array<{ query: string; type: string }> = [
         { query: `${artist_name} interview`, type: "interview" },
         { query: `${artist_name} official music video`, type: "music_video" },
@@ -517,7 +564,8 @@ Deno.serve(async (req) => {
 
       for (const { query, type } of secondarySearches) {
         try {
-          const items = await youtubeSearch(query, youtubeApiKey, 25)
+          const items = (await youtubeSearch(query, youtubeApiKey, 25))
+            .filter((item) => isRelevantResult(item, artist_name))
           const ids = items.map((i) => i.id.videoId)
           const typeDetails = await youtubeVideoDetails(ids, youtubeApiKey)
 
@@ -542,12 +590,27 @@ Deno.serve(async (req) => {
             const { error } = await supabase
               .from("artist_videos")
               .upsert(rows, { onConflict: "artist_id,youtube_video_id,video_type" })
-            if (error) console.error(`Failed to insert ${type} videos:`, error)
+            if (error) {
+              console.error(`Failed to insert ${type} videos:`, error)
+              secondarySearchesOk = false
+            }
           }
         } catch (err) {
           console.error(`YouTube search failed for ${type}:`, err)
+          secondarySearchesOk = false
         }
       }
+    }
+
+    // Only mark as fully built once concert videos are persisted and any
+    // required secondary searches (interviews/music videos) have completed
+    // successfully — otherwise the next request would treat this as a cache
+    // hit and never retry the missing categories.
+    if (concertWriteOk && (!needsSecondarySearches || secondarySearchesOk)) {
+      await supabase
+        .from("artists")
+        .update({ last_refreshed_at: new Date().toISOString() })
+        .eq("id", artistId)
     }
 
     // Return the built page
