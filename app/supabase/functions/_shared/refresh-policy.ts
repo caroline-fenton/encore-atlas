@@ -215,8 +215,27 @@ export function validatePublishRequest(input: {
   return errors
 }
 
-export function normalizeVideoOrder(videos: RefreshVideo[]): RefreshVideo[] {
-  return videos.map((video, display_order) => ({ ...video, display_order }))
+export function normalizeVideoOrder(
+  videos: RefreshVideo[],
+  protectedManualPositions: number[] = [],
+): RefreshVideo[] {
+  const protectedPositions = new Set(protectedManualPositions)
+  let nextPosition = 0
+
+  return videos.map((video) => {
+    if (
+      video.is_manually_added
+      && protectedPositions.has(video.display_order)
+    ) {
+      nextPosition = Math.max(nextPosition, video.display_order + 1)
+      return video
+    }
+
+    while (protectedPositions.has(nextPosition)) nextPosition += 1
+    const normalized = { ...video, display_order: nextPosition }
+    nextPosition += 1
+    return normalized
+  })
 }
 
 export function concertVideos(videos: RefreshVideo[]): RefreshVideo[] {

@@ -521,8 +521,8 @@ Deno.serve(async (request) => {
 
     if (action === "publish") {
       const refreshId = typeof body.refresh_id === "string" ? body.refresh_id : ""
-      const proposedVideos = Array.isArray(body.proposed_videos)
-        ? normalizeVideoOrder(body.proposed_videos as RefreshVideo[])
+      const submittedVideos = Array.isArray(body.proposed_videos)
+        ? body.proposed_videos as RefreshVideo[]
         : []
       const manualVideoReplacements = Array.isArray(body.manual_video_replacements)
         ? body.manual_video_replacements.filter(
@@ -542,6 +542,16 @@ Deno.serve(async (request) => {
       if (refreshError) throw refreshError
       const before = refresh.before_snapshot as Snapshot
       const storedProposed = refresh.proposed_snapshot as Snapshot
+      const protectedReplacementPositions = concertVideos(before.videos)
+        .filter((video) =>
+          video.is_manually_added
+          && manualVideoReplacements.includes(video.youtube_video_id)
+        )
+        .map((video) => video.display_order)
+      const proposedVideos = normalizeVideoOrder(
+        submittedVideos,
+        protectedReplacementPositions,
+      )
       const editedArtist = submittedArtist
         ? applyManualArtistEdits(
           storedProposed.artist,

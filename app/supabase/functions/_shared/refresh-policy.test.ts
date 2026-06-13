@@ -199,6 +199,32 @@ test("normalizes display order after preview edits", () => {
   )
 })
 
+test("normalization preserves a protected replacement position after an earlier exclusion", () => {
+  const beforeReplacement = video("generated01")
+  beforeReplacement.display_order = 0
+  const replacement = video("replacement", true)
+  replacement.display_order = 2
+  const afterReplacement = video("generated03")
+  afterReplacement.display_order = 3
+
+  const normalized = normalizeVideoOrder(
+    [beforeReplacement, replacement, afterReplacement],
+    [2],
+  )
+
+  assert.deepEqual(
+    normalized.map((item) => item.display_order),
+    [0, 2, 3],
+  )
+  assert.deepEqual(validatePublishRequest({
+    scopes: ["videos"],
+    isCurated: false,
+    existingVideos: [{ ...video("manualvideo", true), display_order: 2 }],
+    proposedVideos: normalized,
+    manualVideoReplacements: ["manualvideo"],
+  }), [])
+})
+
 test("live refresh policy leaves secondary video categories out of scope", () => {
   const interview = { ...video("interview01", true), video_type: "interview" }
   assert.deepEqual(concertVideos([video("concert001"), interview]), [
