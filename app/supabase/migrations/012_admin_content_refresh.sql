@@ -53,7 +53,8 @@ as $$
   where a.id = p_artist_id;
 $$;
 
-revoke all on function public.current_artist_content_snapshot(uuid) from public;
+revoke all on function public.current_artist_content_snapshot(uuid)
+  from public, anon, authenticated;
 grant execute on function public.current_artist_content_snapshot(uuid) to service_role;
 
 create or replace function public.publish_admin_content_refresh(p_refresh_id uuid)
@@ -297,5 +298,6 @@ begin
 end;
 $$;
 
-revoke all on function public.publish_admin_content_refresh(uuid) from public;
+revoke all on function public.publish_admin_content_refresh(uuid)
+  from public, anon, authenticated;
 grant execute on function public.publish_admin_content_refresh(uuid) to service_role;
