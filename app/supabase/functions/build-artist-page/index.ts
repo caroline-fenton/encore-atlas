@@ -558,15 +558,15 @@ Deno.serve(async (req) => {
 
     let concertWriteOk = false
     if (concertRows.length > 0) {
-      const { error: videoError } = await supabase
-        .from("artist_videos")
-        .upsert(concertRows, { onConflict: "artist_id,youtube_video_id,video_type" })
+      const { error: videoError } = await supabase.rpc(
+        "upsert_public_build_videos",
+        { p_artist_id: artistId, p_videos: concertRows },
+      )
 
       if (videoError) {
-        console.error("Failed to insert concert videos:", videoError)
-      } else {
-        concertWriteOk = true
+        throw new Error(`Failed to insert concert videos: ${videoError.message}`)
       }
+      concertWriteOk = true
     }
 
     // Only search for interviews and music videos for artists with enough
@@ -638,22 +638,25 @@ Deno.serve(async (req) => {
             }
           })
 
-          let writeOk = true
           if (rows.length > 0) {
-            const { error } = await supabase
-              .from("artist_videos")
-              .upsert(rows, { onConflict: "artist_id,youtube_video_id,video_type" })
+            const { error } = await supabase.rpc(
+              "upsert_public_build_videos",
+              { p_artist_id: artistId, p_videos: rows },
+            )
             if (error) {
-              console.error(`Failed to insert ${type} videos:`, error)
-              writeOk = false
+              throw new Error(`Failed to insert ${type} videos: ${error.message}`)
             }
           }
 
-          if (writeOk) {
-            syncedTypes.push(type)
-            secondaryRows[type] = rows.map(toBuiltVideoRow)
-          }
+          syncedTypes.push(type)
+          secondaryRows[type] = rows.map(toBuiltVideoRow)
         } catch (err) {
+          if (
+            err instanceof Error
+            && err.message.includes("Artist was curated while the public build was running")
+          ) {
+            throw err
+          }
           console.error(`YouTube search failed for ${type}:`, err)
         }
       }
@@ -664,7 +667,7 @@ Deno.serve(async (req) => {
     // fall back to live search only for categories that were never
     // attempted (rather than ones that completed with zero results).
     if (concertWriteOk) {
-      await supabase
+      const { data: completedArtists, error: completeError } = await supabase
         .from("artists")
         .update({
           last_refreshed_at: new Date().toISOString(),
@@ -672,6 +675,13 @@ Deno.serve(async (req) => {
         })
         .eq("id", artistId)
         .eq("is_curated", false)
+        .select("id")
+      if (completeError) {
+        throw new Error(`Failed to complete artist build: ${completeError.message}`)
+      }
+      if (!completedArtists?.length) {
+        throw new Error("Artist was curated while the public build was running")
+      }
     }
 
     const response: ArtistPageResponse = {

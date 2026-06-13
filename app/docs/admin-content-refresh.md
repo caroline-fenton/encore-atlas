@@ -102,7 +102,8 @@ The first version intentionally uses a strict curated-content lock:
   preview was generated.
 - The public lazy-build function treats curated artist rows as complete and
   never overwrites them, including when a build was already in progress before
-  the artist became curated.
+  the artist became curated. Its video writes lock and recheck the artist
+  immediately before persistence. Admin video refreshes remain allowed.
 
 Publishing runs through `publish_admin_content_refresh`, which applies all
 selected changes in one database transaction.
