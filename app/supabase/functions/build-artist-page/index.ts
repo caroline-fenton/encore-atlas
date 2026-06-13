@@ -101,8 +101,8 @@ function matchesArtistName(title: string, titleNorm: string, name: string): bool
   return (
     title.includes(stripped) ||
     title.includes(name) ||
-    titleNorm.includes(strippedNorm) ||
-    titleNorm.includes(nameNorm)
+    (strippedNorm !== "" && titleNorm.includes(strippedNorm)) ||
+    (nameNorm !== "" && titleNorm.includes(nameNorm))
   )
 }
 

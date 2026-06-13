@@ -240,8 +240,8 @@ function matchesName(title: string, titleNorm: string, name: string): boolean {
   return (
     title.includes(stripped) ||
     title.includes(name) ||
-    titleNorm.includes(strippedNorm) ||
-    titleNorm.includes(nameNorm)
+    (strippedNorm !== "" && titleNorm.includes(strippedNorm)) ||
+    (nameNorm !== "" && titleNorm.includes(nameNorm))
   )
 }
 
