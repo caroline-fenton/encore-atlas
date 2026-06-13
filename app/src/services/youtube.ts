@@ -232,32 +232,30 @@ function normalize(s: string): string {
     .replace(/[^a-z0-9]/g, "")
 }
 
-function matchesName(title: string, titleNorm: string, name: string): boolean {
+function matchesName(text: string, textNorm: string, name: string): boolean {
   const stripped = name.replace(/^the\s+/, "")
   const strippedNorm = normalize(stripped)
   const nameNorm = normalize(name)
 
   return (
-    title.includes(stripped) ||
-    title.includes(name) ||
-    (strippedNorm !== "" && titleNorm.includes(strippedNorm)) ||
-    (nameNorm !== "" && titleNorm.includes(nameNorm))
+    text.includes(stripped) ||
+    text.includes(name) ||
+    (strippedNorm !== "" && textNorm.includes(strippedNorm)) ||
+    (nameNorm !== "" && textNorm.includes(nameNorm))
   )
 }
 
 function isRelevantVideo(video: Video, artistName: string): boolean {
   const title = video.title.toLowerCase()
   const titleNorm = normalize(title)
+  const channel = video.channelTitle.toLowerCase()
+  const channelNorm = normalize(channel)
 
-  // Check the artist name itself
-  if (matchesName(title, titleNorm, artistName.toLowerCase())) return true
+  const names = [artistName.toLowerCase(), ...getAliases(artistName).map((a) => a.toLowerCase())]
 
-  // Check aliases (e.g. "Freddie Mercury" → also accept "Queen")
-  for (const alias of getAliases(artistName)) {
-    if (matchesName(title, titleNorm, alias.toLowerCase())) return true
-  }
-
-  return false
+  return names.some(
+    (name) => matchesName(title, titleNorm, name) || matchesName(channel, channelNorm, name),
+  )
 }
 
 // --- High-level: search + enrich ---

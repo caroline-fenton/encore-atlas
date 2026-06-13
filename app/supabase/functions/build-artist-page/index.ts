@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
+import { getAliases } from "../../../src/data/artistAliases.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,19 +74,7 @@ async function youtubeVideoDetails(
   return map
 }
 
-// --- Relevance filtering (mirrors src/services/youtube.ts + src/data/artistAliases.ts) ---
-
-const ARTIST_ALIASES: Record<string, string[]> = {
-  "freddie mercury": ["queen"],
-  "queen": ["freddie mercury"],
-  "beyonce": ["destinys child", "destiny's child"],
-  "bob marley": ["bob marley and the wailers", "the wailers"],
-  "fela kuti": ["fela kuti and africa 70", "africa 70"],
-}
-
-function getAliases(artistName: string): string[] {
-  return ARTIST_ALIASES[artistName.toLowerCase()] ?? []
-}
+// --- Relevance filtering (mirrors src/services/youtube.ts) ---
 
 function normalizeForMatch(s: string): string {
   return s
@@ -94,30 +83,31 @@ function normalizeForMatch(s: string): string {
     .replace(/[^a-z0-9]/g, "")
 }
 
-function matchesArtistName(title: string, titleNorm: string, name: string): boolean {
+function matchesArtistName(text: string, textNorm: string, name: string): boolean {
   const stripped = name.replace(/^the\s+/, "")
   const strippedNorm = normalizeForMatch(stripped)
   const nameNorm = normalizeForMatch(name)
 
   return (
-    title.includes(stripped) ||
-    title.includes(name) ||
-    (strippedNorm !== "" && titleNorm.includes(strippedNorm)) ||
-    (nameNorm !== "" && titleNorm.includes(nameNorm))
+    text.includes(stripped) ||
+    text.includes(name) ||
+    (strippedNorm !== "" && textNorm.includes(strippedNorm)) ||
+    (nameNorm !== "" && textNorm.includes(nameNorm))
   )
 }
 
 function isRelevantResult(item: YouTubeSearchItem, artistName: string): boolean {
   const title = item.snippet.title.toLowerCase()
   const titleNorm = normalizeForMatch(title)
+  const channel = item.snippet.channelTitle.toLowerCase()
+  const channelNorm = normalizeForMatch(channel)
 
-  if (matchesArtistName(title, titleNorm, artistName.toLowerCase())) return true
+  const names = [artistName.toLowerCase(), ...getAliases(artistName).map((a) => a.toLowerCase())]
 
-  for (const alias of getAliases(artistName)) {
-    if (matchesArtistName(title, titleNorm, alias.toLowerCase())) return true
-  }
-
-  return false
+  return names.some(
+    (name) =>
+      matchesArtistName(title, titleNorm, name) || matchesArtistName(channel, channelNorm, name),
+  )
 }
 
 function parseDuration(iso: string): string {
@@ -458,8 +448,12 @@ Deno.serve(async (req) => {
       console.error("Concert YouTube search failed:", err)
     }
 
-    // Cap at 25 videos
-    const topResults = concertResults.slice(0, 25)
+    // Cap at 25 videos, filtering out results that don't appear to be
+    // about this artist (e.g. unrelated videos that surface for broad
+    // "live concert full set" queries).
+    const topResults = concertResults
+      .filter((item) => isRelevantResult(item, artist_name))
+      .slice(0, 25)
 
     // Get video details (thumbnails, view counts)
     const videoIds = topResults.map((r) => r.id.videoId)
