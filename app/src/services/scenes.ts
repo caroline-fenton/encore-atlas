@@ -17,6 +17,19 @@ export type SceneArtist = {
   } | null
 }
 
+type SceneVideoRow = NonNullable<SceneArtist["video"]> & {
+  artist_id: string
+  display_order: number
+  is_manually_added: boolean
+}
+
+function titleNamesArtist(title: string, artistName: string): boolean {
+  const normalizedTitle = title.toLowerCase()
+  const normalizedName = artistName.toLowerCase()
+  const names = [normalizedName, normalizedName.replace(/^the /, "")]
+  return names.some((name) => name.length > 2 && normalizedTitle.includes(name))
+}
+
 export async function getSceneArtists(
   scene: SceneDefinition,
 ): Promise<SceneArtist[]> {
@@ -30,23 +43,30 @@ export async function getSceneArtists(
 
   const { data: videos, error: videosError } = await supabase
     .from("artist_videos")
-    .select("artist_id,youtube_video_id,title,thumbnail_url,duration,channel_title,display_order")
+    .select("artist_id,youtube_video_id,title,thumbnail_url,duration,channel_title,display_order,is_manually_added")
     .in("artist_id", artists.map((artist) => artist.id))
     .eq("video_type", "concert")
     .order("display_order", { ascending: true })
 
   if (videosError) throw videosError
 
-  const firstVideoByArtist = new Map<string, NonNullable<SceneArtist["video"]>>()
-  for (const video of videos ?? []) {
-    if (!firstVideoByArtist.has(video.artist_id)) {
-      firstVideoByArtist.set(video.artist_id, {
-        youtube_video_id: video.youtube_video_id,
-        title: video.title,
-        thumbnail_url: video.thumbnail_url,
-        duration: video.duration,
-        channel_title: video.channel_title,
-      })
+  const artistNameById = new Map(artists.map((artist) => [artist.id, artist.name]))
+  const representativeVideoByArtist = new Map<string, SceneVideoRow>()
+  for (const video of (videos ?? []) as SceneVideoRow[]) {
+    const current = representativeVideoByArtist.get(video.artist_id)
+    const artistName = artistNameById.get(video.artist_id)
+    if (!current || (
+      artistName
+      && (
+        (video.is_manually_added && !current.is_manually_added)
+        || (
+          video.is_manually_added === current.is_manually_added
+          && !titleNamesArtist(current.title, artistName)
+          && titleNamesArtist(video.title, artistName)
+        )
+      )
+    )) {
+      representativeVideoByArtist.set(video.artist_id, video)
     }
   }
 
@@ -57,8 +77,7 @@ export async function getSceneArtists(
     return [{
       ...artist,
       artist_context: artist.artist_context as ArtistContext | null,
-      video: firstVideoByArtist.get(artist.id) ?? null,
+      video: representativeVideoByArtist.get(artist.id) ?? null,
     }]
   })
 }
-

@@ -203,6 +203,10 @@ function SceneDetail({
 export default function SceneExplorerPage() {
   const [selectedScene, setSelectedScene] = useState<SceneDefinition | null>(null)
 
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [selectedScene])
+
   if (selectedScene) {
     return <SceneDetail scene={selectedScene} onBack={() => setSelectedScene(null)} />
   }
