@@ -208,3 +208,13 @@ while staying realistic about:
 - API limits
 - early-stage data quality
 - solo developer workflow constraints
+
+---
+
+## 2026-06-13 — Distinguish "synced but empty" from "never searched" for video categories
+
+**Context:** Interview and music video categories were only searched for artists with ≥3 concert videos, and a category with zero results looked identical (empty array) to a category that was never attempted. This caused the frontend to repeatedly trigger live YouTube searches for artists who genuinely have no interviews/music videos, wasting API quota.
+
+**Decision:** Persist a `video_types_synced` array on the artist record marking which secondary categories (interview, music_video) were successfully searched and written, regardless of whether any relevant results were found. The frontend trusts a cached-but-empty category only if it's marked synced, and falls back to a live search only for categories never attempted.
+
+**Rationale:** Avoids repeated wasted YouTube API calls for artists with no interview/music-video content, while still allowing legacy/never-attempted artists to get a live fallback. Required widening the `artist_videos` unique constraint to `(artist_id, youtube_video_id, video_type)` so the same video can legitimately appear in multiple categories (e.g. a clip that's both a live performance and shows up in an interview search).
