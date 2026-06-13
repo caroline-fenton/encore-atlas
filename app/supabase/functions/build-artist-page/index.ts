@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
 import { getAliases } from "../../../src/data/artistAliases.ts"
+import { decodeHtml } from "../../../src/utils/decodeHtml.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -97,9 +98,9 @@ function matchesArtistName(text: string, textNorm: string, name: string): boolea
 }
 
 function isRelevantResult(item: YouTubeSearchItem, artistName: string): boolean {
-  const title = item.snippet.title.toLowerCase()
+  const title = decodeHtml(item.snippet.title).toLowerCase()
   const titleNorm = normalizeForMatch(title)
-  const channel = item.snippet.channelTitle.toLowerCase()
+  const channel = decodeHtml(item.snippet.channelTitle).toLowerCase()
   const channelNorm = normalizeForMatch(channel)
 
   const names = [artistName.toLowerCase(), ...getAliases(artistName).map((a) => a.toLowerCase())]

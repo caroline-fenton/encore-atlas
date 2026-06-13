@@ -7,6 +7,7 @@ import type {
 import type { Video } from "../types/video"
 import { getCached, setCache } from "./cache"
 import { getAliases } from "../data/artistAliases"
+import { decodeHtml } from "../utils/decodeHtml"
 
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY as string
 const API_BASE = "https://www.googleapis.com/youtube/v3"
@@ -246,9 +247,9 @@ function matchesName(text: string, textNorm: string, name: string): boolean {
 }
 
 function isRelevantVideo(video: Video, artistName: string): boolean {
-  const title = video.title.toLowerCase()
+  const title = decodeHtml(video.title).toLowerCase()
   const titleNorm = normalize(title)
-  const channel = video.channelTitle.toLowerCase()
+  const channel = decodeHtml(video.channelTitle).toLowerCase()
   const channelNorm = normalize(channel)
 
   const names = [artistName.toLowerCase(), ...getAliases(artistName).map((a) => a.toLowerCase())]
