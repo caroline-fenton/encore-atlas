@@ -90,4 +90,3 @@ export const scenes: SceneDefinition[] = [
     artistNames: ["lifetime", "bigwig", "thursday"],
   },
 ]
-
