@@ -1,0 +1,78 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+import {
+  normalizeVideoOrder,
+  parseYouTubeVideoId,
+  validatePublishRequest,
+  type RefreshVideo,
+} from "./refresh-policy.ts"
+
+function video(id: string, manual = false): RefreshVideo {
+  return {
+    youtube_video_id: id,
+    title: id,
+    description: null,
+    thumbnail_url: null,
+    published_at: null,
+    view_count: null,
+    duration: null,
+    search_query: "test",
+    is_manually_added: manual,
+    display_order: 9,
+  }
+}
+
+test("parses supported YouTube URL formats", () => {
+  assert.equal(parseYouTubeVideoId("https://www.youtube.com/watch?v=dQw4w9WgXcQ"), "dQw4w9WgXcQ")
+  assert.equal(parseYouTubeVideoId("https://youtu.be/dQw4w9WgXcQ"), "dQw4w9WgXcQ")
+  assert.equal(parseYouTubeVideoId("https://youtube.com/shorts/dQw4w9WgXcQ"), "dQw4w9WgXcQ")
+  assert.equal(parseYouTubeVideoId("not a video"), null)
+})
+
+test("blocks curated metadata publishing", () => {
+  const errors = validatePublishRequest({
+    scopes: ["metadata"],
+    isCurated: true,
+    existingVideos: [],
+    proposedVideos: [],
+  })
+
+  assert.deepEqual(errors, [
+    "Curated artist metadata and same-vibe artists are protected.",
+  ])
+})
+
+test("requires manually added videos to survive a refresh", () => {
+  const errors = validatePublishRequest({
+    scopes: ["videos"],
+    isCurated: false,
+    existingVideos: [video("manualvideo", true)],
+    proposedVideos: [video("generated01")],
+  })
+
+  assert.ok(errors.includes("Manually added videos must be preserved."))
+})
+
+test("blocks empty and duplicate video refreshes", () => {
+  assert.ok(validatePublishRequest({
+    scopes: ["videos"],
+    isCurated: false,
+    existingVideos: [],
+    proposedVideos: [],
+  }).includes("A video refresh cannot publish an empty video list."))
+
+  assert.ok(validatePublishRequest({
+    scopes: ["videos"],
+    isCurated: false,
+    existingVideos: [],
+    proposedVideos: [video("duplicate01"), video("duplicate01")],
+  }).includes("The proposed video list contains duplicates."))
+})
+
+test("normalizes display order after preview edits", () => {
+  assert.deepEqual(
+    normalizeVideoOrder([video("firstvideo1"), video("secondvideo")])
+      .map((item) => item.display_order),
+    [0, 1],
+  )
+})

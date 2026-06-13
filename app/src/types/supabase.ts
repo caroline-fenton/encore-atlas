@@ -23,6 +23,54 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_users: {
+        Row: {
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          created_at?: string
+        }
+        Update: never
+        Relationships: []
+      }
+      admin_content_refreshes: {
+        Row: {
+          id: string
+          artist_id: string
+          requested_by: string
+          scopes: string[]
+          status: "preview" | "published" | "failed" | "conflict"
+          before_snapshot: unknown
+          proposed_snapshot: unknown
+          published_snapshot: unknown | null
+          error_message: string | null
+          created_at: string
+          published_at: string | null
+        }
+        Insert: {
+          id?: string
+          artist_id: string
+          requested_by: string
+          scopes: string[]
+          status?: "preview" | "published" | "failed" | "conflict"
+          before_snapshot: unknown
+          proposed_snapshot: unknown
+          published_snapshot?: unknown | null
+          error_message?: string | null
+          created_at?: string
+          published_at?: string | null
+        }
+        Update: {
+          status?: "preview" | "published" | "failed" | "conflict"
+          proposed_snapshot?: unknown
+          published_snapshot?: unknown | null
+          error_message?: string | null
+          published_at?: string | null
+        }
+        Relationships: []
+      }
       artists: {
         Row: {
           id: string
@@ -220,6 +268,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_artist_content_snapshot: {
+        Args: { p_artist_id: string }
+        Returns: unknown
+      }
       get_recommendations: {
         Args: { p_limit?: number }
         Returns: {
@@ -229,6 +281,10 @@ export type Database = {
           blurb: string | null
           total_score: number
         }[]
+      }
+      publish_admin_content_refresh: {
+        Args: { p_refresh_id: string }
+        Returns: unknown
       }
     }
   }

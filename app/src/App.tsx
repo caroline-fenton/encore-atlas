@@ -5,11 +5,13 @@ import LiveShowsPage from "./pages/LiveShowsPage"
 import MusicVideosPage from "./pages/MusicVideosPage"
 import InterviewsPage from "./pages/InterviewsPage"
 import WatchHistoryPage from "./pages/WatchHistoryPage"
+import AdminContentRefreshPage from "./pages/AdminContentRefreshPage"
 
 export default function App() {
   return (
     <>
       <Routes>
+        <Route path="/admin/content-refresh" element={<AdminContentRefreshPage />} />
         <Route path="/" element={<AppLayout />}>
           <Route index element={<LiveShowsPage />} />
           <Route path="music-videos" element={<MusicVideosPage />} />

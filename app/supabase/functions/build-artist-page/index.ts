@@ -331,8 +331,12 @@ Deno.serve(async (req) => {
       .ilike("name", normalizedName.replace(/%/g, "\\%").replace(/_/g, "\\_"))
       .maybeSingle()
 
-    if (existingArtist && existingArtist.last_refreshed_at) {
-      // Cache hit — return artist + videos
+    if (
+      existingArtist
+      && (existingArtist.last_refreshed_at || existingArtist.is_curated)
+    ) {
+      // Cache hit — return artist + videos. Curated rows are always treated as
+      // complete so the public lazy builder can never overwrite their content.
       const { data: videos } = await supabase
         .from("artist_videos")
         .select("*")
