@@ -44,6 +44,7 @@ export type Database = {
           wikipedia_extract: string | null
           wikipedia_thumbnail_url: string | null
           wikipedia_url: string | null
+          video_types_synced: string[]
         }
         Insert: {
           id?: string
@@ -65,6 +66,7 @@ export type Database = {
           wikipedia_extract?: string | null
           wikipedia_thumbnail_url?: string | null
           wikipedia_url?: string | null
+          video_types_synced?: string[]
         }
         Update: {
           name?: string
@@ -83,6 +85,7 @@ export type Database = {
           wikipedia_extract?: string | null
           wikipedia_thumbnail_url?: string | null
           wikipedia_url?: string | null
+          video_types_synced?: string[]
         }
         Relationships: []
       }
@@ -101,6 +104,7 @@ export type Database = {
           is_manually_added: boolean
           display_order: number
           video_type: string
+          channel_title: string | null
           created_at: string
         }
         Insert: {
@@ -117,6 +121,7 @@ export type Database = {
           is_manually_added?: boolean
           display_order?: number
           video_type?: string
+          channel_title?: string | null
           created_at?: string
         }
         Update: {
@@ -129,6 +134,7 @@ export type Database = {
           display_order?: number
           is_manually_added?: boolean
           video_type?: string
+          channel_title?: string | null
         }
         Relationships: [
           {

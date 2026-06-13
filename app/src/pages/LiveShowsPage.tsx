@@ -106,12 +106,13 @@ function mapCachedVideos(
     published_at: string | null
     view_count: number | null
     duration: string | null
+    channel_title: string | null
   }[],
 ): Video[] {
   return videos.map((v) => ({
     id: v.youtube_video_id,
     title: v.title,
-    channelTitle: "",
+    channelTitle: v.channel_title ?? "",
     description: v.description ?? "",
     thumbnailUrl:
       v.thumbnail_url ??
@@ -168,17 +169,19 @@ export default function LiveShowsPage() {
   // back to live YouTube search if the pipeline didn't return these types.
   const cachedInterviews = artistPage.data?.interview_videos
   const cachedMusicVideos = artistPage.data?.music_videos
+  const interviewsSynced = artistPage.data?.interviews_synced ?? false
+  const musicVideosSynced = artistPage.data?.music_videos_synced ?? false
   const { videos: liveInterviewVideos } = useArtistInterviews(
-    pipelineSettled && !cachedInterviews?.length ? selectedArtistName : "",
+    pipelineSettled && !interviewsSynced ? selectedArtistName : "",
   )
   const { videos: liveMusicVideos } = useArtistMusicVideos(
-    pipelineSettled && !cachedMusicVideos?.length ? selectedArtistName : "",
+    pipelineSettled && !musicVideosSynced ? selectedArtistName : "",
   )
-  const interviewVideos = cachedInterviews?.length
-    ? mapCachedVideos(cachedInterviews)
+  const interviewVideos = interviewsSynced
+    ? mapCachedVideos(cachedInterviews ?? [])
     : liveInterviewVideos
-  const musicVideos = cachedMusicVideos?.length
-    ? mapCachedVideos(cachedMusicVideos)
+  const musicVideos = musicVideosSynced
+    ? mapCachedVideos(cachedMusicVideos ?? [])
     : liveMusicVideos
   const { filtered, selectedDecade, setSelectedDecade } = useDecadeFilter(
     allVideos,

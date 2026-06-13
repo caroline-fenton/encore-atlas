@@ -20,6 +20,7 @@ export type ArtistVideo = {
   view_count: number | null
   duration: string | null
   display_order: number
+  channel_title: string | null
 }
 
 export type ArtistPageData = {
@@ -38,6 +39,8 @@ export type ArtistPageData = {
   videos: ArtistVideo[]
   interview_videos: ArtistVideo[]
   music_videos: ArtistVideo[]
+  interviews_synced: boolean
+  music_videos_synced: boolean
   was_cache_hit: boolean
 }
 
@@ -80,10 +83,13 @@ export async function getCachedArtistPage(
     view_count: v.view_count as number | null,
     duration: v.duration as string | null,
     display_order: v.display_order as number,
+    channel_title: v.channel_title as string | null,
   })
 
   const byType = (type: string) =>
     (allVideos ?? []).filter((v) => (v.video_type ?? "concert") === type).map(toArtistVideo)
+
+  const syncedTypes: string[] = artist.video_types_synced ?? []
 
   return {
     artist: {
@@ -101,6 +107,8 @@ export async function getCachedArtistPage(
     videos: byType("concert"),
     interview_videos: byType("interview"),
     music_videos: byType("music_video"),
+    interviews_synced: syncedTypes.includes("interview"),
+    music_videos_synced: syncedTypes.includes("music_video"),
     was_cache_hit: true,
   }
 }

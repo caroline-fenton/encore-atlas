@@ -172,7 +172,7 @@ function mapArtistVideo(v: ArtistVideo): Video {
   return {
     id: v.youtube_video_id,
     title: v.title,
-    channelTitle: "",
+    channelTitle: v.channel_title ?? "",
     description: v.description ?? "",
     thumbnailUrl:
       v.thumbnail_url ??
@@ -187,23 +187,24 @@ function mapArtistVideo(v: ArtistVideo): Video {
 function useCachedOrLiveVideos(
   artistName: string,
   getCached: (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => ArtistVideo[],
+  isSynced: (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => boolean,
   buildQuery: (name: string) => string,
 ): UseVideosResult {
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const cached = await getCachedArtistPage(artistName)
     if (cached) {
-      const cachedVideos = getCached(cached)
-      // Only trust the cache when it actually has rows for this category —
-      // an empty array can mean the secondary search was skipped (too few
-      // concert results) or hasn't run yet for this artist, so fall back
-      // to a live search instead of showing an empty state indefinitely.
-      if (cachedVideos.length > 0) {
+      // Trust the cache once this category has been searched and persisted —
+      // even if it came back empty — so a "completed empty" category doesn't
+      // keep falling back to a live search. Only fall back when the category
+      // was never attempted (legacy artists, or too few concert results).
+      if (isSynced(cached)) {
+        const cachedVideos = getCached(cached)
         return { videos: cachedVideos.map(mapArtistVideo) } as EnrichResult
       }
     }
     const query = buildQuery(artistName)
     return searchAndEnrich(query, { maxResults: 25, artistName, signal })
-  }, [artistName, getCached, buildQuery])
+  }, [artistName, getCached, isSynced, buildQuery])
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
@@ -221,8 +222,12 @@ export function useArtistMusicVideos(artistName: string): UseVideosResult {
     (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => data.music_videos,
     [],
   )
+  const isSynced = useCallback(
+    (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => data.music_videos_synced,
+    [],
+  )
   const buildQuery = useCallback(buildMusicVideoSearchQuery, [])
-  return useCachedOrLiveVideos(artistName, getCached, buildQuery)
+  return useCachedOrLiveVideos(artistName, getCached, isSynced, buildQuery)
 }
 
 export function useArtistInterviews(artistName: string): UseVideosResult {
@@ -230,6 +235,10 @@ export function useArtistInterviews(artistName: string): UseVideosResult {
     (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => data.interview_videos,
     [],
   )
+  const isSynced = useCallback(
+    (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => data.interviews_synced,
+    [],
+  )
   const buildQuery = useCallback(buildInterviewSearchQuery, [])
-  return useCachedOrLiveVideos(artistName, getCached, buildQuery)
+  return useCachedOrLiveVideos(artistName, getCached, isSynced, buildQuery)
 }
