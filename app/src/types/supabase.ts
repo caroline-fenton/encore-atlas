@@ -100,6 +100,7 @@ export type Database = {
           search_query: string
           is_manually_added: boolean
           display_order: number
+          video_type: string
           created_at: string
         }
         Insert: {
@@ -115,6 +116,7 @@ export type Database = {
           search_query: string
           is_manually_added?: boolean
           display_order?: number
+          video_type?: string
           created_at?: string
         }
         Update: {
@@ -126,6 +128,7 @@ export type Database = {
           duration?: string | null
           display_order?: number
           is_manually_added?: boolean
+          video_type?: string
         }
         Relationships: [
           {
