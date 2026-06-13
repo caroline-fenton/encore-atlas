@@ -10,6 +10,7 @@ import {
   signOutAdmin,
   type AdminArtist,
   type ContentRefresh,
+  type RefreshArtist,
   type RefreshScope,
   type RefreshVideo,
 } from "../services/adminContentRefresh"
@@ -66,6 +67,38 @@ function ChangeRow({
       </div>
     </div>
   )
+}
+
+function EditableField({
+  label,
+  before,
+  children,
+}: {
+  label: string
+  before: unknown
+  children: React.ReactNode
+}) {
+  return (
+    <div className="grid gap-2 border-t border-stone-200 py-3 md:grid-cols-[10rem_1fr_1fr]">
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-black/55">{label}</div>
+      <div className="text-sm leading-relaxed text-black/55">{valueText(before)}</div>
+      <div>{children}</div>
+    </div>
+  )
+}
+
+function editableMetadataSignature(artist: RefreshArtist, scopes: RefreshScope[]) {
+  return JSON.stringify({
+    metadata: scopes.includes("metadata") ? {
+      tags: artist.tags ?? [],
+      blurb: artist.blurb ?? null,
+      city: artist.artist_context?.city ?? null,
+      yearsActive: artist.artist_context?.yearsActive ?? null,
+    } : null,
+    sameVibe: scopes.includes("same_vibe")
+      ? artist.artist_context?.relatedArtists ?? []
+      : null,
+  })
 }
 
 function VideoPreview({
@@ -196,6 +229,7 @@ export default function AdminContentRefreshPage() {
   const [selectedArtist, setSelectedArtist] = useState<AdminArtist | null>(null)
   const [scopes, setScopes] = useState<RefreshScope[]>(["metadata", "same_vibe", "videos"])
   const [refresh, setRefresh] = useState<ContentRefresh | null>(null)
+  const [proposedArtist, setProposedArtist] = useState<RefreshArtist | null>(null)
   const [videos, setVideos] = useState<RefreshVideo[]>([])
   const [manualVideoReplacements, setManualVideoReplacements] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
@@ -239,6 +273,15 @@ export default function AdminContentRefreshPage() {
     }
     return warnings
   }, [refresh, videos])
+  const hasManualMetadataEdits = useMemo(
+    () => Boolean(
+      refresh
+      && proposedArtist
+      && editableMetadataSignature(proposedArtist, refresh.scopes)
+        !== editableMetadataSignature(refresh.proposed_snapshot.artist, refresh.scopes)
+    ),
+    [proposedArtist, refresh],
+  )
   const beforeVideoIds = useMemo(
     () => new Set(
       refresh?.before_snapshot.videos
@@ -292,11 +335,13 @@ export default function AdminContentRefreshPage() {
     setBusy(true)
     setError(null)
     setRefresh(null)
+    setProposedArtist(null)
     setManualVideoReplacements([])
     setPublished(false)
     try {
       const result = await generateRefreshPreview(selectedArtist.id, scopes)
       setRefresh(result)
+      setProposedArtist(result.proposed_snapshot.artist)
       setVideos(result.proposed_snapshot.videos)
       setManualVideoReplacements([])
     } catch (previewError) {
@@ -307,11 +352,16 @@ export default function AdminContentRefreshPage() {
   }
 
   async function handlePublish() {
-    if (!refresh) return
+    if (!refresh || !proposedArtist) return
     setBusy(true)
     setError(null)
     try {
-      await publishContentRefresh(refresh.id, videos, manualVideoReplacements)
+      await publishContentRefresh(
+        refresh.id,
+        proposedArtist,
+        videos,
+        manualVideoReplacements,
+      )
       setPublished(true)
     } catch (publishError) {
       setError(publishError instanceof Error ? publishError.message : "Could not publish refresh")
@@ -350,8 +400,6 @@ export default function AdminContentRefreshPage() {
   }
 
   const beforeArtist = refresh?.before_snapshot.artist
-  const proposedArtist = refresh?.proposed_snapshot.artist
-
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-10">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-300 pb-6">
@@ -370,7 +418,7 @@ export default function AdminContentRefreshPage() {
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search existing artists" className="mt-2 w-full border border-stone-300 bg-white/45 px-4 py-3 text-sm outline-none focus:border-black/50" />
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {artists.map((artist) => (
-            <button key={artist.id} type="button" onClick={() => { setSelectedArtist(artist); setRefresh(null); setPublished(false) }} className={[
+            <button key={artist.id} type="button" onClick={() => { setSelectedArtist(artist); setRefresh(null); setProposedArtist(null); setPublished(false) }} className={[
               "border p-3 text-left",
               selectedArtist?.id === artist.id ? "border-[#d94f43] bg-white/70" : "border-stone-300 bg-white/30",
             ].join(" ")}>
@@ -415,16 +463,160 @@ export default function AdminContentRefreshPage() {
       {refresh && beforeArtist && proposedArtist && (
         <section className="space-y-10 border-t border-stone-300 py-8">
           <div>
-            <h2 className="font-display text-3xl tracking-[0.1em]">Metadata Preview</h2>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="font-display text-3xl tracking-[0.1em]">Metadata Preview</h2>
+                <p className="mt-1 text-sm text-black/50">
+                  Edit proposed fields before publishing. Wikipedia remains source-controlled.
+                </p>
+              </div>
+              {hasManualMetadataEdits && (
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#9256a8]">
+                  Manual edits
+                </span>
+              )}
+            </div>
             <div className="mt-3 grid grid-cols-[10rem_1fr_1fr] gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-black/35">
               <span>Field</span><span>Current</span><span>Proposed</span>
             </div>
-            <ChangeRow label="Genres" before={beforeArtist.tags} after={proposedArtist.tags} />
-            <ChangeRow label="Summary" before={beforeArtist.blurb} after={proposedArtist.blurb} />
-            <ChangeRow label="City" before={beforeArtist.artist_context?.city} after={proposedArtist.artist_context?.city} />
-            <ChangeRow label="Years active" before={beforeArtist.artist_context?.yearsActive} after={proposedArtist.artist_context?.yearsActive} />
+            {refresh.scopes.includes("metadata") ? (
+              <>
+                <EditableField label="Genres" before={beforeArtist.tags}>
+                  <input
+                    value={(proposedArtist.tags ?? []).join(", ")}
+                    disabled={beforeArtist.is_curated}
+                    onChange={(event) => setProposedArtist({
+                      ...proposedArtist,
+                      tags: event.target.value.split(",").map((tag) => tag.trim()),
+                    })}
+                    className="w-full border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
+                  />
+                </EditableField>
+                <EditableField label="Summary" before={beforeArtist.blurb}>
+                  <textarea
+                    value={proposedArtist.blurb ?? ""}
+                    disabled={beforeArtist.is_curated}
+                    rows={5}
+                    onChange={(event) => setProposedArtist({ ...proposedArtist, blurb: event.target.value })}
+                    className="w-full resize-y border border-stone-300 bg-white/60 px-3 py-2 text-sm leading-relaxed outline-none focus:border-[#9256a8] disabled:opacity-50"
+                  />
+                </EditableField>
+                <EditableField label="City" before={beforeArtist.artist_context?.city}>
+                  <input
+                    value={proposedArtist.artist_context?.city ?? ""}
+                    disabled={beforeArtist.is_curated}
+                    onChange={(event) => setProposedArtist({
+                      ...proposedArtist,
+                      artist_context: proposedArtist.artist_context
+                        ? { ...proposedArtist.artist_context, city: event.target.value }
+                        : null,
+                    })}
+                    className="w-full border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
+                  />
+                </EditableField>
+                <EditableField label="Years active" before={beforeArtist.artist_context?.yearsActive}>
+                  <input
+                    value={proposedArtist.artist_context?.yearsActive ?? ""}
+                    disabled={beforeArtist.is_curated}
+                    onChange={(event) => setProposedArtist({
+                      ...proposedArtist,
+                      artist_context: proposedArtist.artist_context
+                        ? { ...proposedArtist.artist_context, yearsActive: event.target.value }
+                        : null,
+                    })}
+                    className="w-full border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
+                  />
+                </EditableField>
+              </>
+            ) : (
+              <>
+                <ChangeRow label="Genres" before={beforeArtist.tags} after={proposedArtist.tags} />
+                <ChangeRow label="Summary" before={beforeArtist.blurb} after={proposedArtist.blurb} />
+                <ChangeRow label="City" before={beforeArtist.artist_context?.city} after={proposedArtist.artist_context?.city} />
+                <ChangeRow label="Years active" before={beforeArtist.artist_context?.yearsActive} after={proposedArtist.artist_context?.yearsActive} />
+              </>
+            )}
             <ChangeRow label="Wikipedia" before={beforeArtist.wikipedia_url} after={proposedArtist.wikipedia_url} />
-            <ChangeRow label="Same vibe" before={beforeArtist.related_artists} after={proposedArtist.related_artists} />
+            {refresh.scopes.includes("same_vibe") ? (
+              <EditableField label="Same vibe" before={beforeArtist.related_artists}>
+                <div className="space-y-2">
+                  {(proposedArtist.artist_context?.relatedArtists ?? []).map((related, index) => (
+                    <div key={`${related.name}-${index}`} className="grid gap-2 border border-stone-200 bg-white/40 p-2 sm:grid-cols-[1fr_2fr_auto]">
+                      <input
+                        value={related.name}
+                        disabled={beforeArtist.is_curated}
+                        aria-label={`Related artist ${index + 1}`}
+                        onChange={(event) => {
+                          const relatedArtists = [...(proposedArtist.artist_context?.relatedArtists ?? [])]
+                          relatedArtists[index] = { ...related, name: event.target.value }
+                          setProposedArtist({
+                            ...proposedArtist,
+                            artist_context: proposedArtist.artist_context
+                              ? { ...proposedArtist.artist_context, relatedArtists }
+                              : null,
+                          })
+                        }}
+                        className="border border-stone-300 bg-white/70 px-2 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
+                      />
+                      <input
+                        value={related.reason}
+                        disabled={beforeArtist.is_curated}
+                        aria-label={`Related artist reason ${index + 1}`}
+                        onChange={(event) => {
+                          const relatedArtists = [...(proposedArtist.artist_context?.relatedArtists ?? [])]
+                          relatedArtists[index] = { ...related, reason: event.target.value }
+                          setProposedArtist({
+                            ...proposedArtist,
+                            artist_context: proposedArtist.artist_context
+                              ? { ...proposedArtist.artist_context, relatedArtists }
+                              : null,
+                          })
+                        }}
+                        className="border border-stone-300 bg-white/70 px-2 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
+                      />
+                      <button
+                        type="button"
+                        disabled={beforeArtist.is_curated}
+                        onClick={() => {
+                          const relatedArtists = (proposedArtist.artist_context?.relatedArtists ?? [])
+                            .filter((_, itemIndex) => itemIndex !== index)
+                          setProposedArtist({
+                            ...proposedArtist,
+                            artist_context: proposedArtist.artist_context
+                              ? { ...proposedArtist.artist_context, relatedArtists }
+                              : null,
+                          })
+                        }}
+                        className="px-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#a33b33] disabled:opacity-40"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={beforeArtist.is_curated}
+                    onClick={() => setProposedArtist({
+                      ...proposedArtist,
+                      artist_context: proposedArtist.artist_context
+                        ? {
+                          ...proposedArtist.artist_context,
+                          relatedArtists: [
+                            ...proposedArtist.artist_context.relatedArtists,
+                            { name: "", reason: "" },
+                          ],
+                        }
+                        : null,
+                    })}
+                    className="text-xs font-semibold uppercase tracking-[0.12em] text-[#9256a8] disabled:opacity-40"
+                  >
+                    Add related artist
+                  </button>
+                </div>
+              </EditableField>
+            ) : (
+              <ChangeRow label="Same vibe" before={beforeArtist.related_artists} after={proposedArtist.related_artists} />
+            )}
           </div>
 
           {refresh.scopes.includes("videos") && (
@@ -502,6 +694,11 @@ export default function AdminContentRefreshPage() {
 
           <div className="border-t border-stone-300 pt-6">
             {publishWarnings.map((warning) => <p key={warning} className="mb-3 border border-[#a33b33]/35 bg-[#a33b33]/5 p-3 text-sm text-[#82332d]"><strong>Publish blocked:</strong> {warning}</p>)}
+            {hasManualMetadataEdits && (
+              <p className="mb-3 border border-[#9256a8]/35 bg-[#9256a8]/5 p-3 text-sm text-[#6d3d7c]">
+                <strong>Manual metadata:</strong> Publishing will mark this artist as curated. Future metadata and same-vibe refreshes cannot overwrite it, but video and YouTube metadata refreshes remain available.
+              </p>
+            )}
             <p className="mb-4 text-sm text-black/55">Publishing applies only the selected scopes. Manually selected videos are marked protected for future refreshes.</p>
             <button type="button" disabled={busy || published || publishWarnings.length > 0} onClick={handlePublish} className="bg-[#d94f43] px-6 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-white disabled:opacity-40">
               {busy ? "Publishing..." : published ? "Published" : `Publish ${selectedArtist?.name}`}

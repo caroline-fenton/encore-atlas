@@ -47,7 +47,9 @@ allowlist so email magic links can return to the route.
    - **Live video content:** persisted live-performance videos. Interview and
      music-video categories are left unchanged.
 4. Select **Generate preview**.
-5. Review current and proposed metadata and the proposed video list.
+5. Review current and proposed metadata. Proposed summary, genres, city, years
+   active, and same-vibe artist names and reasons may be edited before publish.
+   The Wikipedia source remains read-only.
 6. Exclude unwanted generated videos or replace a video with a preferred
    YouTube URL.
 7. Select **Publish** to apply only the selected scopes.
@@ -84,9 +86,12 @@ only the current preview; a later refresh may suggest it again.
 
 The first version intentionally uses a strict curated-content lock:
 
+- Publishing any manual metadata or same-vibe edit marks the artist as curated.
 - Artists with `is_curated = true` may preview metadata and same-vibe changes,
   but those scopes cannot be published.
-- Video refreshes may be published for curated artists.
+- Video refreshes may be published for curated artists. Curated status does not
+  prevent refreshing YouTube titles, thumbnails, view counts, durations, or
+  other persisted video metadata.
 - Existing videos with `is_manually_added = true` cannot be removed by an
   automatic refresh. They can only be replaced through the explicit protected
   replacement workflow.
@@ -120,7 +125,6 @@ include:
 
 - Batch refreshes or scheduled refreshes.
 - Bulk cache invalidation.
-- Manual editing of generated artist text.
 - Drag-and-drop video ordering.
 - Interview or music-video persistence.
 - A rollback UI.

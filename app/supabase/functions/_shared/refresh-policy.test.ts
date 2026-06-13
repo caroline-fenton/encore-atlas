@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import {
+  applyManualArtistEdits,
   concertVideos,
   normalizeVideoOrder,
   parseYouTubeVideoId,
@@ -44,6 +45,88 @@ test("blocks curated metadata publishing", () => {
   assert.deepEqual(errors, [
     "Curated artist metadata and same-vibe artists are protected.",
   ])
+})
+
+test("manual metadata edits are normalized and detected", () => {
+  const generated = {
+    tags: ["rock"],
+    blurb: "Generated summary",
+    related_artists: ["Peer"],
+    artist_context: {
+      genre: ["rock"],
+      city: "Boston",
+      yearsActive: "1990-present",
+      sceneSummary: "Generated summary",
+      relatedArtists: [{ name: "Peer", reason: "Similar sound" }],
+    },
+  }
+  const submitted = structuredClone(generated)
+  submitted.tags = [" post-rock ", "post-rock"]
+  submitted.blurb = "  Revised summary. "
+  submitted.artist_context.city = "  Chicago "
+  submitted.artist_context.relatedArtists = [{
+    name: " New Peer ",
+    reason: " Shared scene ",
+  }]
+
+  const result = applyManualArtistEdits(generated, submitted, [
+    "metadata",
+    "same_vibe",
+  ])
+
+  assert.equal(result.manualMetadataEdit, true)
+  assert.deepEqual(result.errors, [])
+  assert.deepEqual(result.artist.tags, ["post-rock"])
+  assert.equal(result.artist.blurb, "Revised summary.")
+  assert.equal(result.artist.artist_context?.sceneSummary, "Revised summary.")
+  assert.deepEqual(result.artist.related_artists, ["New Peer"])
+})
+
+test("manual metadata edits cannot clear required generated content", () => {
+  const artist = {
+    tags: ["rock"],
+    blurb: "Summary",
+    related_artists: ["Peer"],
+    artist_context: {
+      genre: ["rock"],
+      city: null,
+      yearsActive: null,
+      sceneSummary: "Summary",
+      relatedArtists: [{ name: "Peer", reason: "" }],
+    },
+  }
+
+  const result = applyManualArtistEdits(
+    artist,
+    { ...artist, tags: [], blurb: "", related_artists: [] },
+    ["metadata"],
+  )
+
+  assert.ok(result.errors.includes("Artist metadata requires at least one genre."))
+  assert.ok(result.errors.includes("Artist metadata requires a summary."))
+})
+
+test("an untouched generated metadata preview is not marked manual", () => {
+  const artist = {
+    tags: ["rock"],
+    blurb: "Summary",
+    related_artists: ["Peer"],
+    artist_context: {
+      genre: ["rock"],
+      city: null,
+      yearsActive: null,
+      sceneSummary: "Summary",
+      relatedArtists: [{ name: "Peer", reason: "Similar sound" }],
+    },
+  }
+
+  const result = applyManualArtistEdits(
+    artist,
+    structuredClone(artist),
+    ["metadata", "same_vibe"],
+  )
+
+  assert.equal(result.manualMetadataEdit, false)
 })
 
 test("requires manually added videos to survive a refresh", () => {

@@ -110,11 +110,13 @@ export async function previewReplacementVideo(
 
 export async function publishContentRefresh(
   refreshId: string,
+  artist: RefreshArtist,
   videos: RefreshVideo[],
   manualVideoReplacements: string[],
 ): Promise<void> {
   await invoke("publish", {
     refresh_id: refreshId,
+    proposed_artist: artist,
     proposed_videos: videos,
     manual_video_replacements: manualVideoReplacements,
   })

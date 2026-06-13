@@ -15,6 +15,109 @@ export type RefreshVideo = {
   channel_title: string | null
 }
 
+type EditableArtist = {
+  tags: string[] | null
+  blurb: string | null
+  related_artists: string[] | null
+  artist_context: {
+    genre: string[]
+    city: string | null
+    yearsActive: string | null
+    sceneSummary: string
+    relatedArtists: Array<{ name: string; reason: string }>
+    [key: string]: unknown
+  } | null
+  [key: string]: unknown
+}
+
+function normalizeText(value: unknown): string | null {
+  if (typeof value !== "string") return null
+  const normalized = value.trim()
+  return normalized || null
+}
+
+function normalizeTextList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return [...new Set(
+    value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  )]
+}
+
+export function applyManualArtistEdits(
+  generated: EditableArtist,
+  submitted: EditableArtist,
+  scopes: RefreshScope[],
+): { artist: EditableArtist; manualMetadataEdit: boolean; errors: string[] } {
+  const artist = structuredClone(generated)
+  const context = {
+    ...(artist.artist_context ?? {
+      genre: [],
+      city: null,
+      yearsActive: null,
+      sceneSummary: "",
+      relatedArtists: [],
+    }),
+  }
+  let manualMetadataEdit = false
+  const errors: string[] = []
+
+  if (scopes.includes("metadata")) {
+    manualMetadataEdit = manualMetadataEdit
+      || JSON.stringify([
+        submitted.tags ?? [],
+        submitted.blurb,
+        submitted.artist_context?.city ?? null,
+        submitted.artist_context?.yearsActive ?? null,
+      ])
+        !== JSON.stringify([
+          generated.tags ?? [],
+          generated.blurb,
+          generated.artist_context?.city ?? null,
+          generated.artist_context?.yearsActive ?? null,
+        ])
+    const tags = normalizeTextList(submitted.tags)
+    const blurb = normalizeText(submitted.blurb)
+    const city = normalizeText(submitted.artist_context?.city)
+    const yearsActive = normalizeText(submitted.artist_context?.yearsActive)
+    if (tags.length === 0) errors.push("Artist metadata requires at least one genre.")
+    if (!blurb) errors.push("Artist metadata requires a summary.")
+
+    artist.tags = tags
+    artist.blurb = blurb
+    context.genre = tags
+    context.sceneSummary = blurb ?? ""
+    context.city = city
+    context.yearsActive = yearsActive
+  }
+
+  if (scopes.includes("same_vibe")) {
+    manualMetadataEdit = manualMetadataEdit
+      || JSON.stringify(submitted.artist_context?.relatedArtists ?? [])
+        !== JSON.stringify(generated.artist_context?.relatedArtists ?? [])
+    const relatedArtists = Array.isArray(submitted.artist_context?.relatedArtists)
+      ? submitted.artist_context.relatedArtists
+        .filter((item) => item && typeof item.name === "string")
+        .map((item) => ({
+          name: item.name.trim(),
+          reason: typeof item.reason === "string" ? item.reason.trim() : "",
+        }))
+        .filter((item) => item.name)
+      : []
+    if (relatedArtists.length === 0) {
+      errors.push("Same-vibe metadata requires at least one related artist.")
+    }
+
+    context.relatedArtists = relatedArtists
+    artist.related_artists = relatedArtists.map((item) => item.name)
+  }
+
+  artist.artist_context = context
+  return { artist, manualMetadataEdit, errors }
+}
+
 export function parseYouTubeVideoId(value: string): string | null {
   const trimmed = value.trim()
   if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
 import {
+  applyManualArtistEdits,
   concertVideos,
   normalizeVideoOrder,
   parseYouTubeVideoId,
@@ -528,6 +529,9 @@ Deno.serve(async (request) => {
           (id): id is string => typeof id === "string",
         )
         : []
+      const submittedArtist = body.proposed_artist && typeof body.proposed_artist === "object"
+        ? body.proposed_artist as ArtistRow
+        : null
       const { data: refresh, error: refreshError } = await service
         .from("admin_content_refreshes")
         .select("*")
@@ -537,6 +541,18 @@ Deno.serve(async (request) => {
         .single()
       if (refreshError) throw refreshError
       const before = refresh.before_snapshot as Snapshot
+      const storedProposed = refresh.proposed_snapshot as Snapshot
+      const editedArtist = submittedArtist
+        ? applyManualArtistEdits(
+          storedProposed.artist,
+          submittedArtist,
+          refresh.scopes as RefreshScope[],
+        )
+        : {
+          artist: storedProposed.artist,
+          manualMetadataEdit: false,
+          errors: [],
+        }
       const errors = validatePublishRequest({
         scopes: refresh.scopes as RefreshScope[],
         isCurated: before.artist.is_curated,
@@ -544,15 +560,18 @@ Deno.serve(async (request) => {
         proposedVideos,
         manualVideoReplacements,
       })
+      errors.push(...editedArtist.errors)
       if (errors.length > 0) return json({ error: errors.join(" ") }, 400)
 
       const { error: updateError } = await service
         .from("admin_content_refreshes")
         .update({
           proposed_snapshot: {
-            ...(refresh.proposed_snapshot as Snapshot),
+            ...storedProposed,
+            artist: editedArtist.artist,
             videos: proposedVideos,
             manual_video_replacements: manualVideoReplacements,
+            manual_metadata_edit: editedArtist.manualMetadataEdit,
           },
         })
         .eq("id", refreshId)
