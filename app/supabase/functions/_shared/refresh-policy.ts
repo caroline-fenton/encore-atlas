@@ -48,6 +48,7 @@ export function validatePublishRequest(input: {
   isCurated: boolean
   existingVideos: RefreshVideo[]
   proposedVideos: RefreshVideo[]
+  manualVideoReplacements: string[]
 }): string[] {
   const errors: string[] = []
 
@@ -66,11 +67,41 @@ export function validatePublishRequest(input: {
     const proposedIds = new Set(
       input.proposedVideos.map((video) => video.youtube_video_id),
     )
+    const replacementIds = new Set(input.manualVideoReplacements)
+    const existingManualVideos = input.existingVideos.filter(
+      (video) => video.is_manually_added,
+    )
+    const existingManualIds = new Set(
+      existingManualVideos.map((video) => video.youtube_video_id),
+    )
     const missingManual = input.existingVideos.some(
-      (video) => video.is_manually_added && !proposedIds.has(video.youtube_video_id),
+      (video) =>
+        video.is_manually_added
+        && !proposedIds.has(video.youtube_video_id)
+        && !replacementIds.has(video.youtube_video_id),
     )
     if (missingManual) {
-      errors.push("Manually added videos must be preserved.")
+      errors.push("Manually added videos must be preserved or explicitly replaced.")
+    }
+
+    const invalidReplacement = input.manualVideoReplacements.some(
+      (id) => !existingManualIds.has(id) || proposedIds.has(id),
+    )
+    if (invalidReplacement) {
+      errors.push("Manual video replacements must identify a removed protected video.")
+    }
+
+    const replacementWithoutManualSuccessor = existingManualVideos.some(
+      (existing) =>
+        replacementIds.has(existing.youtube_video_id)
+        && !input.proposedVideos.some(
+          (proposed) =>
+            proposed.is_manually_added
+            && proposed.display_order === existing.display_order,
+        ),
+    )
+    if (replacementWithoutManualSuccessor) {
+      errors.push("A protected manual video replacement must remain manual and keep its position.")
     }
 
     if (proposedIds.size !== input.proposedVideos.length) {

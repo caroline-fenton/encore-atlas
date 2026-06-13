@@ -73,11 +73,12 @@ bare 11-character video IDs are supported. Invalid, unavailable, and duplicate
 videos are rejected.
 
 A replacement is marked `is_manually_added = true` when published. Later
-automatic refreshes must preserve it. Existing manual selections are locked in
-this workflow; removing or replacing one requires a separate deliberate
-maintenance operation. Canceling before publish leaves the current artist page
-unchanged. Excluding a generated suggestion affects only the current preview;
-a later refresh may suggest it again.
+automatic refreshes must preserve it. Existing manual selections cannot be
+removed by an automatic refresh, but an administrator may select **Replace
+protected** and confirm the stronger warning. The replacement remains manual,
+protected, and in the same display position. Canceling before publish leaves
+the current artist page unchanged. Excluding a generated suggestion affects
+only the current preview; a later refresh may suggest it again.
 
 ## Curated Data Protections
 
@@ -86,8 +87,9 @@ The first version intentionally uses a strict curated-content lock:
 - Artists with `is_curated = true` may preview metadata and same-vibe changes,
   but those scopes cannot be published.
 - Video refreshes may be published for curated artists.
-- Existing videos with `is_manually_added = true` cannot be removed by a
-  refresh.
+- Existing videos with `is_manually_added = true` cannot be removed by an
+  automatic refresh. They can only be replaced through the explicit protected
+  replacement workflow.
 - A video refresh that proposes zero videos cannot be published.
 - A preview cannot publish if the artist or video rows changed after the
   preview was generated.

@@ -49,6 +49,7 @@ type ArtistRow = {
 type Snapshot = {
   artist: ArtistRow
   videos: Array<RefreshVideo & { id?: string; artist_id?: string; created_at?: string }>
+  manual_video_replacements?: string[]
 }
 
 type YouTubeSearchItem = {
@@ -522,6 +523,11 @@ Deno.serve(async (request) => {
       const proposedVideos = Array.isArray(body.proposed_videos)
         ? normalizeVideoOrder(body.proposed_videos as RefreshVideo[])
         : []
+      const manualVideoReplacements = Array.isArray(body.manual_video_replacements)
+        ? body.manual_video_replacements.filter(
+          (id): id is string => typeof id === "string",
+        )
+        : []
       const { data: refresh, error: refreshError } = await service
         .from("admin_content_refreshes")
         .select("*")
@@ -536,6 +542,7 @@ Deno.serve(async (request) => {
         isCurated: before.artist.is_curated,
         existingVideos: concertVideos(before.videos),
         proposedVideos,
+        manualVideoReplacements,
       })
       if (errors.length > 0) return json({ error: errors.join(" ") }, 400)
 
@@ -545,6 +552,7 @@ Deno.serve(async (request) => {
           proposed_snapshot: {
             ...(refresh.proposed_snapshot as Snapshot),
             videos: proposedVideos,
+            manual_video_replacements: manualVideoReplacements,
           },
         })
         .eq("id", refreshId)

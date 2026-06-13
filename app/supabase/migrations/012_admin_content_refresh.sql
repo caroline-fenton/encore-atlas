@@ -67,6 +67,7 @@ declare
   current_snapshot jsonb;
   proposed_artist jsonb;
   proposed_videos jsonb;
+  manual_video_replacements jsonb;
   published jsonb;
 begin
   select *
@@ -101,6 +102,10 @@ begin
 
   proposed_artist := refresh_row.proposed_snapshot->'artist';
   proposed_videos := coalesce(refresh_row.proposed_snapshot->'videos', '[]'::jsonb);
+  manual_video_replacements := coalesce(
+    refresh_row.proposed_snapshot->'manual_video_replacements',
+    '[]'::jsonb
+  );
 
   if (
     refresh_row.scopes && array['metadata', 'same_vibe']::text[]
@@ -153,10 +158,50 @@ begin
 
     if exists (
       select 1
+      from jsonb_array_elements_text(manual_video_replacements) replacement
+      where not exists (
+        select 1
+        from public.artist_videos existing
+        where existing.artist_id = refresh_row.artist_id
+          and coalesce(existing.video_type, 'concert') = 'concert'
+          and existing.is_manually_added
+          and existing.youtube_video_id = replacement
+      )
+    ) then
+      raise exception 'A manual replacement does not identify a protected video';
+    end if;
+
+    if exists (
+      select 1
       from public.artist_videos existing
       where existing.artist_id = refresh_row.artist_id
         and coalesce(existing.video_type, 'concert') = 'concert'
         and existing.is_manually_added
+        and (manual_video_replacements ? existing.youtube_video_id)
+        and (
+          exists (
+            select 1
+            from jsonb_array_elements(proposed_videos) proposed
+            where proposed->>'youtube_video_id' = existing.youtube_video_id
+          )
+          or not exists (
+            select 1
+            from jsonb_array_elements(proposed_videos) proposed
+            where coalesce((proposed->>'is_manually_added')::boolean, false)
+              and (proposed->>'display_order')::integer = existing.display_order
+          )
+        )
+    ) then
+      raise exception 'A protected manual replacement must remove the old video and keep a manual successor in its position';
+    end if;
+
+    if exists (
+      select 1
+      from public.artist_videos existing
+      where existing.artist_id = refresh_row.artist_id
+        and coalesce(existing.video_type, 'concert') = 'concert'
+        and existing.is_manually_added
+        and not (manual_video_replacements ? existing.youtube_video_id)
         and not exists (
           select 1
           from jsonb_array_elements(proposed_videos) proposed
@@ -169,7 +214,10 @@ begin
     delete from public.artist_videos existing
     where existing.artist_id = refresh_row.artist_id
       and coalesce(existing.video_type, 'concert') = 'concert'
-      and not existing.is_manually_added
+      and (
+        not existing.is_manually_added
+        or (manual_video_replacements ? existing.youtube_video_id)
+      )
       and not exists (
         select 1
         from jsonb_array_elements(proposed_videos) proposed

@@ -71,13 +71,15 @@ function ChangeRow({
 function VideoPreview({
   video,
   changeLabel,
+  isProtectedManual,
   onRemove,
   onReplace,
 }: {
   video: RefreshVideo
   changeLabel: string
+  isProtectedManual: boolean
   onRemove: () => void
-  onReplace: (video: RefreshVideo) => void
+  onReplace: (video: RefreshVideo, replacedManualVideoId: string | null) => void
 }) {
   const [showReplace, setShowReplace] = useState(false)
   const [url, setUrl] = useState("")
@@ -87,11 +89,23 @@ function VideoPreview({
   const embedUrl = `https://www.youtube.com/embed/${video.youtube_video_id}`
 
   async function handleReplacement() {
+    if (
+      isProtectedManual
+      && !window.confirm(
+        "Replace protected manual video? This removes your previous selection when the overall preview is published.",
+      )
+    ) {
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
       const replacement = await previewReplacementVideo(url)
-      onReplace({ ...replacement, display_order: video.display_order })
+      onReplace(
+        { ...replacement, display_order: video.display_order },
+        isProtectedManual ? video.youtube_video_id : null,
+      )
       setShowReplace(false)
       setUrl("")
     } catch (replacementError) {
@@ -132,15 +146,13 @@ function VideoPreview({
             Embed: {embedUrl}
           </div>
           <div className="mt-3 flex gap-3">
+            <button type="button" onClick={() => setShowReplace((value) => !value)} className="text-xs font-semibold uppercase tracking-[0.12em] text-[#9256a8]">
+              {isProtectedManual ? "Replace protected" : "Replace"}
+            </button>
             {!video.is_manually_added && (
-              <>
-                <button type="button" onClick={() => setShowReplace((value) => !value)} className="text-xs font-semibold uppercase tracking-[0.12em] text-[#9256a8]">
-                  Replace
-                </button>
-                <button type="button" onClick={onRemove} className="text-xs font-semibold uppercase tracking-[0.12em] text-[#a33b33]">
-                  Exclude
-                </button>
-              </>
+              <button type="button" onClick={onRemove} className="text-xs font-semibold uppercase tracking-[0.12em] text-[#a33b33]">
+                Exclude
+              </button>
             )}
           </div>
         </div>
@@ -148,6 +160,11 @@ function VideoPreview({
 
       {showReplace && (
         <div className="mt-4 border-t border-stone-200 pt-4">
+          {isProtectedManual && (
+            <p className="mb-3 border border-[#a33b33]/30 bg-[#a33b33]/5 p-3 text-sm text-[#82332d]">
+              This protected selection will be removed only after you confirm the replacement and publish the overall preview.
+            </p>
+          )}
           <label className="text-xs font-semibold uppercase tracking-[0.14em] text-black/55">
             Replacement YouTube URL
           </label>
@@ -180,6 +197,7 @@ export default function AdminContentRefreshPage() {
   const [scopes, setScopes] = useState<RefreshScope[]>(["metadata", "same_vibe", "videos"])
   const [refresh, setRefresh] = useState<ContentRefresh | null>(null)
   const [videos, setVideos] = useState<RefreshVideo[]>([])
+  const [manualVideoReplacements, setManualVideoReplacements] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(false)
@@ -249,6 +267,12 @@ export default function AdminContentRefreshPage() {
         && !proposedIds.has(video.youtube_video_id),
     ) ?? []
   }, [refresh, videos])
+  const replacedManualVideos = useMemo(
+    () => refresh?.before_snapshot.videos.filter(
+      (video) => manualVideoReplacements.includes(video.youtube_video_id),
+    ) ?? [],
+    [manualVideoReplacements, refresh],
+  )
 
   async function handleMagicLink() {
     setBusy(true)
@@ -268,11 +292,13 @@ export default function AdminContentRefreshPage() {
     setBusy(true)
     setError(null)
     setRefresh(null)
+    setManualVideoReplacements([])
     setPublished(false)
     try {
       const result = await generateRefreshPreview(selectedArtist.id, scopes)
       setRefresh(result)
       setVideos(result.proposed_snapshot.videos)
+      setManualVideoReplacements([])
     } catch (previewError) {
       setError(previewError instanceof Error ? previewError.message : "Could not generate preview")
     } finally {
@@ -285,7 +311,7 @@ export default function AdminContentRefreshPage() {
     setBusy(true)
     setError(null)
     try {
-      await publishContentRefresh(refresh.id, videos)
+      await publishContentRefresh(refresh.id, videos, manualVideoReplacements)
       setPublished(true)
     } catch (publishError) {
       setError(publishError instanceof Error ? publishError.message : "Could not publish refresh")
@@ -406,7 +432,7 @@ export default function AdminContentRefreshPage() {
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <h2 className="font-display text-3xl tracking-[0.1em]">Video Preview</h2>
-                  <p className="mt-1 text-sm text-black/50">Exclude or replace generated suggestions. Existing manual selections remain locked.</p>
+                  <p className="mt-1 text-sm text-black/50">Exclude generated suggestions. Protected manual selections require explicit replacement confirmation.</p>
                 </div>
                 <div className="text-xs uppercase tracking-[0.14em] text-black/40">{videos.length} proposed videos</div>
               </div>
@@ -415,6 +441,7 @@ export default function AdminContentRefreshPage() {
                   <VideoPreview
                     key={`${video.youtube_video_id}-${index}`}
                     video={video}
+                    isProtectedManual={beforeManualVideoIds.has(video.youtube_video_id)}
                     changeLabel={
                       beforeManualVideoIds.has(video.youtube_video_id)
                         ? "Manual · protected"
@@ -425,7 +452,14 @@ export default function AdminContentRefreshPage() {
                             : "Generated · will be added"
                     }
                     onRemove={() => setVideos((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                    onReplace={(replacement) => setVideos((current) => current.map((item, itemIndex) => itemIndex === index ? replacement : item))}
+                    onReplace={(replacement, replacedManualVideoId) => {
+                      setVideos((current) => current.map((item, itemIndex) => itemIndex === index ? replacement : item))
+                      if (replacedManualVideoId) {
+                        setManualVideoReplacements((current) => [
+                          ...new Set([...current, replacedManualVideoId]),
+                        ])
+                      }
+                    }}
                   />
                 ))}
               </div>
@@ -445,6 +479,20 @@ export default function AdminContentRefreshPage() {
                       >
                         {video.title}
                       </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {replacedManualVideos.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9256a8]">
+                    Protected manual videos that will be replaced
+                  </h3>
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    {replacedManualVideos.map((video) => (
+                      <div key={video.youtube_video_id} className="border border-[#9256a8]/25 bg-[#9256a8]/5 p-3 text-sm text-[#6d3d7c]">
+                        {video.title}
+                      </div>
                     ))}
                   </div>
                 </div>

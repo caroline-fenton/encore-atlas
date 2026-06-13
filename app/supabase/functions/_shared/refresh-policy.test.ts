@@ -38,6 +38,7 @@ test("blocks curated metadata publishing", () => {
     isCurated: true,
     existingVideos: [],
     proposedVideos: [],
+    manualVideoReplacements: [],
   })
 
   assert.deepEqual(errors, [
@@ -51,9 +52,42 @@ test("requires manually added videos to survive a refresh", () => {
     isCurated: false,
     existingVideos: [video("manualvideo", true)],
     proposedVideos: [video("generated01")],
+    manualVideoReplacements: [],
   })
 
-  assert.ok(errors.includes("Manually added videos must be preserved."))
+  assert.ok(errors.includes("Manually added videos must be preserved or explicitly replaced."))
+})
+
+test("allows an explicitly confirmed manual video replacement", () => {
+  const existing = video("manualvideo", true)
+  existing.display_order = 0
+  const replacement = video("replacement", true)
+  replacement.display_order = 0
+
+  assert.deepEqual(validatePublishRequest({
+    scopes: ["videos"],
+    isCurated: false,
+    existingVideos: [existing],
+    proposedVideos: [replacement],
+    manualVideoReplacements: ["manualvideo"],
+  }), [])
+})
+
+test("rejects a manual replacement without a protected successor", () => {
+  const existing = video("manualvideo", true)
+  existing.display_order = 0
+
+  const errors = validatePublishRequest({
+    scopes: ["videos"],
+    isCurated: false,
+    existingVideos: [existing],
+    proposedVideos: [video("replacement")],
+    manualVideoReplacements: ["manualvideo"],
+  })
+
+  assert.ok(errors.includes(
+    "A protected manual video replacement must remain manual and keep its position.",
+  ))
 })
 
 test("blocks empty and duplicate video refreshes", () => {
@@ -62,6 +96,7 @@ test("blocks empty and duplicate video refreshes", () => {
     isCurated: false,
     existingVideos: [],
     proposedVideos: [],
+    manualVideoReplacements: [],
   }).includes("A video refresh cannot publish an empty video list."))
 
   assert.ok(validatePublishRequest({
@@ -69,6 +104,7 @@ test("blocks empty and duplicate video refreshes", () => {
     isCurated: false,
     existingVideos: [],
     proposedVideos: [video("duplicate01"), video("duplicate01")],
+    manualVideoReplacements: [],
   }).includes("The proposed video list contains duplicates."))
 })
 
