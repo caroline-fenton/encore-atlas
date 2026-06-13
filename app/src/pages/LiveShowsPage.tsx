@@ -16,7 +16,6 @@ import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
 import BuildingState from "../components/shared/BuildingState"
 import ContentCards from "../components/liveShows/ContentCards"
-import ArtistLocationMap from "../components/shared/ArtistLocationMap"
 
 const SAME_VIBE_COLORS = [
   "#d94f43", "#4db8e8", "#c2d44a", "#3580b0",
@@ -332,13 +331,6 @@ export default function LiveShowsPage() {
 
             <aside className="w-full lg:flex-1 lg:shrink-0">
               <div className="hidden space-y-10 lg:block">
-                {artistContext?.city && (
-                  <ArtistLocationMap
-                    city={artistContext.city}
-                    colorIndex={0}
-                  />
-                )}
-
                 {relatedArtists.length > 0 && (
                   <SameVibeSection
                     artists={relatedArtists}
