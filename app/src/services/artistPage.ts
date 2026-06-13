@@ -67,11 +67,17 @@ export async function getCachedArtistPage(
     return null
   }
 
-  const { data: allVideos } = await supabase
+  const { data: allVideos, error: videosError } = await supabase
     .from("artist_videos")
     .select("*")
     .eq("artist_id", artist.id)
     .order("display_order", { ascending: true })
+
+  // A failed query is not the same as "no videos" — don't treat it as a
+  // completed-but-empty cache entry, which would suppress live fallbacks.
+  if (videosError) {
+    return null
+  }
 
   const toArtistVideo = (v: Record<string, unknown>): ArtistVideo => ({
     id: v.id as string,
