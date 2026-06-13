@@ -493,7 +493,7 @@ Deno.serve(async (req) => {
     if (concertRows.length > 0) {
       const { error: videoError } = await supabase
         .from("artist_videos")
-        .upsert(concertRows, { onConflict: "artist_id,youtube_video_id" })
+        .upsert(concertRows, { onConflict: "artist_id,youtube_video_id,video_type" })
 
       if (videoError) {
         console.error("Failed to insert concert videos:", videoError)
@@ -541,7 +541,7 @@ Deno.serve(async (req) => {
           if (rows.length > 0) {
             const { error } = await supabase
               .from("artist_videos")
-              .upsert(rows, { onConflict: "artist_id,youtube_video_id" })
+              .upsert(rows, { onConflict: "artist_id,youtube_video_id,video_type" })
             if (error) console.error(`Failed to insert ${type} videos:`, error)
           }
         } catch (err) {

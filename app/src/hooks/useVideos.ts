@@ -192,8 +192,14 @@ function useCachedOrLiveVideos(
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const cached = await getCachedArtistPage(artistName)
     if (cached) {
-      const videos = getCached(cached).map(mapArtistVideo)
-      return { videos } as EnrichResult
+      const cachedVideos = getCached(cached)
+      // Only trust the cache when it actually has rows for this category —
+      // an empty array can mean the secondary search was skipped (too few
+      // concert results) or hasn't run yet for this artist, so fall back
+      // to a live search instead of showing an empty state indefinitely.
+      if (cachedVideos.length > 0) {
+        return { videos: cachedVideos.map(mapArtistVideo) } as EnrichResult
+      }
     }
     const query = buildQuery(artistName)
     return searchAndEnrich(query, { maxResults: 25, artistName, signal })
