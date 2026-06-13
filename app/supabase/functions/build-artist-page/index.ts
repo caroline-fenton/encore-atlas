@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
+import { getAliases } from "../../../src/data/artistAliases.ts"
+import { decodeHtml } from "../../../src/utils/decodeHtml.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,9 +69,46 @@ async function youtubeVideoDetails(
       publishedAt: item.snippet?.publishedAt ?? null,
       description: item.snippet?.description ?? null,
       duration: item.contentDetails?.duration ?? null,
+      channelTitle: item.snippet?.channelTitle ?? null,
     })
   }
   return map
+}
+
+// --- Relevance filtering (mirrors src/services/youtube.ts) ---
+
+function normalizeForMatch(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]/g, "")
+}
+
+function matchesArtistName(text: string, textNorm: string, name: string): boolean {
+  const stripped = name.replace(/^the\s+/, "")
+  const strippedNorm = normalizeForMatch(stripped)
+  const nameNorm = normalizeForMatch(name)
+
+  return (
+    text.includes(stripped) ||
+    text.includes(name) ||
+    (strippedNorm !== "" && textNorm.includes(strippedNorm)) ||
+    (nameNorm !== "" && textNorm.includes(nameNorm))
+  )
+}
+
+function isRelevantResult(item: YouTubeSearchItem, artistName: string): boolean {
+  const title = decodeHtml(item.snippet.title).toLowerCase()
+  const titleNorm = normalizeForMatch(title)
+  const channel = decodeHtml(item.snippet.channelTitle).toLowerCase()
+  const channelNorm = normalizeForMatch(channel)
+
+  const names = [artistName.toLowerCase(), ...getAliases(artistName).map((a) => a.toLowerCase())]
+
+  return names.some(
+    (name) =>
+      matchesArtistName(title, titleNorm, name) || matchesArtistName(channel, channelNorm, name),
+  )
 }
 
 function parseDuration(iso: string): string {
@@ -230,7 +269,7 @@ Guidelines:
 // Types
 type YouTubeSearchItem = {
   id: { videoId: string }
-  snippet: { title: string; description: string; publishedAt: string }
+  snippet: { title: string; description: string; publishedAt: string; channelTitle: string }
 }
 
 type YouTubeVideoDetail = {
@@ -239,6 +278,7 @@ type YouTubeVideoDetail = {
   publishedAt: string | null
   description: string | null
   duration: string | null
+  channelTitle: string | null
 }
 
 type ArtistContext = {
@@ -259,6 +299,19 @@ type ClaudeTagResult = {
   artist_context: ArtistContext | null
 }
 
+type VideoRow = {
+  id: string
+  youtube_video_id: string
+  title: string
+  description: string | null
+  thumbnail_url: string | null
+  published_at: string | null
+  view_count: number | null
+  duration: string | null
+  display_order: number
+  channel_title: string | null
+}
+
 type ArtistPageResponse = {
   artist: {
     id: string
@@ -272,17 +325,15 @@ type ArtistPageResponse = {
     is_curated: boolean
     artist_context: ArtistContext | null
   }
-  videos: {
-    id: string
-    youtube_video_id: string
-    title: string
-    description: string | null
-    thumbnail_url: string | null
-    published_at: string | null
-    view_count: number | null
-    duration: string | null
-    display_order: number
-  }[]
+  videos: VideoRow[]
+  interview_videos: VideoRow[]
+  music_videos: VideoRow[]
+  // Whether the interview/music_video categories have been searched and
+  // persisted (even if zero relevant results were found). Lets the
+  // frontend distinguish "completed, genuinely empty" from "never
+  // attempted" (legacy artists, or artists with too few concert videos).
+  interviews_synced: boolean
+  music_videos_synced: boolean
   was_cache_hit: boolean
 }
 
@@ -335,13 +386,31 @@ Deno.serve(async (req) => {
       existingArtist
       && (existingArtist.last_refreshed_at || existingArtist.is_curated)
     ) {
-      // Cache hit — return artist + videos. Curated rows are always treated as
-      // complete so the public lazy builder can never overwrite their content.
-      const { data: videos } = await supabase
+      // Curated rows are always treated as complete so the public lazy builder
+      // can never overwrite them. Return cached videos grouped by type.
+      const { data: allVideos } = await supabase
         .from("artist_videos")
         .select("*")
         .eq("artist_id", existingArtist.id)
         .order("display_order", { ascending: true })
+
+      const toVideoRow = (v: Record<string, unknown>): VideoRow => ({
+        id: v.id as string,
+        youtube_video_id: v.youtube_video_id as string,
+        title: v.title as string,
+        description: v.description as string | null,
+        thumbnail_url: v.thumbnail_url as string | null,
+        published_at: v.published_at as string | null,
+        view_count: v.view_count as number | null,
+        duration: v.duration as string | null,
+        display_order: v.display_order as number,
+        channel_title: (v.channel_title as string | null) ?? null,
+      })
+
+      const byType = (type: string) =>
+        (allVideos ?? []).filter((v) => (v.video_type ?? "concert") === type).map(toVideoRow)
+
+      const syncedTypes: string[] = existingArtist.video_types_synced ?? []
 
       const response: ArtistPageResponse = {
         artist: {
@@ -356,17 +425,11 @@ Deno.serve(async (req) => {
           is_curated: existingArtist.is_curated,
           artist_context: existingArtist.artist_context as ArtistContext | null,
         },
-        videos: (videos ?? []).map((v) => ({
-          id: v.id,
-          youtube_video_id: v.youtube_video_id,
-          title: v.title,
-          description: v.description,
-          thumbnail_url: v.thumbnail_url,
-          published_at: v.published_at,
-          view_count: v.view_count,
-          duration: v.duration,
-          display_order: v.display_order,
-        })),
+        videos: byType("concert"),
+        interview_videos: byType("interview"),
+        music_videos: byType("music_video"),
+        interviews_synced: syncedTypes.includes("interview"),
+        music_videos_synced: syncedTypes.includes("music_video"),
         was_cache_hit: true,
       }
 
@@ -377,56 +440,25 @@ Deno.serve(async (req) => {
 
     // ── CACHE MISS — BUILD THE PAGE ──
 
-    // Search YouTube with multiple query variations
-    const searchQueries = [
-      `${artist_name} live concert`,
-      `${artist_name} full set`,
-      `${artist_name} live performance`,
-    ]
-
-    const allResults: YouTubeSearchItem[] = []
-    const seenVideoIds = new Set<string>()
-
-    for (const query of searchQueries) {
-      try {
-        const items = await youtubeSearch(query, youtubeApiKey, 5)
-        for (const item of items) {
-          const videoId = item.id.videoId
-          if (!seenVideoIds.has(videoId)) {
-            seenVideoIds.add(videoId)
-            allResults.push(item)
-          }
-        }
-      } catch (err) {
-        console.error(`YouTube search failed for "${query}":`, err)
-      }
-
-      // If we already have enough, stop early
-      if (allResults.length >= 25) break
+    // Single concert search query — multiple overlapping variations add quota
+    // cost without meaningfully increasing unique results.
+    let concertResults: YouTubeSearchItem[] = []
+    try {
+      concertResults = await youtubeSearch(
+        `${artist_name} live concert full set`,
+        youtubeApiKey,
+        25,
+      )
+    } catch (err) {
+      console.error("Concert YouTube search failed:", err)
     }
 
-    // If we have too few results, try one more variation
-    if (allResults.length < 3) {
-      try {
-        const items = await youtubeSearch(
-          `${artist_name} concert`,
-          youtubeApiKey,
-          5,
-        )
-        for (const item of items) {
-          const videoId = item.id.videoId
-          if (!seenVideoIds.has(videoId)) {
-            seenVideoIds.add(videoId)
-            allResults.push(item)
-          }
-        }
-      } catch (err) {
-        console.error("Fallback YouTube search failed:", err)
-      }
-    }
-
-    // Cap at 25 videos
-    const topResults = allResults.slice(0, 25)
+    // Cap at 25 videos, filtering out results that don't appear to be
+    // about this artist (e.g. unrelated videos that surface for broad
+    // "live concert full set" queries).
+    const topResults = concertResults
+      .filter((item) => isRelevantResult(item, artist_name))
+      .slice(0, 25)
 
     // Get video details (thumbnails, view counts)
     const videoIds = topResults.map((r) => r.id.videoId)
@@ -500,8 +532,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Insert videos
-    const videoRows = topResults.map((item, index) => {
+    // Insert concert videos
+    const concertRows = topResults.map((item, index) => {
       const detail = details.get(item.id.videoId)
       return {
         artist_id: artistId,
@@ -512,28 +544,130 @@ Deno.serve(async (req) => {
         published_at: detail?.publishedAt ?? item.snippet.publishedAt ?? null,
         view_count: detail?.viewCount ?? null,
         duration: detail?.duration ? parseDuration(detail.duration) : null,
-        search_query: `${artist_name} live concert`,
+        channel_title: detail?.channelTitle ?? item.snippet.channelTitle ?? null,
+        search_query: `${artist_name} live concert full set`,
         display_order: index,
+        video_type: "concert",
       }
     })
 
-    if (videoRows.length > 0) {
+    let concertWriteOk = false
+    if (concertRows.length > 0) {
       const { error: videoError } = await supabase
         .from("artist_videos")
-        .upsert(videoRows, { onConflict: "artist_id,youtube_video_id" })
+        .upsert(concertRows, { onConflict: "artist_id,youtube_video_id,video_type" })
 
       if (videoError) {
-        console.error("Failed to insert videos:", videoError)
+        console.error("Failed to insert concert videos:", videoError)
       } else {
-        // Only mark as fully built after videos are successfully persisted
-        await supabase
-          .from("artists")
-          .update({ last_refreshed_at: new Date().toISOString() })
-          .eq("id", artistId)
+        concertWriteOk = true
       }
     }
 
-    // Return the built page
+    // Only search for interviews and music videos for artists with enough
+    // YouTube presence — obscure artists won't have this content and it's
+    // not worth burning quota to find out.
+    const needsSecondarySearches = concertRows.length >= 3
+    const secondaryRows: Record<string, ReturnType<typeof toBuiltVideoRow>[]> = {
+      interview: [],
+      music_video: [],
+    }
+    // Categories that were searched and successfully persisted (regardless
+    // of whether any relevant results were found). Used to distinguish
+    // "completed, genuinely empty" from "never attempted".
+    const syncedTypes: string[] = []
+
+    function toBuiltVideoRow(v: {
+      youtube_video_id: string
+      title: string
+      description: string | null
+      thumbnail_url: string | null
+      published_at: string | null
+      view_count: number | null
+      duration: string | null
+      channel_title: string | null
+      display_order: number
+    }): VideoRow {
+      return {
+        id: "",
+        youtube_video_id: v.youtube_video_id,
+        title: v.title,
+        description: v.description,
+        thumbnail_url: v.thumbnail_url,
+        published_at: v.published_at,
+        view_count: v.view_count,
+        duration: v.duration,
+        display_order: v.display_order,
+        channel_title: v.channel_title,
+      }
+    }
+
+    if (needsSecondarySearches) {
+      const secondarySearches: Array<{ query: string; type: string }> = [
+        { query: `${artist_name} interview`, type: "interview" },
+        { query: `${artist_name} official music video`, type: "music_video" },
+      ]
+
+      for (const { query, type } of secondarySearches) {
+        try {
+          const items = (await youtubeSearch(query, youtubeApiKey, 25))
+            .filter((item) => isRelevantResult(item, artist_name))
+          const ids = items.map((i) => i.id.videoId)
+          const typeDetails = await youtubeVideoDetails(ids, youtubeApiKey)
+
+          const rows = items.map((item, index) => {
+            const detail = typeDetails.get(item.id.videoId)
+            return {
+              artist_id: artistId,
+              youtube_video_id: item.id.videoId,
+              title: item.snippet.title,
+              description: detail?.description ?? item.snippet.description ?? null,
+              thumbnail_url: detail?.thumbnail ?? null,
+              published_at: detail?.publishedAt ?? item.snippet.publishedAt ?? null,
+              view_count: detail?.viewCount ?? null,
+              duration: detail?.duration ? parseDuration(detail.duration) : null,
+              channel_title: detail?.channelTitle ?? item.snippet.channelTitle ?? null,
+              search_query: query,
+              display_order: index,
+              video_type: type,
+            }
+          })
+
+          let writeOk = true
+          if (rows.length > 0) {
+            const { error } = await supabase
+              .from("artist_videos")
+              .upsert(rows, { onConflict: "artist_id,youtube_video_id,video_type" })
+            if (error) {
+              console.error(`Failed to insert ${type} videos:`, error)
+              writeOk = false
+            }
+          }
+
+          if (writeOk) {
+            syncedTypes.push(type)
+            secondaryRows[type] = rows.map(toBuiltVideoRow)
+          }
+        } catch (err) {
+          console.error(`YouTube search failed for ${type}:`, err)
+        }
+      }
+    }
+
+    // Mark as fully built once concert videos are persisted, recording which
+    // secondary categories were successfully synced so the frontend can
+    // fall back to live search only for categories that were never
+    // attempted (rather than ones that completed with zero results).
+    if (concertWriteOk) {
+      await supabase
+        .from("artists")
+        .update({
+          last_refreshed_at: new Date().toISOString(),
+          video_types_synced: syncedTypes,
+        })
+        .eq("id", artistId)
+    }
+
     const response: ArtistPageResponse = {
       artist: {
         id: artistId,
@@ -547,17 +681,11 @@ Deno.serve(async (req) => {
         is_curated: false,
         artist_context: tagResult.artist_context,
       },
-      videos: videoRows.map((v) => ({
-        id: "", // generated by DB
-        youtube_video_id: v.youtube_video_id,
-        title: v.title,
-        description: v.description,
-        thumbnail_url: v.thumbnail_url,
-        published_at: v.published_at,
-        view_count: v.view_count,
-        duration: v.duration,
-        display_order: v.display_order,
-      })),
+      videos: concertRows.map(toBuiltVideoRow),
+      interview_videos: secondaryRows.interview,
+      music_videos: secondaryRows.music_video,
+      interviews_synced: syncedTypes.includes("interview"),
+      music_videos_synced: syncedTypes.includes("music_video"),
       was_cache_hit: false,
     }
 

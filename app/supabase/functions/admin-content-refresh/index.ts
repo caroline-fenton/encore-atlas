@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
 import {
+  concertVideos,
   normalizeVideoOrder,
   parseYouTubeVideoId,
   validatePublishRequest,
@@ -62,6 +63,7 @@ type YouTubeVideoDetail = {
   viewCount: number | null
   publishedAt: string | null
   duration: string | null
+  channelTitle: string | null
 }
 
 type GeneratedContext = {
@@ -163,6 +165,7 @@ async function youtubeVideoDetails(
       duration: item.contentDetails?.duration
         ? parseDuration(item.contentDetails.duration)
         : null,
+      channelTitle: item.snippet?.channelTitle ?? null,
     })
   }
   return details
@@ -209,6 +212,8 @@ async function generateVideos(
       search_query: item.searchQuery,
       is_manually_added: false,
       display_order,
+      video_type: "concert",
+      channel_title: detail?.channelTitle ?? null,
     }
   })
 }
@@ -317,7 +322,10 @@ function mergeManualVideos(
 ): RefreshVideo[] {
   const merged = [...generated]
   const manualVideos = existing
-    .filter((video) => video.is_manually_added)
+    .filter((video) =>
+      (video.video_type ?? "concert") === "concert"
+      && video.is_manually_added
+    )
     .sort((a, b) => a.display_order - b.display_order)
 
   for (const manual of manualVideos) {
@@ -503,6 +511,8 @@ Deno.serve(async (request) => {
         search_query: "admin replacement",
         is_manually_added: true,
         display_order: 0,
+        video_type: "concert",
+        channel_title: detail.channelTitle,
       }
       return json({ video })
     }
@@ -524,7 +534,7 @@ Deno.serve(async (request) => {
       const errors = validatePublishRequest({
         scopes: refresh.scopes as RefreshScope[],
         isCurated: before.artist.is_curated,
-        existingVideos: before.videos,
+        existingVideos: concertVideos(before.videos),
         proposedVideos,
       })
       if (errors.length > 0) return json({ error: errors.join(" ") }, 400)

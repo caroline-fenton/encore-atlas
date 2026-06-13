@@ -11,6 +11,7 @@ import {
   buildMusicVideoSearchQuery,
   buildInterviewSearchQuery,
 } from "../services/searchQueries"
+import { getCachedArtistPage, type ArtistVideo } from "../services/artistPage"
 
 type UseVideosResult = {
   videos: Video[]
@@ -167,36 +168,77 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
   return useVideoFetch(fetchFn, loadMoreFn, [artistName])
 }
 
-export function useArtistMusicVideos(artistName: string): UseVideosResult {
+function mapArtistVideo(v: ArtistVideo): Video {
+  return {
+    id: v.youtube_video_id,
+    title: v.title,
+    channelTitle: v.channel_title ?? "",
+    description: v.description ?? "",
+    thumbnailUrl:
+      v.thumbnail_url ??
+      `https://img.youtube.com/vi/${v.youtube_video_id}/hqdefault.jpg`,
+    youtubeUrl: `https://www.youtube.com/watch?v=${v.youtube_video_id}`,
+    duration: v.duration ?? "",
+    publishedAt: v.published_at ?? "",
+    viewCount: v.view_count ?? undefined,
+  }
+}
+
+function useCachedOrLiveVideos(
+  artistName: string,
+  getCached: (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => ArtistVideo[],
+  isSynced: (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => boolean,
+  buildQuery: (name: string) => string,
+): UseVideosResult {
   const fetchFn = useCallback(async (signal: AbortSignal) => {
-    const query = buildMusicVideoSearchQuery(artistName)
+    const cached = await getCachedArtistPage(artistName)
+    if (cached) {
+      // Trust the cache once this category has been searched and persisted —
+      // even if it came back empty — so a "completed empty" category doesn't
+      // keep falling back to a live search. Only fall back when the category
+      // was never attempted (legacy artists, or too few concert results).
+      if (isSynced(cached)) {
+        const cachedVideos = getCached(cached)
+        return { videos: cachedVideos.map(mapArtistVideo) } as EnrichResult
+      }
+    }
+    const query = buildQuery(artistName)
     return searchAndEnrich(query, { maxResults: 25, artistName, signal })
-  }, [artistName])
+  }, [artistName, getCached, isSynced, buildQuery])
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
-      const query = buildMusicVideoSearchQuery(artistName)
+      const query = buildQuery(artistName)
       return searchAndEnrich(query, { maxResults: 25, artistName, pageToken })
     },
-    [artistName],
+    [artistName, buildQuery],
   )
 
   return useVideoFetch(fetchFn, loadMoreFn, [artistName])
 }
 
-export function useArtistInterviews(artistName: string): UseVideosResult {
-  const fetchFn = useCallback(async (signal: AbortSignal) => {
-    const query = buildInterviewSearchQuery(artistName)
-    return searchAndEnrich(query, { maxResults: 25, artistName, signal })
-  }, [artistName])
-
-  const loadMoreFn = useCallback(
-    async (pageToken: string) => {
-      const query = buildInterviewSearchQuery(artistName)
-      return searchAndEnrich(query, { maxResults: 25, artistName, pageToken })
-    },
-    [artistName],
+export function useArtistMusicVideos(artistName: string): UseVideosResult {
+  const getCached = useCallback(
+    (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => data.music_videos,
+    [],
   )
+  const isSynced = useCallback(
+    (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => data.music_videos_synced,
+    [],
+  )
+  const buildQuery = useCallback(buildMusicVideoSearchQuery, [])
+  return useCachedOrLiveVideos(artistName, getCached, isSynced, buildQuery)
+}
 
-  return useVideoFetch(fetchFn, loadMoreFn, [artistName])
+export function useArtistInterviews(artistName: string): UseVideosResult {
+  const getCached = useCallback(
+    (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => data.interview_videos,
+    [],
+  )
+  const isSynced = useCallback(
+    (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => data.interviews_synced,
+    [],
+  )
+  const buildQuery = useCallback(buildInterviewSearchQuery, [])
+  return useCachedOrLiveVideos(artistName, getCached, isSynced, buildQuery)
 }

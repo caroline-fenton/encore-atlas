@@ -21,6 +21,8 @@ export type RefreshVideo = {
   search_query: string
   is_manually_added: boolean
   display_order: number
+  video_type: string
+  channel_title: string | null
 }
 
 export type RefreshArtist = AdminArtist & {

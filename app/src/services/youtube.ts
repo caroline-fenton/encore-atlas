@@ -7,6 +7,7 @@ import type {
 import type { Video } from "../types/video"
 import { getCached, setCache } from "./cache"
 import { getAliases } from "../data/artistAliases"
+import { decodeHtml } from "../utils/decodeHtml"
 
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY as string
 const API_BASE = "https://www.googleapis.com/youtube/v3"
@@ -232,32 +233,30 @@ function normalize(s: string): string {
     .replace(/[^a-z0-9]/g, "")
 }
 
-function matchesName(title: string, titleNorm: string, name: string): boolean {
+function matchesName(text: string, textNorm: string, name: string): boolean {
   const stripped = name.replace(/^the\s+/, "")
   const strippedNorm = normalize(stripped)
   const nameNorm = normalize(name)
 
   return (
-    title.includes(stripped) ||
-    title.includes(name) ||
-    titleNorm.includes(strippedNorm) ||
-    titleNorm.includes(nameNorm)
+    text.includes(stripped) ||
+    text.includes(name) ||
+    (strippedNorm !== "" && textNorm.includes(strippedNorm)) ||
+    (nameNorm !== "" && textNorm.includes(nameNorm))
   )
 }
 
 function isRelevantVideo(video: Video, artistName: string): boolean {
-  const title = video.title.toLowerCase()
+  const title = decodeHtml(video.title).toLowerCase()
   const titleNorm = normalize(title)
+  const channel = decodeHtml(video.channelTitle).toLowerCase()
+  const channelNorm = normalize(channel)
 
-  // Check the artist name itself
-  if (matchesName(title, titleNorm, artistName.toLowerCase())) return true
+  const names = [artistName.toLowerCase(), ...getAliases(artistName).map((a) => a.toLowerCase())]
 
-  // Check aliases (e.g. "Freddie Mercury" → also accept "Queen")
-  for (const alias of getAliases(artistName)) {
-    if (matchesName(title, titleNorm, alias.toLowerCase())) return true
-  }
-
-  return false
+  return names.some(
+    (name) => matchesName(title, titleNorm, name) || matchesName(channel, channelNorm, name),
+  )
 }
 
 // --- High-level: search + enrich ---

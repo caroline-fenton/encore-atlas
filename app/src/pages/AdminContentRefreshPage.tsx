@@ -223,14 +223,19 @@ export default function AdminContentRefreshPage() {
   }, [refresh, videos])
   const beforeVideoIds = useMemo(
     () => new Set(
-      refresh?.before_snapshot.videos.map((video) => video.youtube_video_id) ?? [],
+      refresh?.before_snapshot.videos
+        .filter((video) => (video.video_type ?? "concert") === "concert")
+        .map((video) => video.youtube_video_id) ?? [],
     ),
     [refresh],
   )
   const beforeManualVideoIds = useMemo(
     () => new Set(
       refresh?.before_snapshot.videos
-        .filter((video) => video.is_manually_added)
+        .filter((video) =>
+          (video.video_type ?? "concert") === "concert"
+          && video.is_manually_added
+        )
         .map((video) => video.youtube_video_id) ?? [],
     ),
     [refresh],
@@ -238,7 +243,10 @@ export default function AdminContentRefreshPage() {
   const removedVideos = useMemo(() => {
     const proposedIds = new Set(videos.map((video) => video.youtube_video_id))
     return refresh?.before_snapshot.videos.filter(
-      (video) => !video.is_manually_added && !proposedIds.has(video.youtube_video_id),
+      (video) =>
+        (video.video_type ?? "concert") === "concert"
+        && !video.is_manually_added
+        && !proposedIds.has(video.youtube_video_id),
     ) ?? []
   }, [refresh, videos])
 

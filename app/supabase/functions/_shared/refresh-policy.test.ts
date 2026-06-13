@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import {
+  concertVideos,
   normalizeVideoOrder,
   parseYouTubeVideoId,
   validatePublishRequest,
@@ -19,6 +20,8 @@ function video(id: string, manual = false): RefreshVideo {
     search_query: "test",
     is_manually_added: manual,
     display_order: 9,
+    video_type: "concert",
+    channel_title: null,
   }
 }
 
@@ -75,4 +78,11 @@ test("normalizes display order after preview edits", () => {
       .map((item) => item.display_order),
     [0, 1],
   )
+})
+
+test("live refresh policy leaves secondary video categories out of scope", () => {
+  const interview = { ...video("interview01", true), video_type: "interview" }
+  assert.deepEqual(concertVideos([video("concert001"), interview]), [
+    video("concert001"),
+  ])
 })

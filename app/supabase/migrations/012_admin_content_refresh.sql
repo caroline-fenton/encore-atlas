@@ -155,6 +155,7 @@ begin
       select 1
       from public.artist_videos existing
       where existing.artist_id = refresh_row.artist_id
+        and coalesce(existing.video_type, 'concert') = 'concert'
         and existing.is_manually_added
         and not exists (
           select 1
@@ -167,6 +168,7 @@ begin
 
     delete from public.artist_videos existing
     where existing.artist_id = refresh_row.artist_id
+      and coalesce(existing.video_type, 'concert') = 'concert'
       and not existing.is_manually_added
       and not exists (
         select 1
@@ -185,7 +187,9 @@ begin
       duration,
       search_query,
       is_manually_added,
-      display_order
+      display_order,
+      video_type,
+      channel_title
     )
     select
       refresh_row.artist_id,
@@ -198,20 +202,23 @@ begin
       proposed.duration,
       proposed.search_query,
       proposed.is_manually_added,
-      proposed.display_order
+      proposed.display_order,
+      'concert',
+      proposed.channel_title
     from jsonb_to_recordset(proposed_videos) as proposed(
       youtube_video_id text,
       title text,
       description text,
       thumbnail_url text,
       published_at timestamptz,
-      view_count integer,
+      view_count bigint,
       duration text,
       search_query text,
       is_manually_added boolean,
-      display_order integer
+      display_order integer,
+      channel_title text
     )
-    on conflict (artist_id, youtube_video_id) do update
+    on conflict (artist_id, youtube_video_id, video_type) do update
     set title = excluded.title,
         description = excluded.description,
         thumbnail_url = excluded.thumbnail_url,
@@ -221,7 +228,8 @@ begin
         search_query = excluded.search_query,
         is_manually_added = public.artist_videos.is_manually_added
           or excluded.is_manually_added,
-        display_order = excluded.display_order;
+        display_order = excluded.display_order,
+        channel_title = excluded.channel_title;
   end if;
 
   update public.artists

@@ -11,6 +11,8 @@ export type RefreshVideo = {
   search_query: string
   is_manually_added: boolean
   display_order: number
+  video_type: string
+  channel_title: string | null
 }
 
 export function parseYouTubeVideoId(value: string): string | null {
@@ -81,4 +83,8 @@ export function validatePublishRequest(input: {
 
 export function normalizeVideoOrder(videos: RefreshVideo[]): RefreshVideo[] {
   return videos.map((video, display_order) => ({ ...video, display_order }))
+}
+
+export function concertVideos(videos: RefreshVideo[]): RefreshVideo[] {
+  return videos.filter((video) => (video.video_type ?? "concert") === "concert")
 }

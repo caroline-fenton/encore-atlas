@@ -28,7 +28,7 @@ users cannot access artist data through the function.
 
 ## Deployment
 
-Apply migration `009_admin_content_refresh.sql` before deploying the
+Apply migration `012_admin_content_refresh.sql` before deploying the
 `admin-content-refresh` edge function. The function reuses the existing
 `YOUTUBE_API_KEY` and `ANTHROPIC_API_KEY` edge-function secrets, plus the
 Supabase-provided URL, anon key, and service-role key.
@@ -44,7 +44,8 @@ allowlist so email magic links can return to the route.
    - **Artist metadata:** genres, summary, location, active years, and
      Wikipedia source.
    - **Same-vibe artists:** related artist names and reasons.
-   - **Live video content:** persisted live-performance videos.
+   - **Live video content:** persisted live-performance videos. Interview and
+     music-video categories are left unchanged.
 4. Select **Generate preview**.
 5. Review current and proposed metadata and the proposed video list.
 6. Exclude unwanted generated videos or replace a video with a preferred
