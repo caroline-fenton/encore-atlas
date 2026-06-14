@@ -205,7 +205,13 @@ export default function LiveShowsPage() {
 
   const activeVideo = nowPlaying ?? featured
   const artistContext = artistPage.data?.artist.artist_context
-  const relatedArtists = artistContext?.relatedArtists ?? []
+  const contextRelatedArtists = artistContext?.relatedArtists ?? []
+  const relatedArtists = contextRelatedArtists.length > 0
+    ? contextRelatedArtists
+    : (artistPage.data?.artist.related_artists ?? []).map((name) => ({
+        name,
+        reason: "",
+      }))
 
   const handleSelectVideo = useCallback((video: Video) => {
     setNowPlaying(video)
