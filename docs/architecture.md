@@ -26,7 +26,7 @@ The `LiveShowsPage` (artist detail page) also surfaces a "Same Vibe" section of 
 - The function supports per-scope preview/publish for artist metadata, same-vibe artists, and live videos; publishing runs through `publish_admin_content_refresh` in one transaction and is logged in `admin_content_refreshes` (migrations 012-016).
 - Manually-added videos (`is_manually_added = true`) are protected from automatic replacement; metadata/same-vibe-only publishes preserve the "incomplete artist" build marker.
 - `build-artist-page` now locks and rechecks the artist row immediately before writing videos so it can't overwrite a curated/admin-refreshed artist (migration 016). Removed `ArtistLocationMap.tsx` (no longer used on `LiveShowsPage`).
-- See [admin-content-refresh.md](../app/docs/admin-content-refresh.md) for the full operator workflow.
+- See [admin-content-refresh.md](admin-content-refresh.md) for the full operator workflow.
 
 ### 2026-06-13 — Scene Explorer
 - Added `SceneExplorerPage.tsx`, routed and linked from `AppLayout`, presenting a grid of curated music "scenes" defined in `src/data/scenes.ts` (name, place, era, accent color, narrative copy, traits, and a fixed `artistNames` list).
