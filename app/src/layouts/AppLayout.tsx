@@ -9,6 +9,7 @@ import { useSupabaseSearches } from "../hooks/useSupabaseSearches"
 
 const tabs = [
   { to: "/", label: "Live Shows", end: true },
+  { to: "/scenes", label: "Scene Explorer", end: false },
   { to: "/history", label: "History", end: false },
 ] as const
 
