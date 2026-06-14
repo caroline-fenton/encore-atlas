@@ -218,3 +218,27 @@ while staying realistic about:
 **Decision:** Persist a `video_types_synced` array on the artist record marking which secondary categories (interview, music_video) were successfully searched and written, regardless of whether any relevant results were found. The frontend trusts a cached-but-empty category only if it's marked synced, and falls back to a live search only for categories never attempted.
 
 **Rationale:** Avoids repeated wasted YouTube API calls for artists with no interview/music-video content, while still allowing legacy/never-attempted artists to get a live fallback. Required widening the `artist_videos` unique constraint to `(artist_id, youtube_video_id, video_type)` so the same video can legitimately appear in multiple categories (e.g. a clip that's both a live performance and shows up in an interview search).
+
+## 2026-06-13 — Filter concert search results for relevance, consolidate artist aliases
+
+**Context:** Concert search results were never filtered for relevance (unlike the interview/music-video searches added previously), so common-word or ambiguous artist names could surface unrelated "live concert full set" videos. Separately, `build-artist-page` kept its own copy of the `ARTIST_ALIASES` map, duplicating `src/data/artistAliases.ts`, and relevance matching only checked video titles, not channel names.
+
+**Decision:** Apply `isRelevantResult` filtering to concert search results (capped at 25) the same way it's applied to interviews/music videos. Have `build-artist-page` import `getAliases` from the shared `src/data/artistAliases.ts` instead of maintaining a separate alias map, and extend relevance matching to also check `channel_title` (decoded via a new shared `decodeHtml` util) in addition to the title.
+
+**Rationale:** Reduces irrelevant videos for artists whose names collide with common phrases, removes a duplicated/drifting alias list, and channel-name matching gives another relevance signal for official artist/band channels without being a hard requirement. Accepted trade-off: the common-word false-positive problem (e.g. "Destroyer") isn't fully solved — see backlog.
+
+## 2026-06-13 — Admin Content Refresh: preview-then-publish for single-artist curation
+
+**Context:** Automated artist pages occasionally have stale, incomplete, or low-quality metadata/videos, but there was no safe way for an admin to regenerate and correct a single artist's content without risking accidental overwrites of curated data or manually-added videos.
+
+**Decision:** Add an unlinked `/admin/content-refresh` route, gated by Supabase magic-link auth plus an `admin_users` allowlist checked server-side by the `admin-content-refresh` edge function. The flow always generates a preview (artist metadata, same-vibe artists, and/or live videos, selectable per-scope) and requires an explicit publish step, applied atomically via `publish_admin_content_refresh`. Manually-added videos (`is_manually_added = true`) are protected from automatic replacement unless the admin explicitly confirms a "replace protected" action. Every preview/publish is logged in `admin_content_refreshes`. The public lazy-build path (`build-artist-page`) was also hardened to treat curated artist rows as complete and to lock/recheck the artist immediately before writing videos, so it can't race with or undo an admin refresh.
+
+**Rationale:** Preview-then-publish avoids accidental data loss from a single click, and scoping refreshes to one artist at a time keeps the blast radius small for a solo-developer workflow. Explicitly deferring batch refreshes, bulk cache invalidation, drag-and-drop ordering, interview/music-video persistence, and a rollback UI keeps the initial version small enough to validate before expanding — see backlog.
+
+## 2026-06-13 — Add Scene Explorer as a curated discovery surface
+
+**Context:** Discovery on Encore Atlas was previously driven by per-artist "Same Vibe" suggestions and search; there was no way to browse music by scene/era/place (e.g. "D.C. Revolution Summer", "Bay Area Ska-Punk", "Manchester After Dark").
+
+**Decision:** Add a `SceneExplorerPage` backed by a hardcoded `src/data/scenes.ts` list of scene definitions (name, place, era, accent color, introduction, significance, traits, and a fixed `artistNames` list). `getSceneArtists` (`src/services/scenes.ts`) resolves each scene's artist names against the `artists` table and attaches a representative video per artist. Also restored the legacy "Same Vibe" artists behavior on `LiveShowsPage` that had been affected by the admin-content-refresh changes.
+
+**Rationale:** A curated, editorial entry point supports discovery without relying on per-artist algorithmic suggestions, and ties into the "deepen emotional engagement" / "support discovery without friction" goals. Hardcoding scenes in code (rather than a `scenes` table) was the fastest way to ship a first version; see backlog for moving this to data if scenes need to be editable without a deploy.
