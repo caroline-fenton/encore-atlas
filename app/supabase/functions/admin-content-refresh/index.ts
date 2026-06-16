@@ -9,6 +9,7 @@ import {
   type RefreshScope,
   type RefreshVideo,
 } from "../_shared/refresh-policy.ts"
+import { fetchWikipediaSummary } from "../../../src/utils/wikipedia.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -221,25 +222,6 @@ async function generateVideos(
   })
 }
 
-async function fetchWikipedia(artistName: string) {
-  const normalized = artistName.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
-  const title = encodeURIComponent(normalized.replace(/\s+/g, "_"))
-  const response = await fetch(
-    `https://en.wikipedia.org/api/rest_v1/page/summary/${title}`,
-    { headers: { "Api-User-Agent": "EncoreAtlas/1.0" } },
-  )
-  if (!response.ok) return null
-  const data = await response.json()
-  if (data.type === "disambiguation") return null
-  return {
-    extract: data.extract ?? "",
-    thumbnailUrl: data.thumbnail?.source ?? null,
-    pageUrl:
-      data.content_urls?.desktop?.page
-      ?? `https://en.wikipedia.org/wiki/${title}`,
-  }
-}
-
 async function generateContext(
   artistName: string,
   videoTitles: string[],
@@ -406,7 +388,7 @@ Deno.serve(async (request) => {
       }
 
       if (scopes.includes("metadata") || scopes.includes("same_vibe")) {
-        const wiki = await fetchWikipedia(snapshot.artist.name)
+        const wiki = await fetchWikipediaSummary(snapshot.artist.name).catch(() => null)
         const context = await generateContext(
           snapshot.artist.name,
           proposedVideos.map((video) => video.title),

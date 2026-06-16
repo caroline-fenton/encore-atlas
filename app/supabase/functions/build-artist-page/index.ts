@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
 import { getAliases } from "../../../src/data/artistAliases.ts"
 import { decodeHtml } from "../../../src/utils/decodeHtml.ts"
+import { fetchWikipediaSummary } from "../../../src/utils/wikipedia.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -120,40 +121,6 @@ function parseDuration(iso: string): string {
   const pad = (n: number) => n.toString().padStart(2, "0")
   if (hours > 0) return `${hours}:${pad(minutes)}:${pad(seconds)}`
   return `${minutes}:${pad(seconds)}`
-}
-
-// Wikipedia REST API fetch
-type WikipediaResult = {
-  extract: string
-  thumbnailUrl: string | null
-  pageUrl: string
-} | null
-
-async function fetchWikipedia(artistName: string): Promise<WikipediaResult> {
-  try {
-    const normalized = artistName
-      .toLowerCase()
-      .replace(/\b\w/g, (c) => c.toUpperCase())
-    const title = encodeURIComponent(normalized.replace(/\s+/g, "_"))
-    const res = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${title}`,
-      { headers: { "Api-User-Agent": "EncoreAtlas/1.0" } },
-    )
-    if (!res.ok) return null
-
-    const data = await res.json()
-    if (data.type === "disambiguation") return null
-
-    return {
-      extract: data.extract ?? "",
-      thumbnailUrl: data.thumbnail?.source ?? null,
-      pageUrl:
-        data.content_urls?.desktop?.page ??
-        `https://en.wikipedia.org/wiki/${title}`,
-    }
-  } catch {
-    return null
-  }
 }
 
 // Claude API call for artist context
@@ -466,7 +433,7 @@ Deno.serve(async (req) => {
 
     // Fetch Wikipedia for context, then pass to Claude for bio generation
     const videoTitles = topResults.map((r) => r.snippet.title)
-    const wiki = await fetchWikipedia(artist_name)
+    const wiki = await fetchWikipediaSummary(artist_name).catch(() => null)
     const tagResult = await claudeTag(
       artist_name, videoTitles, wiki?.extract ?? null, anthropicApiKey,
     )
