@@ -32,3 +32,7 @@ The `LiveShowsPage` (artist detail page) also surfaces a "Same Vibe" section of 
 - Added `SceneExplorerPage.tsx`, routed and linked from `AppLayout`, presenting a grid of curated music "scenes" defined in `src/data/scenes.ts` (name, place, era, accent color, narrative copy, traits, and a fixed `artistNames` list).
 - `src/services/scenes.ts` (`getSceneArtists`) resolves each scene's artist names against the `artists` table, attaching tags/blurb/context plus one representative video per artist.
 - Restored the legacy "Same Vibe" related-artists section on `LiveShowsPage` (`artistNames`-based), which had regressed during the admin-content-refresh work.
+
+### 2026-06-16 — Shared Wikipedia helper with (band) disambiguation fallback
+- Added `src/utils/wikipedia.ts` with a single `fetchWikipediaSummary` export, replacing three duplicated `fetchWikipedia` implementations in `src/services/wikipedia.ts`, `build-artist-page/index.ts`, and `admin-content-refresh/index.ts`.
+- The helper now tries `{Artist} (band)` before falling back to `{Artist}`, fixing cases where the bare name resolves to an unrelated primary-topic article (e.g. "Destroyer" → naval warship). The Wikipedia REST API follows redirects, so the `(band)` attempt is a no-op for artists without a separate band article.
