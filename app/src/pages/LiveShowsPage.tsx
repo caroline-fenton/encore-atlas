@@ -58,12 +58,13 @@ function SameVibeSection({
                 name: artist.name.toUpperCase(),
               })
             }
-            className="group relative aspect-square min-w-0 border border-black/50 shadow-md"
+            className="group relative aspect-square min-w-0 border border-black/20 shadow-[5px_5px_0_rgba(0,0,0,0.12)] transition hover:-translate-y-1 hover:shadow-[8px_8px_0_rgba(0,0,0,0.15)]"
             style={{
               backgroundColor: SAME_VIBE_COLORS[i % SAME_VIBE_COLORS.length],
             }}
           >
-            <div className="pointer-events-none absolute inset-0 border-[4px] border-white/80 sm:border-[5px]" />
+            <div className="pointer-events-none absolute inset-2 border-2 border-white/70" />
+            <div className="pointer-events-none absolute -right-3 -top-4 h-14 w-14 rounded-full border-[10px] border-black/10" />
             <div
               className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply"
               style={{
@@ -75,7 +76,7 @@ function SameVibeSection({
                 <span
                   key={wi}
                   className={[
-                    "block max-w-full font-display text-center leading-[0.95] tracking-[0.02em] text-black/85 transition group-hover:text-black",
+                    "block max-w-full font-display text-center leading-[0.88] tracking-[0.04em] text-black/85 transition group-hover:text-black",
                     sameVibeTextSize(artist.name),
                   ].join(" ")}
                   style={{
