@@ -24,12 +24,14 @@ const SAME_VIBE_COLORS = [
 ]
 
 function sameVibeTextSize(name: string): string {
-  const longestWord = Math.max(...name.split(/\s+/).map((word) => word.length))
+  const words = name.split(/\s+/)
+  const longestWord = Math.max(...words.map((w) => w.length))
+  const wordCount = words.length
 
-  if (longestWord > 12) return "text-[11px] sm:text-xs lg:text-base"
-  if (longestWord > 10) return "text-xs sm:text-sm lg:text-lg"
-  if (longestWord > 7) return "text-base sm:text-lg lg:text-2xl"
-  return "text-xl sm:text-2xl lg:text-4xl"
+  if (longestWord > 12 || wordCount >= 5) return "text-[10px] sm:text-[11px] lg:text-xs"
+  if (longestWord > 10 || wordCount >= 4) return "text-[11px] sm:text-xs lg:text-sm"
+  if (longestWord > 7 || wordCount >= 3) return "text-xs sm:text-sm lg:text-base"
+  return "text-sm sm:text-base lg:text-2xl"
 }
 
 type RelatedArtist = NonNullable<ArtistContext["relatedArtists"]>[number]
@@ -58,7 +60,7 @@ function SameVibeSection({
                 name: artist.name.toUpperCase(),
               })
             }
-            className="group relative aspect-square min-w-0 border border-black/20 shadow-[5px_5px_0_rgba(0,0,0,0.12)] transition hover:-translate-y-1 hover:shadow-[8px_8px_0_rgba(0,0,0,0.15)]"
+            className="group relative aspect-square min-w-0 border border-black/20 shadow-[5px_5px_0_rgba(0,0,0,0.12)] transition hover:shadow-[8px_8px_0_rgba(0,0,0,0.15)]"
             style={{
               backgroundColor: SAME_VIBE_COLORS[i % SAME_VIBE_COLORS.length],
             }}
