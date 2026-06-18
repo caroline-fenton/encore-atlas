@@ -258,9 +258,12 @@ test("manual video merge preserves protection while refreshing YouTube metadata"
   assert.equal(refreshedManual?.channel_title, "Fresh channel")
 })
 
-test("live refresh policy leaves secondary video categories out of scope", () => {
+test("live refresh policy orders concert videos and leaves secondary categories out of scope", () => {
   const interview = { ...video("interview01", true), video_type: "interview" }
-  assert.deepEqual(concertVideos([video("concert001"), interview]), [
-    video("concert001"),
+  const laterInsertedManual = { ...video("manual0001", true), display_order: 0 }
+  const generated = { ...video("concert001"), display_order: 1 }
+  assert.deepEqual(concertVideos([generated, interview, laterInsertedManual]), [
+    laterInsertedManual,
+    generated,
   ])
 })

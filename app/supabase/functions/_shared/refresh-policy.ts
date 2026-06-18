@@ -272,5 +272,12 @@ export function mergeManualVideos(
 }
 
 export function concertVideos(videos: RefreshVideo[]): RefreshVideo[] {
-  return videos.filter((video) => (video.video_type ?? "concert") === "concert")
+  return videos
+    .filter((video) => (video.video_type ?? "concert") === "concert")
+    .map((video, originalIndex) => ({ video, originalIndex }))
+    .sort((a, b) =>
+      a.video.display_order - b.video.display_order
+      || a.originalIndex - b.originalIndex
+    )
+    .map(({ video }) => video)
 }

@@ -24,17 +24,17 @@ const scopeOptions: Array<{
   {
     value: "metadata",
     label: "Artist metadata",
-    detail: "Genres, summary, location, active years, and Wikipedia source",
+    detail: "Only use when those fields are wrong or missing",
   },
   {
     value: "same_vibe",
     label: "Same-vibe artists",
-    detail: "Related artist names and reasons",
+    detail: "Only use when related artists need repair",
   },
   {
     value: "videos",
     label: "Live video content",
-    detail: "Generated live sets; manual selections remain protected",
+    detail: "Review current live videos and replace only bad ones",
   },
 ]
 
@@ -99,6 +99,15 @@ function editableMetadataSignature(artist: RefreshArtist, scopes: RefreshScope[]
       ? artist.artist_context?.relatedArtists ?? []
       : null,
   })
+}
+
+function editableVideoSignature(videos: RefreshVideo[]) {
+  return JSON.stringify(videos.map((video) => ({
+    youtube_video_id: video.youtube_video_id,
+    is_manually_added: video.is_manually_added,
+    display_order: video.display_order,
+    video_type: video.video_type,
+  })))
 }
 
 function VideoPreview({
@@ -184,7 +193,7 @@ function VideoPreview({
             </button>
             {!video.is_manually_added && (
               <button type="button" onClick={onRemove} className="text-xs font-semibold uppercase tracking-[0.12em] text-[#a33b33]">
-                Exclude
+                Remove
               </button>
             )}
           </div>
@@ -227,7 +236,7 @@ export default function AdminContentRefreshPage() {
   const [query, setQuery] = useState("")
   const [artists, setArtists] = useState<AdminArtist[]>([])
   const [selectedArtist, setSelectedArtist] = useState<AdminArtist | null>(null)
-  const [scopes, setScopes] = useState<RefreshScope[]>(["metadata", "same_vibe", "videos"])
+  const [scopes, setScopes] = useState<RefreshScope[]>(["videos"])
   const [refresh, setRefresh] = useState<ContentRefresh | null>(null)
   const [proposedArtist, setProposedArtist] = useState<RefreshArtist | null>(null)
   const [videos, setVideos] = useState<RefreshVideo[]>([])
@@ -260,6 +269,25 @@ export default function AdminContentRefreshPage() {
     return () => window.clearTimeout(timer)
   }, [query, session?.is_admin])
 
+  const hasManualMetadataEdits = useMemo(
+    () => Boolean(
+      refresh
+      && proposedArtist
+      && editableMetadataSignature(proposedArtist, refresh.scopes)
+        !== editableMetadataSignature(refresh.proposed_snapshot.artist, refresh.scopes)
+    ),
+    [proposedArtist, refresh],
+  )
+  const hasVideoEdits = useMemo(
+    () => Boolean(
+      refresh?.scopes.includes("videos")
+      && (
+        editableVideoSignature(videos) !== editableVideoSignature(refresh.proposed_snapshot.videos)
+        || manualVideoReplacements.length > 0
+      )
+    ),
+    [manualVideoReplacements.length, refresh, videos],
+  )
   const publishWarnings = useMemo(() => {
     const warnings: string[] = []
     if (
@@ -271,17 +299,23 @@ export default function AdminContentRefreshPage() {
     if (refresh?.scopes.includes("videos") && videos.length === 0) {
       warnings.push("A video refresh cannot publish an empty video list.")
     }
-    return warnings
-  }, [refresh, videos])
-  const hasManualMetadataEdits = useMemo(
-    () => Boolean(
+    if (
+      refresh?.scopes.length === 1
+      && refresh.scopes.includes("videos")
+      && !hasVideoEdits
+    ) {
+      warnings.push("Remove or replace at least one video before publishing a video repair.")
+    }
+    if (
       refresh
-      && proposedArtist
-      && editableMetadataSignature(proposedArtist, refresh.scopes)
-        !== editableMetadataSignature(refresh.proposed_snapshot.artist, refresh.scopes)
-    ),
-    [proposedArtist, refresh],
-  )
+      && !(refresh.scopes.length === 1 && refresh.scopes.includes("videos"))
+      && !hasManualMetadataEdits
+      && !hasVideoEdits
+    ) {
+      warnings.push("Make at least one selected edit before publishing.")
+    }
+    return warnings
+  }, [hasManualMetadataEdits, hasVideoEdits, refresh, videos])
   const beforeVideoIds = useMemo(
     () => new Set(
       refresh?.before_snapshot.videos
@@ -406,7 +440,7 @@ export default function AdminContentRefreshPage() {
         <div>
           <Link to="/" className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">← Encore Atlas</Link>
           <h1 className="mt-4 font-display text-5xl tracking-[0.12em]">Content Refresh</h1>
-          <p className="mt-2 text-sm text-black/55">Preview generated artist changes before publishing.</p>
+          <p className="mt-2 text-sm text-black/55">Preview selected fixes before publishing. Existing metadata stays unchanged unless selected.</p>
         </div>
         <button type="button" onClick={() => signOutAdmin().then(() => window.location.reload())} className="text-xs font-semibold uppercase tracking-[0.15em] text-black/45">
           Sign out {session.email}
@@ -437,7 +471,7 @@ export default function AdminContentRefreshPage() {
           <h2 className="font-display text-3xl tracking-[0.1em]">{selectedArtist.name}</h2>
           {selectedArtist.is_curated && (
             <div className="mt-4 border border-[#a33b33]/35 bg-[#a33b33]/5 p-4 text-sm text-[#82332d]">
-              <strong>Curated artist: metadata is locked.</strong> You can preview metadata and same-vibe suggestions, but publishing those scopes is disabled. Manual videos remain protected.
+              <strong>Curated artist: metadata is locked.</strong> You can review metadata and same-vibe fields, but publishing those scopes is disabled. Video repairs remain available.
             </div>
           )}
           <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -452,7 +486,7 @@ export default function AdminContentRefreshPage() {
             ))}
           </div>
           <button type="button" disabled={busy || scopes.length === 0} onClick={handlePreview} className="mt-5 bg-black/80 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#f6f1e8] disabled:opacity-40">
-            {busy ? "Generating preview..." : "Generate preview"}
+            {busy ? "Preparing preview..." : "Prepare preview"}
           </button>
         </section>
       )}
@@ -467,7 +501,7 @@ export default function AdminContentRefreshPage() {
               <div>
                 <h2 className="font-display text-3xl tracking-[0.1em]">Metadata Preview</h2>
                 <p className="mt-1 text-sm text-black/50">
-                  Edit proposed fields before publishing. Wikipedia remains source-controlled.
+                  Left is the current site snapshot. Right is the proposed publish state for selected scopes.
                 </p>
               </div>
               {hasManualMetadataEdits && (
@@ -477,7 +511,7 @@ export default function AdminContentRefreshPage() {
               )}
             </div>
             <div className="mt-3 grid grid-cols-[10rem_1fr_1fr] gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-black/35">
-              <span>Field</span><span>Current</span><span>Proposed</span>
+              <span>Field</span><span>Current site</span><span>Proposed publish</span>
             </div>
             {refresh.scopes.includes("metadata") ? (
               <>
@@ -624,9 +658,9 @@ export default function AdminContentRefreshPage() {
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <h2 className="font-display text-3xl tracking-[0.1em]">Video Preview</h2>
-                  <p className="mt-1 text-sm text-black/50">Exclude generated suggestions. Protected manual selections require explicit replacement confirmation.</p>
+                  <p className="mt-1 text-sm text-black/50">Current live videos are shown unchanged. Remove bad generated videos or replace a specific item by URL.</p>
                 </div>
-                <div className="text-xs uppercase tracking-[0.14em] text-black/40">{videos.length} proposed videos</div>
+                <div className="text-xs uppercase tracking-[0.14em] text-black/40">{videos.length} live videos</div>
               </div>
               <div className="mt-5 grid gap-3 md:grid-cols-2">
                 {videos.map((video, index) => (
@@ -640,8 +674,8 @@ export default function AdminContentRefreshPage() {
                         : video.is_manually_added
                           ? "Manual replacement"
                           : beforeVideoIds.has(video.youtube_video_id)
-                            ? "Generated · retained"
-                            : "Generated · will be added"
+                            ? "Current generated"
+                            : "Replacement"
                     }
                     onRemove={() => setVideos((current) => current.filter((_, itemIndex) => itemIndex !== index))}
                     onReplace={(replacement, replacedManualVideoId) => {
@@ -658,7 +692,7 @@ export default function AdminContentRefreshPage() {
               {removedVideos.length > 0 && (
                 <div className="mt-8">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a33b33]">
-                    Generated videos that will be removed
+                    Generated videos marked for removal
                   </h3>
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
                     {removedVideos.map((video) => (

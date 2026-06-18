@@ -2,14 +2,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
 import {
   applyManualArtistEdits,
   concertVideos,
-  mergeManualVideos,
   normalizeVideoOrder,
   parseYouTubeVideoId,
   validatePublishRequest,
   type RefreshScope,
   type RefreshVideo,
 } from "../_shared/refresh-policy.ts"
-import { fetchWikipediaSummary } from "../../../src/utils/wikipedia.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,11 +53,6 @@ type Snapshot = {
   manual_video_replacements?: string[]
 }
 
-type YouTubeSearchItem = {
-  id: { videoId: string }
-  snippet: { title: string; description: string; publishedAt: string }
-}
-
 type YouTubeVideoDetail = {
   title: string
   description: string | null
@@ -68,13 +61,6 @@ type YouTubeVideoDetail = {
   publishedAt: string | null
   duration: string | null
   channelTitle: string | null
-}
-
-type GeneratedContext = {
-  tags: string[]
-  blurb: string | null
-  related_artists: string[]
-  artist_context: ArtistContext
 }
 
 function json(data: unknown, status = 200) {
@@ -107,30 +93,6 @@ function parseDuration(iso: string): string {
   return hours > 0
     ? `${hours}:${pad(minutes)}:${pad(seconds)}`
     : `${minutes}:${pad(seconds)}`
-}
-
-async function youtubeSearch(
-  query: string,
-  apiKey: string,
-  maxResults = 10,
-): Promise<YouTubeSearchItem[]> {
-  const params = new URLSearchParams({
-    part: "snippet",
-    type: "video",
-    q: query,
-    maxResults: String(maxResults),
-    videoDuration: "any",
-    order: "relevance",
-    key: apiKey,
-  })
-  const response = await fetch(
-    `https://www.googleapis.com/youtube/v3/search?${params}`,
-  )
-  if (!response.ok) {
-    throw new Error(`YouTube search failed (${response.status})`)
-  }
-  const data = await response.json()
-  return data.items ?? []
 }
 
 async function youtubeVideoDetails(
@@ -175,129 +137,23 @@ async function youtubeVideoDetails(
   return details
 }
 
-async function generateVideos(
-  artistName: string,
-  apiKey: string,
-): Promise<RefreshVideo[]> {
-  const queries = [
-    `${artistName} live concert`,
-    `${artistName} full set`,
-    `${artistName} live performance`,
-  ]
-  const results: Array<YouTubeSearchItem & { searchQuery: string }> = []
-  const seen = new Set<string>()
-
-  for (const query of queries) {
-    const items = await youtubeSearch(query, apiKey, 8)
-    for (const item of items) {
-      if (!seen.has(item.id.videoId)) {
-        seen.add(item.id.videoId)
-        results.push({ ...item, searchQuery: query })
-      }
-    }
+function editableArtistSnapshot(artist: ArtistRow): ArtistRow {
+  const context: ArtistContext = {
+    genre: artist.artist_context?.genre ?? artist.tags ?? [],
+    city: artist.artist_context?.city ?? null,
+    yearsActive: artist.artist_context?.yearsActive ?? null,
+    knownFor: artist.artist_context?.knownFor ?? [],
+    associatedWith: artist.artist_context?.associatedWith ?? [],
+    sceneSummary: artist.artist_context?.sceneSummary ?? artist.blurb ?? "",
+    relatedArtists:
+      artist.artist_context?.relatedArtists
+      ?? artist.related_artists?.map((name) => ({ name, reason: "" }))
+      ?? [],
   }
 
-  const selected = results.slice(0, 25)
-  const details = await youtubeVideoDetails(
-    selected.map((item) => item.id.videoId),
-    apiKey,
-  )
-
-  return selected.map((item, display_order) => {
-    const detail = details.get(item.id.videoId)
-    return {
-      youtube_video_id: item.id.videoId,
-      title: detail?.title ?? item.snippet.title,
-      description: detail?.description ?? item.snippet.description ?? null,
-      thumbnail_url: detail?.thumbnail ?? null,
-      published_at: detail?.publishedAt ?? item.snippet.publishedAt ?? null,
-      view_count: detail?.viewCount ?? null,
-      duration: detail?.duration ?? null,
-      search_query: item.searchQuery,
-      is_manually_added: false,
-      display_order,
-      video_type: "concert",
-      channel_title: detail?.channelTitle ?? null,
-    }
-  })
-}
-
-async function generateContext(
-  artistName: string,
-  videoTitles: string[],
-  wikipediaExtract: string | null,
-  apiKey: string,
-): Promise<GeneratedContext> {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      messages: [{
-        role: "user",
-        content: `
-Generate concise artist context for Encore Atlas, a music discovery app.
-
-Artist: ${artistName}
-Video titles:
-${videoTitles.map((title) => `- ${title}`).join("\n")}
-Wikipedia summary for factual reference:
-${wikipediaExtract ?? "Unavailable"}
-
-Return only valid JSON using this schema:
-{
-  "genre": string[],
-  "city": string | null,
-  "yearsActive": string | null,
-  "knownFor": string[],
-  "associatedWith": string[],
-  "sceneSummary": string,
-  "relatedArtists": [{ "name": string, "reason": string }]
-}
-
-Use 2-5 concise genre labels, 3-5 known-for phrases, a 1-2 sentence
-scene summary, and 8-12 useful related artists. Do not copy source text.
-`,
-      }],
-    }),
-  })
-  if (!response.ok) {
-    throw new Error(`Claude generation failed (${response.status})`)
-  }
-
-  const data = await response.json()
-  const raw = data.content?.[0]?.text ?? ""
-  const parsed = JSON.parse(
-    raw.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, ""),
-  )
-  const artist_context: ArtistContext = {
-    genre: Array.isArray(parsed.genre) ? parsed.genre : [],
-    city: typeof parsed.city === "string" ? parsed.city : null,
-    yearsActive: typeof parsed.yearsActive === "string" ? parsed.yearsActive : null,
-    knownFor: Array.isArray(parsed.knownFor) ? parsed.knownFor : [],
-    associatedWith: Array.isArray(parsed.associatedWith) ? parsed.associatedWith : [],
-    sceneSummary: typeof parsed.sceneSummary === "string" ? parsed.sceneSummary : "",
-    relatedArtists: Array.isArray(parsed.relatedArtists)
-      ? parsed.relatedArtists
-        .filter((item: unknown) =>
-          item && typeof (item as { name?: unknown }).name === "string"
-        )
-        .map((item: { name: string; reason?: string }) => ({
-          name: item.name,
-          reason: typeof item.reason === "string" ? item.reason : "",
-        }))
-      : [],
-  }
   return {
-    tags: artist_context.genre,
-    blurb: artist_context.sceneSummary || null,
-    related_artists: artist_context.relatedArtists.map((artist) => artist.name),
-    artist_context,
+    ...artist,
+    artist_context: context,
   }
 }
 
@@ -380,56 +236,11 @@ Deno.serve(async (request) => {
       let proposedVideos = snapshot.videos
 
       if (scopes.includes("videos")) {
-        const generated = await generateVideos(
-          snapshot.artist.name,
-          Deno.env.get("YOUTUBE_API_KEY")!,
-        )
-        proposedVideos = mergeManualVideos(generated, snapshot.videos)
+        proposedVideos = concertVideos(snapshot.videos)
       }
 
       if (scopes.includes("metadata") || scopes.includes("same_vibe")) {
-        const wiki = await fetchWikipediaSummary(snapshot.artist.name).catch(() => null)
-        const context = await generateContext(
-          snapshot.artist.name,
-          proposedVideos.map((video) => video.title),
-          wiki?.extract ?? null,
-          Deno.env.get("ANTHROPIC_API_KEY")!,
-        )
-        if (scopes.includes("metadata") && (
-          context.tags.length === 0
-          || !context.blurb
-          || !context.artist_context.sceneSummary
-        )) {
-          throw new Error("Generated metadata was incomplete; no preview was saved")
-        }
-        if (scopes.includes("same_vibe") && context.related_artists.length === 0) {
-          throw new Error("Generated same-vibe artists were empty; no preview was saved")
-        }
-
-        if (scopes.includes("metadata")) {
-          proposedArtist.tags = context.tags
-          proposedArtist.tag_source = "llm"
-          proposedArtist.blurb = context.blurb
-          if (wiki) {
-            proposedArtist.wikipedia_extract = wiki.extract
-            proposedArtist.wikipedia_thumbnail_url = wiki.thumbnailUrl
-            proposedArtist.wikipedia_url = wiki.pageUrl
-          }
-          proposedArtist.artist_context = {
-            ...context.artist_context,
-            relatedArtists:
-              snapshot.artist.artist_context?.relatedArtists
-              ?? [],
-          }
-        }
-
-        if (scopes.includes("same_vibe")) {
-          proposedArtist.related_artists = context.related_artists
-          proposedArtist.artist_context = {
-            ...(proposedArtist.artist_context ?? context.artist_context),
-            relatedArtists: context.artist_context.relatedArtists,
-          }
-        }
+        Object.assign(proposedArtist, editableArtistSnapshot(snapshot.artist))
       }
 
       const proposed: Snapshot = {
