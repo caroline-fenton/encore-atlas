@@ -575,7 +575,7 @@ export default function AdminContentRefreshPage() {
               <EditableField label="Same vibe" before={beforeArtist.related_artists}>
                 <div className="space-y-2">
                   {(proposedArtist.artist_context?.relatedArtists ?? []).map((related, index) => (
-                    <div key={`${related.name}-${index}`} className="grid gap-2 border border-stone-200 bg-white/40 p-2 sm:grid-cols-[1fr_2fr_auto]">
+                    <div key={index} className="grid gap-2 border border-stone-200 bg-white/40 p-2 sm:grid-cols-[1fr_2fr_auto]">
                       <input
                         value={related.name}
                         disabled={beforeArtist.is_curated}
