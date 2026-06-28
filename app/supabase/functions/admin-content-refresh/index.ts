@@ -50,6 +50,7 @@ type ArtistRow = {
 type Snapshot = {
   artist: ArtistRow
   videos: Array<RefreshVideo & { id?: string; artist_id?: string; created_at?: string }>
+  manual_video_removals?: string[]
   manual_video_replacements?: string[]
 }
 
@@ -300,6 +301,11 @@ Deno.serve(async (request) => {
           (id): id is string => typeof id === "string",
         )
         : []
+      const manualVideoRemovals = Array.isArray(body.manual_video_removals)
+        ? body.manual_video_removals.filter(
+          (id): id is string => typeof id === "string",
+        )
+        : []
       const submittedArtist = body.proposed_artist && typeof body.proposed_artist === "object"
         ? body.proposed_artist as ArtistRow
         : null
@@ -339,6 +345,7 @@ Deno.serve(async (request) => {
         isCurated: before.artist.is_curated,
         existingVideos: concertVideos(before.videos),
         proposedVideos,
+        manualVideoRemovals,
         manualVideoReplacements,
       })
       errors.push(...editedArtist.errors)
@@ -351,6 +358,7 @@ Deno.serve(async (request) => {
             ...storedProposed,
             artist: editedArtist.artist,
             videos: proposedVideos,
+            manual_video_removals: manualVideoRemovals,
             manual_video_replacements: manualVideoReplacements,
             manual_metadata_edit: editedArtist.manualMetadataEdit,
           },

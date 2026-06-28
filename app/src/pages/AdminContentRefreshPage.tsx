@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { Check, Pencil, Plus, X } from "lucide-react"
 import { Link } from "react-router-dom"
 import {
   generateRefreshPreview,
@@ -94,6 +95,7 @@ function editableMetadataSignature(artist: RefreshArtist, scopes: RefreshScope[]
       blurb: artist.blurb ?? null,
       city: artist.artist_context?.city ?? null,
       yearsActive: artist.artist_context?.yearsActive ?? null,
+      wikipediaUrl: artist.wikipedia_url ?? null,
     } : null,
     sameVibe: scopes.includes("same_vibe")
       ? artist.artist_context?.relatedArtists ?? []
@@ -108,6 +110,123 @@ function editableVideoSignature(videos: RefreshVideo[]) {
     display_order: video.display_order,
     video_type: video.video_type,
   })))
+}
+
+function concertVideos(videos: RefreshVideo[]) {
+  return videos
+    .filter((video) => (video.video_type ?? "concert") === "concert")
+    .sort((a, b) => a.display_order - b.display_order)
+}
+
+function stagePreviewVideos(beforeVideos: RefreshVideo[], proposedVideos: RefreshVideo[]) {
+  const proposedById = new Map(
+    concertVideos(proposedVideos).map((video) => [video.youtube_video_id, video]),
+  )
+  const staged = concertVideos(beforeVideos).map((video) => ({
+    ...(proposedById.get(video.youtube_video_id) ?? video),
+    display_order: video.display_order,
+  }))
+  const stagedIds = new Set(staged.map((video) => video.youtube_video_id))
+  const additions = concertVideos(proposedVideos)
+    .filter((video) => !stagedIds.has(video.youtube_video_id))
+    .map((video, index) => ({
+      ...video,
+      display_order: staged.length + index,
+    }))
+
+  return [...staged, ...additions]
+}
+
+function iconButtonClass(tone: "edit" | "remove" | "add" = "edit") {
+  const tones = {
+    edit: "border-[#9256a8]/35 text-[#9256a8] hover:bg-[#9256a8]/5",
+    remove: "border-[#a33b33]/35 text-[#a33b33] hover:bg-[#a33b33]/5",
+    add: "border-[#3580b0]/35 text-[#3580b0] hover:bg-[#3580b0]/5",
+  }
+  return [
+    "inline-flex h-8 w-8 items-center justify-center border bg-white/45 transition disabled:cursor-not-allowed disabled:opacity-40",
+    tones[tone],
+  ].join(" ")
+}
+
+function focusControl(id: string) {
+  window.requestAnimationFrame(() => {
+    document.getElementById(id)?.focus()
+  })
+}
+
+function AddVideoForm({
+  onAdd,
+}: {
+  onAdd: (video: RefreshVideo) => void
+}) {
+  const [showAdd, setShowAdd] = useState(false)
+  const [url, setUrl] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function handleAdd() {
+    setLoading(true)
+    setError(null)
+    try {
+      const video = await previewReplacementVideo(url)
+      onAdd(video)
+      setShowAdd(false)
+      setUrl("")
+    } catch (addError) {
+      setError(addError instanceof Error ? addError.message : "Could not load that video")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!showAdd) {
+    return (
+      <button
+        type="button"
+        onClick={() => setShowAdd(true)}
+        className="inline-flex items-center gap-2 border border-[#3580b0]/35 bg-white/45 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#3580b0] hover:bg-[#3580b0]/5"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add video
+      </button>
+    )
+  }
+
+  return (
+    <div className="border border-[#3580b0]/25 bg-[#3580b0]/5 p-3">
+      <label className="text-xs font-semibold uppercase tracking-[0.14em] text-black/55">
+        New YouTube URL
+      </label>
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        <input
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+          placeholder="https://www.youtube.com/watch?v=..."
+          className="min-w-0 flex-1 border border-stone-300 bg-white/70 px-3 py-2 text-sm outline-none focus:border-[#3580b0]"
+        />
+        <button
+          type="button"
+          disabled={loading || !url.trim()}
+          onClick={handleAdd}
+          className="inline-flex items-center justify-center gap-2 border border-[#3580b0] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#3580b0] disabled:opacity-40"
+        >
+          <Check className="h-3.5 w-3.5" />
+          {loading ? "Checking..." : "Add"}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setShowAdd(false); setUrl(""); setError(null) }}
+          className={iconButtonClass("remove")}
+          aria-label="Cancel add video"
+          title="Cancel"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      {error && <p className="mt-2 text-sm text-[#a33b33]">{error}</p>}
+    </div>
+  )
 }
 
 function VideoPreview({
@@ -188,14 +307,24 @@ function VideoPreview({
             Embed: {embedUrl}
           </div>
           <div className="mt-3 flex gap-3">
-            <button type="button" onClick={() => setShowReplace((value) => !value)} className="text-xs font-semibold uppercase tracking-[0.12em] text-[#9256a8]">
-              {isProtectedManual ? "Replace protected" : "Replace"}
+            <button
+              type="button"
+              onClick={() => setShowReplace((value) => !value)}
+              className={iconButtonClass("edit")}
+              aria-label={isProtectedManual ? "Replace protected video" : "Replace video"}
+              title={isProtectedManual ? "Replace protected video" : "Replace video"}
+            >
+              <Pencil className="h-4 w-4" />
             </button>
-            {!video.is_manually_added && (
-              <button type="button" onClick={onRemove} className="text-xs font-semibold uppercase tracking-[0.12em] text-[#a33b33]">
-                Remove
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={onRemove}
+              className={iconButtonClass("remove")}
+              aria-label="Remove video"
+              title="Remove video"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -240,7 +369,9 @@ export default function AdminContentRefreshPage() {
   const [refresh, setRefresh] = useState<ContentRefresh | null>(null)
   const [proposedArtist, setProposedArtist] = useState<RefreshArtist | null>(null)
   const [videos, setVideos] = useState<RefreshVideo[]>([])
+  const [explicitVideoRemovals, setExplicitVideoRemovals] = useState<string[]>([])
   const [manualVideoReplacements, setManualVideoReplacements] = useState<string[]>([])
+  const [manualVideoRemovals, setManualVideoRemovals] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(false)
@@ -284,9 +415,10 @@ export default function AdminContentRefreshPage() {
       && (
         editableVideoSignature(videos) !== editableVideoSignature(refresh.proposed_snapshot.videos)
         || manualVideoReplacements.length > 0
+        || manualVideoRemovals.length > 0
       )
     ),
-    [manualVideoReplacements.length, refresh, videos],
+    [manualVideoRemovals.length, manualVideoReplacements.length, refresh, videos],
   )
   const publishWarnings = useMemo(() => {
     const warnings: string[] = []
@@ -336,20 +468,88 @@ export default function AdminContentRefreshPage() {
     [refresh],
   )
   const removedVideos = useMemo(() => {
-    const proposedIds = new Set(videos.map((video) => video.youtube_video_id))
     return refresh?.before_snapshot.videos.filter(
       (video) =>
         (video.video_type ?? "concert") === "concert"
         && !video.is_manually_added
-        && !proposedIds.has(video.youtube_video_id),
+        && explicitVideoRemovals.includes(video.youtube_video_id),
     ) ?? []
-  }, [refresh, videos])
+  }, [explicitVideoRemovals, refresh])
   const replacedManualVideos = useMemo(
     () => refresh?.before_snapshot.videos.filter(
       (video) => manualVideoReplacements.includes(video.youtube_video_id),
     ) ?? [],
     [manualVideoReplacements, refresh],
   )
+  const removedManualVideos = useMemo(
+    () => refresh?.before_snapshot.videos.filter(
+      (video) => manualVideoRemovals.includes(video.youtube_video_id),
+    ) ?? [],
+    [manualVideoRemovals, refresh],
+  )
+  const protectedManualVideosByReplacementPosition = useMemo(
+    () => new Map(
+      refresh?.before_snapshot.videos
+        .filter((video) =>
+          (video.video_type ?? "concert") === "concert"
+          && video.is_manually_added
+          && manualVideoReplacements.includes(video.youtube_video_id)
+        )
+        .map((video) => [video.display_order, video]) ?? [],
+    ),
+    [manualVideoReplacements, refresh],
+  )
+
+  function updateArtistContext(patch: Partial<NonNullable<RefreshArtist["artist_context"]>>) {
+    if (!proposedArtist?.artist_context) return
+    setProposedArtist({
+      ...proposedArtist,
+      artist_context: {
+        ...proposedArtist.artist_context,
+        ...patch,
+      },
+    })
+  }
+
+  function resetMetadataField(field: "tags" | "blurb" | "city" | "yearsActive" | "wikipediaUrl") {
+    if (!proposedArtist || !refresh) return
+    const currentArtist = refresh.before_snapshot.artist
+    if (field === "tags") {
+      setProposedArtist({ ...proposedArtist, tags: currentArtist.tags ?? [] })
+      return
+    }
+    if (field === "blurb") {
+      setProposedArtist({ ...proposedArtist, blurb: currentArtist.blurb ?? "" })
+      return
+    }
+    if (field === "city") {
+      updateArtistContext({ city: currentArtist.artist_context?.city ?? null })
+      return
+    }
+    if (field === "wikipediaUrl") {
+      setProposedArtist({ ...proposedArtist, wikipedia_url: currentArtist.wikipedia_url ?? "" })
+      return
+    }
+    updateArtistContext({ yearsActive: currentArtist.artist_context?.yearsActive ?? null })
+  }
+
+  function restoreVideo(video: RefreshVideo) {
+    setVideos((current) => {
+      if (current.some((item) => item.youtube_video_id === video.youtube_video_id)) {
+        return current
+      }
+      return [...current, video].sort((a, b) => a.display_order - b.display_order)
+    })
+    setExplicitVideoRemovals((current) =>
+      current.filter((id) => id !== video.youtube_video_id),
+    )
+    setManualVideoRemovals((current) =>
+      current.filter((id) => id !== video.youtube_video_id),
+    )
+    setManualVideoReplacements((current) =>
+      current.filter((id) => id !== video.youtube_video_id),
+    )
+  }
 
   async function handleMagicLink() {
     setBusy(true)
@@ -370,14 +570,25 @@ export default function AdminContentRefreshPage() {
     setError(null)
     setRefresh(null)
     setProposedArtist(null)
+    setExplicitVideoRemovals([])
     setManualVideoReplacements([])
+    setManualVideoRemovals([])
     setPublished(false)
     try {
       const result = await generateRefreshPreview(selectedArtist.id, scopes)
       setRefresh(result)
       setProposedArtist(result.proposed_snapshot.artist)
-      setVideos(result.proposed_snapshot.videos)
+      setVideos(
+        result.scopes.includes("videos")
+          ? stagePreviewVideos(
+            result.before_snapshot.videos,
+            result.proposed_snapshot.videos,
+          )
+          : result.proposed_snapshot.videos,
+      )
+      setExplicitVideoRemovals([])
       setManualVideoReplacements([])
+      setManualVideoRemovals([])
     } catch (previewError) {
       setError(previewError instanceof Error ? previewError.message : "Could not generate preview")
     } finally {
@@ -395,6 +606,7 @@ export default function AdminContentRefreshPage() {
         proposedArtist,
         videos,
         manualVideoReplacements,
+        manualVideoRemovals,
       )
       setPublished(true)
     } catch (publishError) {
@@ -516,50 +728,78 @@ export default function AdminContentRefreshPage() {
             {refresh.scopes.includes("metadata") ? (
               <>
                 <EditableField label="Genres" before={beforeArtist.tags}>
-                  <input
-                    value={(proposedArtist.tags ?? []).join(", ")}
-                    disabled={beforeArtist.is_curated}
-                    onChange={(event) => setProposedArtist({
-                      ...proposedArtist,
-                      tags: event.target.value.split(",").map((tag) => tag.trim()),
-                    })}
-                    className="w-full border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      id="metadata-tags"
+                      value={(proposedArtist.tags ?? []).join(", ")}
+                      disabled={beforeArtist.is_curated}
+                      onChange={(event) => setProposedArtist({
+                        ...proposedArtist,
+                        tags: event.target.value.split(",").map((tag) => tag.trim()),
+                      })}
+                      className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
+                    />
+                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-tags")} className={iconButtonClass("edit")} aria-label="Edit genres" title="Edit genres">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("tags")} className={iconButtonClass("remove")} aria-label="Revert genres" title="Revert genres">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                 </EditableField>
                 <EditableField label="Summary" before={beforeArtist.blurb}>
-                  <textarea
-                    value={proposedArtist.blurb ?? ""}
-                    disabled={beforeArtist.is_curated}
-                    rows={5}
-                    onChange={(event) => setProposedArtist({ ...proposedArtist, blurb: event.target.value })}
-                    className="w-full resize-y border border-stone-300 bg-white/60 px-3 py-2 text-sm leading-relaxed outline-none focus:border-[#9256a8] disabled:opacity-50"
-                  />
+                  <div className="flex items-start gap-2">
+                    <textarea
+                      id="metadata-blurb"
+                      value={proposedArtist.blurb ?? ""}
+                      disabled={beforeArtist.is_curated}
+                      rows={5}
+                      onChange={(event) => setProposedArtist({ ...proposedArtist, blurb: event.target.value })}
+                      className="min-w-0 flex-1 resize-y border border-stone-300 bg-white/60 px-3 py-2 text-sm leading-relaxed outline-none focus:border-[#9256a8] disabled:opacity-50"
+                    />
+                    <div className="flex flex-col gap-2">
+                      <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-blurb")} className={iconButtonClass("edit")} aria-label="Edit summary" title="Edit summary">
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("blurb")} className={iconButtonClass("remove")} aria-label="Revert summary" title="Revert summary">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 </EditableField>
                 <EditableField label="City" before={beforeArtist.artist_context?.city}>
-                  <input
-                    value={proposedArtist.artist_context?.city ?? ""}
-                    disabled={beforeArtist.is_curated}
-                    onChange={(event) => setProposedArtist({
-                      ...proposedArtist,
-                      artist_context: proposedArtist.artist_context
-                        ? { ...proposedArtist.artist_context, city: event.target.value }
-                        : null,
-                    })}
-                    className="w-full border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      id="metadata-city"
+                      value={proposedArtist.artist_context?.city ?? ""}
+                      disabled={beforeArtist.is_curated}
+                      onChange={(event) => updateArtistContext({ city: event.target.value })}
+                      className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
+                    />
+                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-city")} className={iconButtonClass("edit")} aria-label="Edit city" title="Edit city">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("city")} className={iconButtonClass("remove")} aria-label="Revert city" title="Revert city">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                 </EditableField>
                 <EditableField label="Years active" before={beforeArtist.artist_context?.yearsActive}>
-                  <input
-                    value={proposedArtist.artist_context?.yearsActive ?? ""}
-                    disabled={beforeArtist.is_curated}
-                    onChange={(event) => setProposedArtist({
-                      ...proposedArtist,
-                      artist_context: proposedArtist.artist_context
-                        ? { ...proposedArtist.artist_context, yearsActive: event.target.value }
-                        : null,
-                    })}
-                    className="w-full border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      id="metadata-years-active"
+                      value={proposedArtist.artist_context?.yearsActive ?? ""}
+                      disabled={beforeArtist.is_curated}
+                      onChange={(event) => updateArtistContext({ yearsActive: event.target.value })}
+                      className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
+                    />
+                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-years-active")} className={iconButtonClass("edit")} aria-label="Edit years active" title="Edit years active">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("yearsActive")} className={iconButtonClass("remove")} aria-label="Revert years active" title="Revert years active">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                 </EditableField>
               </>
             ) : (
@@ -570,19 +810,47 @@ export default function AdminContentRefreshPage() {
                 <ChangeRow label="Years active" before={beforeArtist.artist_context?.yearsActive} after={proposedArtist.artist_context?.yearsActive} />
               </>
             )}
-            <ChangeRow label="Wikipedia" before={beforeArtist.wikipedia_url} after={proposedArtist.wikipedia_url} />
+            {refresh.scopes.includes("metadata") ? (
+              <EditableField label="Wikipedia" before={beforeArtist.wikipedia_url}>
+                <div className="flex gap-2">
+                  <input
+                    id="metadata-wikipedia-url"
+                    value={proposedArtist.wikipedia_url ?? ""}
+                    disabled={beforeArtist.is_curated}
+                    onChange={(event) => setProposedArtist({
+                      ...proposedArtist,
+                      wikipedia_url: event.target.value,
+                    })}
+                    placeholder="https://en.wikipedia.org/wiki/..."
+                    className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
+                  />
+                  <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-wikipedia-url")} className={iconButtonClass("edit")} aria-label="Edit Wikipedia URL" title="Edit Wikipedia URL">
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("wikipediaUrl")} className={iconButtonClass("remove")} aria-label="Revert Wikipedia URL" title="Revert Wikipedia URL">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </EditableField>
+            ) : (
+              <ChangeRow label="Wikipedia" before={beforeArtist.wikipedia_url} after={proposedArtist.wikipedia_url} />
+            )}
             {refresh.scopes.includes("same_vibe") ? (
               <EditableField label="Same vibe" before={beforeArtist.related_artists}>
                 <div className="space-y-2">
                   {(proposedArtist.artist_context?.relatedArtists ?? []).map((related, index) => (
-                    <div key={index} className="grid gap-2 border border-stone-200 bg-white/40 p-2 sm:grid-cols-[1fr_2fr_auto]">
+                    <div key={index} className="grid gap-2 border border-stone-200 bg-white/40 p-2 sm:grid-cols-[1fr_2fr_auto_auto]">
                       <input
-                        value={related.name}
+                        id={`related-artist-name-${index}`}
+                        value={related.name ?? ""}
                         disabled={beforeArtist.is_curated}
                         aria-label={`Related artist ${index + 1}`}
                         onChange={(event) => {
                           const relatedArtists = [...(proposedArtist.artist_context?.relatedArtists ?? [])]
-                          relatedArtists[index] = { ...related, name: event.target.value }
+                          relatedArtists[index] = {
+                            name: event.target.value,
+                            reason: related.reason ?? "",
+                          }
                           setProposedArtist({
                             ...proposedArtist,
                             artist_context: proposedArtist.artist_context
@@ -593,12 +861,16 @@ export default function AdminContentRefreshPage() {
                         className="border border-stone-300 bg-white/70 px-2 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
                       />
                       <input
-                        value={related.reason}
+                        id={`related-artist-reason-${index}`}
+                        value={related.reason ?? ""}
                         disabled={beforeArtist.is_curated}
                         aria-label={`Related artist reason ${index + 1}`}
                         onChange={(event) => {
                           const relatedArtists = [...(proposedArtist.artist_context?.relatedArtists ?? [])]
-                          relatedArtists[index] = { ...related, reason: event.target.value }
+                          relatedArtists[index] = {
+                            name: related.name ?? "",
+                            reason: event.target.value,
+                          }
                           setProposedArtist({
                             ...proposedArtist,
                             artist_context: proposedArtist.artist_context
@@ -608,6 +880,16 @@ export default function AdminContentRefreshPage() {
                         }}
                         className="border border-stone-300 bg-white/70 px-2 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
                       />
+                      <button
+                        type="button"
+                        disabled={beforeArtist.is_curated}
+                        onClick={() => focusControl(`related-artist-name-${index}`)}
+                        className={iconButtonClass("edit")}
+                        aria-label={`Edit related artist ${index + 1}`}
+                        title="Edit related artist"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                       <button
                         type="button"
                         disabled={beforeArtist.is_curated}
@@ -621,9 +903,11 @@ export default function AdminContentRefreshPage() {
                               : null,
                           })
                         }}
-                        className="px-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#a33b33] disabled:opacity-40"
+                        className={iconButtonClass("remove")}
+                        aria-label={`Remove related artist ${index + 1}`}
+                        title="Remove related artist"
                       >
-                        Remove
+                        <X className="h-4 w-4" />
                       </button>
                     </div>
                   ))}
@@ -642,8 +926,9 @@ export default function AdminContentRefreshPage() {
                         }
                         : null,
                     })}
-                    className="text-xs font-semibold uppercase tracking-[0.12em] text-[#9256a8] disabled:opacity-40"
+                    className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#9256a8] disabled:opacity-40"
                   >
+                    <Plus className="h-3.5 w-3.5" />
                     Add related artist
                   </button>
                 </div>
@@ -660,7 +945,23 @@ export default function AdminContentRefreshPage() {
                   <h2 className="font-display text-3xl tracking-[0.1em]">Video Preview</h2>
                   <p className="mt-1 text-sm text-black/50">Current live videos are shown unchanged. Remove bad generated videos or replace a specific item by URL.</p>
                 </div>
-                <div className="text-xs uppercase tracking-[0.14em] text-black/40">{videos.length} live videos</div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <AddVideoForm
+                    onAdd={(video) => {
+                      setVideos((current) => [
+                        ...current,
+                        { ...video, display_order: current.length },
+                      ])
+                      setManualVideoRemovals((current) =>
+                        current.filter((id) => id !== video.youtube_video_id),
+                      )
+                      setManualVideoReplacements((current) =>
+                        current.filter((id) => id !== video.youtube_video_id),
+                      )
+                    }}
+                  />
+                  <div className="text-xs uppercase tracking-[0.14em] text-black/40">{videos.length} live videos</div>
+                </div>
               </div>
               <div className="mt-5 grid gap-3 md:grid-cols-2">
                 {videos.map((video, index) => (
@@ -677,13 +978,36 @@ export default function AdminContentRefreshPage() {
                             ? "Current generated"
                             : "Replacement"
                     }
-                    onRemove={() => setVideos((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                    onRemove={() => {
+                      const replacedProtectedVideo = video.is_manually_added
+                        && !beforeManualVideoIds.has(video.youtube_video_id)
+                        ? protectedManualVideosByReplacementPosition.get(video.display_order)
+                        : null
+                      setVideos((current) => current.filter((_, itemIndex) => itemIndex !== index))
+                      if (beforeManualVideoIds.has(video.youtube_video_id)) {
+                        setManualVideoRemovals((current) => [
+                          ...new Set([...current, video.youtube_video_id]),
+                        ])
+                        setManualVideoReplacements((current) =>
+                          current.filter((id) => id !== video.youtube_video_id),
+                        )
+                      } else if (replacedProtectedVideo) {
+                        restoreVideo(replacedProtectedVideo)
+                      } else if (beforeVideoIds.has(video.youtube_video_id)) {
+                        setExplicitVideoRemovals((current) => [
+                          ...new Set([...current, video.youtube_video_id]),
+                        ])
+                      }
+                    }}
                     onReplace={(replacement, replacedManualVideoId) => {
                       setVideos((current) => current.map((item, itemIndex) => itemIndex === index ? replacement : item))
                       if (replacedManualVideoId) {
                         setManualVideoReplacements((current) => [
                           ...new Set([...current, replacedManualVideoId]),
                         ])
+                        setManualVideoRemovals((current) =>
+                          current.filter((id) => id !== replacedManualVideoId),
+                        )
                       }
                     }}
                   />
@@ -696,15 +1020,26 @@ export default function AdminContentRefreshPage() {
                   </h3>
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
                     {removedVideos.map((video) => (
-                      <a
+                      <div
                         key={video.youtube_video_id}
-                        href={`https://www.youtube.com/watch?v=${video.youtube_video_id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="border border-[#a33b33]/25 bg-[#a33b33]/5 p-3 text-sm text-[#82332d]"
+                        className="flex items-start justify-between gap-3 border border-[#a33b33]/25 bg-[#a33b33]/5 p-3 text-sm text-[#82332d]"
                       >
-                        {video.title}
-                      </a>
+                        <a
+                          href={`https://www.youtube.com/watch?v=${video.youtube_video_id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="min-w-0 flex-1 underline decoration-[#a33b33]/35 underline-offset-2"
+                        >
+                          {video.title}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => restoreVideo(video)}
+                          className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-[#3580b0]"
+                        >
+                          Restore
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -718,6 +1053,34 @@ export default function AdminContentRefreshPage() {
                     {replacedManualVideos.map((video) => (
                       <div key={video.youtube_video_id} className="border border-[#9256a8]/25 bg-[#9256a8]/5 p-3 text-sm text-[#6d3d7c]">
                         {video.title}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {removedManualVideos.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a33b33]">
+                    Protected manual videos marked for removal
+                  </h3>
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    {removedManualVideos.map((video) => (
+                      <div key={video.youtube_video_id} className="flex items-start justify-between gap-3 border border-[#a33b33]/25 bg-[#a33b33]/5 p-3 text-sm text-[#82332d]">
+                        <a
+                          href={`https://www.youtube.com/watch?v=${video.youtube_video_id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="min-w-0 flex-1 underline decoration-[#a33b33]/35 underline-offset-2"
+                        >
+                          {video.title}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => restoreVideo(video)}
+                          className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-[#3580b0]"
+                        >
+                          Restore
+                        </button>
                       </div>
                     ))}
                   </div>
