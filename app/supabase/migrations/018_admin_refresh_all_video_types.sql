@@ -261,11 +261,11 @@ begin
       select distinct unnest(video_types_synced || array['interview', 'music_video']::text[])
     )
     where id = refresh_row.artist_id;
-  end if;
 
-  update public.artists
-  set last_refreshed_at = now()
-  where id = refresh_row.artist_id;
+    update public.artists
+    set last_refreshed_at = now()
+    where id = refresh_row.artist_id;
+  end if;
 
   published := public.current_artist_content_snapshot(refresh_row.artist_id);
 

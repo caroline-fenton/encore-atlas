@@ -69,57 +69,63 @@ export function applyManualArtistEdits(
   const errors: string[] = []
 
   if (scopes.includes("metadata")) {
-    manualMetadataEdit = manualMetadataEdit
-      || JSON.stringify([
-        submitted.tags ?? [],
-        submitted.blurb,
-        submitted.artist_context?.city ?? null,
-        submitted.artist_context?.yearsActive ?? null,
-        submitted.wikipedia_url ?? null,
+    const metadataChanged = JSON.stringify([
+      submitted.tags ?? [],
+      submitted.blurb,
+      submitted.artist_context?.city ?? null,
+      submitted.artist_context?.yearsActive ?? null,
+      submitted.wikipedia_url ?? null,
+    ])
+      !== JSON.stringify([
+        generated.tags ?? [],
+        generated.blurb,
+        generated.artist_context?.city ?? null,
+        generated.artist_context?.yearsActive ?? null,
+        generated.wikipedia_url ?? null,
       ])
-        !== JSON.stringify([
-          generated.tags ?? [],
-          generated.blurb,
-          generated.artist_context?.city ?? null,
-          generated.artist_context?.yearsActive ?? null,
-          generated.wikipedia_url ?? null,
-        ])
-    const tags = normalizeTextList(submitted.tags)
-    const blurb = normalizeText(submitted.blurb)
-    const city = normalizeText(submitted.artist_context?.city)
-    const yearsActive = normalizeText(submitted.artist_context?.yearsActive)
-    const wikipediaUrl = normalizeText(submitted.wikipedia_url)
-    if (tags.length === 0) errors.push("Artist metadata requires at least one genre.")
-    if (!blurb) errors.push("Artist metadata requires a summary.")
 
-    artist.tags = tags
-    artist.blurb = blurb
-    artist.wikipedia_url = wikipediaUrl
-    context.genre = tags
-    context.sceneSummary = blurb ?? ""
-    context.city = city
-    context.yearsActive = yearsActive
+    if (metadataChanged) {
+      manualMetadataEdit = true
+      const tags = normalizeTextList(submitted.tags)
+      const blurb = normalizeText(submitted.blurb)
+      const city = normalizeText(submitted.artist_context?.city)
+      const yearsActive = normalizeText(submitted.artist_context?.yearsActive)
+      const wikipediaUrl = normalizeText(submitted.wikipedia_url)
+      if (tags.length === 0) errors.push("Artist metadata requires at least one genre.")
+      if (!blurb) errors.push("Artist metadata requires a summary.")
+
+      artist.tags = tags
+      artist.blurb = blurb
+      artist.wikipedia_url = wikipediaUrl
+      context.genre = tags
+      context.sceneSummary = blurb ?? ""
+      context.city = city
+      context.yearsActive = yearsActive
+    }
   }
 
   if (scopes.includes("same_vibe")) {
-    manualMetadataEdit = manualMetadataEdit
-      || JSON.stringify(submitted.artist_context?.relatedArtists ?? [])
-        !== JSON.stringify(generated.artist_context?.relatedArtists ?? [])
-    const relatedArtists = Array.isArray(submitted.artist_context?.relatedArtists)
-      ? submitted.artist_context.relatedArtists
-        .filter((item) => item && typeof item.name === "string")
-        .map((item) => ({
-          name: item.name.trim(),
-          reason: typeof item.reason === "string" ? item.reason.trim() : "",
-        }))
-        .filter((item) => item.name)
-      : []
-    if (relatedArtists.length === 0) {
-      errors.push("Same-vibe metadata requires at least one related artist.")
-    }
+    const sameVibeChanged = JSON.stringify(submitted.artist_context?.relatedArtists ?? [])
+      !== JSON.stringify(generated.artist_context?.relatedArtists ?? [])
 
-    context.relatedArtists = relatedArtists
-    artist.related_artists = relatedArtists.map((item) => item.name)
+    if (sameVibeChanged) {
+      manualMetadataEdit = true
+      const relatedArtists = Array.isArray(submitted.artist_context?.relatedArtists)
+        ? submitted.artist_context.relatedArtists
+          .filter((item) => item && typeof item.name === "string")
+          .map((item) => ({
+            name: item.name.trim(),
+            reason: typeof item.reason === "string" ? item.reason.trim() : "",
+          }))
+          .filter((item) => item.name)
+        : []
+      if (relatedArtists.length === 0) {
+        errors.push("Same-vibe metadata requires at least one related artist.")
+      }
+
+      context.relatedArtists = relatedArtists
+      artist.related_artists = relatedArtists.map((item) => item.name)
+    }
   }
 
   artist.artist_context = context

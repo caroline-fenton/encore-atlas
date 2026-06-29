@@ -59,6 +59,31 @@ test("allows all-scope curated previews when metadata was not edited", () => {
   }), [])
 })
 
+test("does not validate incomplete metadata when only videos changed", () => {
+  const incompleteArtist = {
+    tags: [],
+    blurb: null,
+    wikipedia_url: null,
+    related_artists: [],
+    artist_context: {
+      genre: [],
+      city: null,
+      yearsActive: null,
+      sceneSummary: "",
+      relatedArtists: [],
+    },
+  }
+
+  const result = applyManualArtistEdits(
+    incompleteArtist,
+    structuredClone(incompleteArtist),
+    ["metadata", "same_vibe", "videos"],
+  )
+
+  assert.equal(result.manualMetadataEdit, false)
+  assert.deepEqual(result.errors, [])
+})
+
 test("manual metadata edits are normalized and detected", () => {
   const generated = {
     tags: ["rock"],
