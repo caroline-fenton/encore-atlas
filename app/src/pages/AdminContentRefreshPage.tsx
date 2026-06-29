@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Check, Pencil, Plus, X } from "lucide-react"
 import { Link } from "react-router-dom"
 import {
@@ -14,29 +14,20 @@ import {
   type RefreshArtist,
   type RefreshScope,
   type RefreshVideo,
+  type RefreshVideoType,
 } from "../services/adminContentRefresh"
 import { ensureSession } from "../services/auth"
 
-const scopeOptions: Array<{
-  value: RefreshScope
-  label: string
-  detail: string
+const previewScopes: RefreshScope[] = ["metadata", "same_vibe", "videos"]
+
+const videoSections: Array<{
+  type: RefreshVideoType
+  title: string
+  emptyText: string
 }> = [
-  {
-    value: "metadata",
-    label: "Artist metadata",
-    detail: "Only use when those fields are wrong or missing",
-  },
-  {
-    value: "same_vibe",
-    label: "Same-vibe artists",
-    detail: "Only use when related artists need repair",
-  },
-  {
-    value: "videos",
-    label: "Live video content",
-    detail: "Review current live videos and replace only bad ones",
-  },
+  { type: "concert", title: "Live Videos", emptyText: "No live videos in this preview." },
+  { type: "interview", title: "Interviews", emptyText: "No interviews in this preview." },
+  { type: "music_video", title: "Music Videos", emptyText: "No music videos in this preview." },
 ]
 
 function valueText(value: unknown): string {
@@ -112,29 +103,43 @@ function editableVideoSignature(videos: RefreshVideo[]) {
   })))
 }
 
-function concertVideos(videos: RefreshVideo[]) {
+function videoType(video: Pick<RefreshVideo, "video_type">): RefreshVideoType {
+  return video.video_type === "interview" || video.video_type === "music_video"
+    ? video.video_type
+    : "concert"
+}
+
+function videoKey(video: Pick<RefreshVideo, "youtube_video_id" | "video_type">): string {
+  return `${videoType(video)}:${video.youtube_video_id}`
+}
+
+function videosByType(videos: RefreshVideo[], type: RefreshVideoType) {
   return videos
-    .filter((video) => (video.video_type ?? "concert") === "concert")
+    .filter((video) => videoType(video) === type)
     .sort((a, b) => a.display_order - b.display_order)
 }
 
 function stagePreviewVideos(beforeVideos: RefreshVideo[], proposedVideos: RefreshVideo[]) {
-  const proposedById = new Map(
-    concertVideos(proposedVideos).map((video) => [video.youtube_video_id, video]),
-  )
-  const staged = concertVideos(beforeVideos).map((video) => ({
-    ...(proposedById.get(video.youtube_video_id) ?? video),
-    display_order: video.display_order,
-  }))
-  const stagedIds = new Set(staged.map((video) => video.youtube_video_id))
-  const additions = concertVideos(proposedVideos)
-    .filter((video) => !stagedIds.has(video.youtube_video_id))
-    .map((video, index) => ({
-      ...video,
-      display_order: staged.length + index,
+  return videoSections.flatMap(({ type }) => {
+    const proposedByKey = new Map(
+      videosByType(proposedVideos, type).map((video) => [videoKey(video), video]),
+    )
+    const staged = videosByType(beforeVideos, type).map((video) => ({
+      ...(proposedByKey.get(videoKey(video)) ?? video),
+      video_type: type,
+      display_order: video.display_order,
     }))
+    const stagedKeys = new Set(staged.map(videoKey))
+    const additions = videosByType(proposedVideos, type)
+      .filter((video) => !stagedKeys.has(videoKey(video)))
+      .map((video, index) => ({
+        ...video,
+        video_type: type,
+        display_order: staged.length + index,
+      }))
 
-  return [...staged, ...additions]
+    return [...staged, ...additions]
+  })
 }
 
 function iconButtonClass(tone: "edit" | "remove" | "add" = "edit") {
@@ -156,8 +161,10 @@ function focusControl(id: string) {
 }
 
 function AddVideoForm({
+  videoType,
   onAdd,
 }: {
+  videoType: RefreshVideoType
   onAdd: (video: RefreshVideo) => void
 }) {
   const [showAdd, setShowAdd] = useState(false)
@@ -169,7 +176,7 @@ function AddVideoForm({
     setLoading(true)
     setError(null)
     try {
-      const video = await previewReplacementVideo(url)
+      const video = await previewReplacementVideo(url, videoType)
       onAdd(video)
       setShowAdd(false)
       setUrl("")
@@ -231,16 +238,18 @@ function AddVideoForm({
 
 function VideoPreview({
   video,
+  videoType,
   changeLabel,
   isProtectedManual,
   onRemove,
   onReplace,
 }: {
   video: RefreshVideo
+  videoType: RefreshVideoType
   changeLabel: string
   isProtectedManual: boolean
   onRemove: () => void
-  onReplace: (video: RefreshVideo, replacedManualVideoId: string | null) => void
+  onReplace: (video: RefreshVideo, replacedManualVideoKey: string | null) => void
 }) {
   const [showReplace, setShowReplace] = useState(false)
   const [url, setUrl] = useState("")
@@ -262,10 +271,10 @@ function VideoPreview({
     setLoading(true)
     setError(null)
     try {
-      const replacement = await previewReplacementVideo(url)
+      const replacement = await previewReplacementVideo(url, videoType)
       onReplace(
-        { ...replacement, display_order: video.display_order },
-        isProtectedManual ? video.youtube_video_id : null,
+        { ...replacement, video_type: videoType, display_order: video.display_order },
+        isProtectedManual ? videoKey(video) : null,
       )
       setShowReplace(false)
       setUrl("")
@@ -365,7 +374,6 @@ export default function AdminContentRefreshPage() {
   const [query, setQuery] = useState("")
   const [artists, setArtists] = useState<AdminArtist[]>([])
   const [selectedArtist, setSelectedArtist] = useState<AdminArtist | null>(null)
-  const [scopes, setScopes] = useState<RefreshScope[]>(["videos"])
   const [refresh, setRefresh] = useState<ContentRefresh | null>(null)
   const [proposedArtist, setProposedArtist] = useState<RefreshArtist | null>(null)
   const [videos, setVideos] = useState<RefreshVideo[]>([])
@@ -373,8 +381,10 @@ export default function AdminContentRefreshPage() {
   const [manualVideoReplacements, setManualVideoReplacements] = useState<string[]>([])
   const [manualVideoRemovals, setManualVideoRemovals] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(false)
+  const previewRequestIdRef = useRef(0)
 
   const loadSession = useCallback(async () => {
     setSessionError(null)
@@ -422,68 +432,49 @@ export default function AdminContentRefreshPage() {
   )
   const publishWarnings = useMemo(() => {
     const warnings: string[] = []
-    if (
-      refresh?.before_snapshot.artist.is_curated
-      && refresh.scopes.some((scope) => scope === "metadata" || scope === "same_vibe")
-    ) {
-      warnings.push("Curated metadata and same-vibe changes are preview-only and cannot be published.")
-    }
     if (refresh?.scopes.includes("videos") && videos.length === 0) {
       warnings.push("A video refresh cannot publish an empty video list.")
     }
     if (
-      refresh?.scopes.length === 1
-      && refresh.scopes.includes("videos")
-      && !hasVideoEdits
-    ) {
-      warnings.push("Remove or replace at least one video before publishing a video repair.")
-    }
-    if (
       refresh
-      && !(refresh.scopes.length === 1 && refresh.scopes.includes("videos"))
       && !hasManualMetadataEdits
       && !hasVideoEdits
     ) {
-      warnings.push("Make at least one selected edit before publishing.")
+      warnings.push("Make at least one edit before publishing.")
     }
     return warnings
   }, [hasManualMetadataEdits, hasVideoEdits, refresh, videos])
   const beforeVideoIds = useMemo(
     () => new Set(
       refresh?.before_snapshot.videos
-        .filter((video) => (video.video_type ?? "concert") === "concert")
-        .map((video) => video.youtube_video_id) ?? [],
+        .map(videoKey) ?? [],
     ),
     [refresh],
   )
   const beforeManualVideoIds = useMemo(
     () => new Set(
       refresh?.before_snapshot.videos
-        .filter((video) =>
-          (video.video_type ?? "concert") === "concert"
-          && video.is_manually_added
-        )
-        .map((video) => video.youtube_video_id) ?? [],
+        .filter((video) => video.is_manually_added)
+        .map(videoKey) ?? [],
     ),
     [refresh],
   )
   const removedVideos = useMemo(() => {
     return refresh?.before_snapshot.videos.filter(
       (video) =>
-        (video.video_type ?? "concert") === "concert"
-        && !video.is_manually_added
-        && explicitVideoRemovals.includes(video.youtube_video_id),
+        !video.is_manually_added
+        && explicitVideoRemovals.includes(videoKey(video)),
     ) ?? []
   }, [explicitVideoRemovals, refresh])
   const replacedManualVideos = useMemo(
     () => refresh?.before_snapshot.videos.filter(
-      (video) => manualVideoReplacements.includes(video.youtube_video_id),
+      (video) => manualVideoReplacements.includes(videoKey(video)),
     ) ?? [],
     [manualVideoReplacements, refresh],
   )
   const removedManualVideos = useMemo(
     () => refresh?.before_snapshot.videos.filter(
-      (video) => manualVideoRemovals.includes(video.youtube_video_id),
+      (video) => manualVideoRemovals.includes(videoKey(video)),
     ) ?? [],
     [manualVideoRemovals, refresh],
   )
@@ -491,11 +482,10 @@ export default function AdminContentRefreshPage() {
     () => new Map(
       refresh?.before_snapshot.videos
         .filter((video) =>
-          (video.video_type ?? "concert") === "concert"
-          && video.is_manually_added
-          && manualVideoReplacements.includes(video.youtube_video_id)
+          video.is_manually_added
+          && manualVideoReplacements.includes(videoKey(video))
         )
-        .map((video) => [video.display_order, video]) ?? [],
+        .map((video) => [`${videoType(video)}:${video.display_order}`, video]) ?? [],
     ),
     [manualVideoReplacements, refresh],
   )
@@ -535,19 +525,23 @@ export default function AdminContentRefreshPage() {
 
   function restoreVideo(video: RefreshVideo) {
     setVideos((current) => {
-      if (current.some((item) => item.youtube_video_id === video.youtube_video_id)) {
+      if (current.some((item) => videoKey(item) === videoKey(video))) {
         return current
       }
-      return [...current, video].sort((a, b) => a.display_order - b.display_order)
+      return [...current, video].sort((a, b) =>
+        videoSections.findIndex((section) => section.type === videoType(a))
+        - videoSections.findIndex((section) => section.type === videoType(b))
+        || a.display_order - b.display_order
+      )
     })
     setExplicitVideoRemovals((current) =>
-      current.filter((id) => id !== video.youtube_video_id),
+      current.filter((id) => id !== videoKey(video)),
     )
     setManualVideoRemovals((current) =>
-      current.filter((id) => id !== video.youtube_video_id),
+      current.filter((id) => id !== videoKey(video)),
     )
     setManualVideoReplacements((current) =>
-      current.filter((id) => id !== video.youtube_video_id),
+      current.filter((id) => id !== videoKey(video)),
     )
   }
 
@@ -564,9 +558,11 @@ export default function AdminContentRefreshPage() {
     }
   }
 
-  async function handlePreview() {
-    if (!selectedArtist) return
+  async function handlePreview(artist: AdminArtist) {
+    const requestId = previewRequestIdRef.current + 1
+    previewRequestIdRef.current = requestId
     setBusy(true)
+    setPreviewing(true)
     setError(null)
     setRefresh(null)
     setProposedArtist(null)
@@ -575,7 +571,8 @@ export default function AdminContentRefreshPage() {
     setManualVideoRemovals([])
     setPublished(false)
     try {
-      const result = await generateRefreshPreview(selectedArtist.id, scopes)
+      const result = await generateRefreshPreview(artist.id, previewScopes)
+      if (previewRequestIdRef.current !== requestId) return
       setRefresh(result)
       setProposedArtist(result.proposed_snapshot.artist)
       setVideos(
@@ -590,10 +587,19 @@ export default function AdminContentRefreshPage() {
       setManualVideoReplacements([])
       setManualVideoRemovals([])
     } catch (previewError) {
+      if (previewRequestIdRef.current !== requestId) return
       setError(previewError instanceof Error ? previewError.message : "Could not generate preview")
     } finally {
-      setBusy(false)
+      if (previewRequestIdRef.current === requestId) {
+        setBusy(false)
+        setPreviewing(false)
+      }
     }
+  }
+
+  function handleSelectArtist(artist: AdminArtist) {
+    setSelectedArtist(artist)
+    void handlePreview(artist)
   }
 
   async function handlePublish() {
@@ -652,7 +658,7 @@ export default function AdminContentRefreshPage() {
         <div>
           <Link to="/" className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">← Encore Atlas</Link>
           <h1 className="mt-4 font-display text-5xl tracking-[0.12em]">Content Refresh</h1>
-          <p className="mt-2 text-sm text-black/55">Preview selected fixes before publishing. Existing metadata stays unchanged unless selected.</p>
+          <p className="mt-2 text-sm text-black/55">Search an artist to review metadata, same-vibe picks, and every artist-page video category before publishing fixes.</p>
         </div>
         <button type="button" onClick={() => signOutAdmin().then(() => window.location.reload())} className="text-xs font-semibold uppercase tracking-[0.15em] text-black/45">
           Sign out {session.email}
@@ -664,7 +670,7 @@ export default function AdminContentRefreshPage() {
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search existing artists" className="mt-2 w-full border border-stone-300 bg-white/45 px-4 py-3 text-sm outline-none focus:border-black/50" />
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {artists.map((artist) => (
-            <button key={artist.id} type="button" onClick={() => { setSelectedArtist(artist); setRefresh(null); setProposedArtist(null); setPublished(false) }} className={[
+            <button key={artist.id} type="button" onClick={() => handleSelectArtist(artist)} className={[
               "border p-3 text-left",
               selectedArtist?.id === artist.id ? "border-[#d94f43] bg-white/70" : "border-stone-300 bg-white/30",
             ].join(" ")}>
@@ -683,23 +689,14 @@ export default function AdminContentRefreshPage() {
           <h2 className="font-display text-3xl tracking-[0.1em]">{selectedArtist.name}</h2>
           {selectedArtist.is_curated && (
             <div className="mt-4 border border-[#a33b33]/35 bg-[#a33b33]/5 p-4 text-sm text-[#82332d]">
-              <strong>Curated artist: metadata is locked.</strong> You can review metadata and same-vibe fields, but publishing those scopes is disabled. Video repairs remain available.
+              <strong>Curated artist.</strong> Admin edits remain available, and automated public rebuilds cannot overwrite curated metadata.
             </div>
           )}
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            {scopeOptions.map((option) => (
-              <label key={option.value} className="flex cursor-pointer gap-3 border border-stone-300 bg-white/30 p-4">
-                <input type="checkbox" checked={scopes.includes(option.value)} onChange={() => setScopes((current) => current.includes(option.value) ? current.filter((scope) => scope !== option.value) : [...current, option.value])} />
-                <span>
-                  <span className="block text-sm font-semibold">{option.label}</span>
-                  <span className="mt-1 block text-xs leading-relaxed text-black/45">{option.detail}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-          <button type="button" disabled={busy || scopes.length === 0} onClick={handlePreview} className="mt-5 bg-black/80 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#f6f1e8] disabled:opacity-40">
-            {busy ? "Preparing preview..." : "Prepare preview"}
-          </button>
+          {previewing && (
+            <div className="mt-5 border border-stone-300 bg-white/30 p-4 text-sm text-black/50">
+              Preparing full content preview...
+            </div>
+          )}
         </section>
       )}
 
@@ -713,7 +710,7 @@ export default function AdminContentRefreshPage() {
               <div>
                 <h2 className="font-display text-3xl tracking-[0.1em]">Metadata Preview</h2>
                 <p className="mt-1 text-sm text-black/50">
-                  Left is the current site snapshot. Right is the proposed publish state for selected scopes.
+                  Left is the current site snapshot. Right is the proposed publish state.
                 </p>
               </div>
               {hasManualMetadataEdits && (
@@ -732,17 +729,16 @@ export default function AdminContentRefreshPage() {
                     <input
                       id="metadata-tags"
                       value={(proposedArtist.tags ?? []).join(", ")}
-                      disabled={beforeArtist.is_curated}
                       onChange={(event) => setProposedArtist({
                         ...proposedArtist,
                         tags: event.target.value.split(",").map((tag) => tag.trim()),
                       })}
                       className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
                     />
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-tags")} className={iconButtonClass("edit")} aria-label="Edit genres" title="Edit genres">
+                    <button type="button" onClick={() => focusControl("metadata-tags")} className={iconButtonClass("edit")} aria-label="Edit genres" title="Edit genres">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("tags")} className={iconButtonClass("remove")} aria-label="Revert genres" title="Revert genres">
+                    <button type="button" onClick={() => resetMetadataField("tags")} className={iconButtonClass("remove")} aria-label="Revert genres" title="Revert genres">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -752,16 +748,15 @@ export default function AdminContentRefreshPage() {
                     <textarea
                       id="metadata-blurb"
                       value={proposedArtist.blurb ?? ""}
-                      disabled={beforeArtist.is_curated}
                       rows={5}
                       onChange={(event) => setProposedArtist({ ...proposedArtist, blurb: event.target.value })}
                       className="min-w-0 flex-1 resize-y border border-stone-300 bg-white/60 px-3 py-2 text-sm leading-relaxed outline-none focus:border-[#9256a8] disabled:opacity-50"
                     />
                     <div className="flex flex-col gap-2">
-                      <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-blurb")} className={iconButtonClass("edit")} aria-label="Edit summary" title="Edit summary">
+                      <button type="button" onClick={() => focusControl("metadata-blurb")} className={iconButtonClass("edit")} aria-label="Edit summary" title="Edit summary">
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("blurb")} className={iconButtonClass("remove")} aria-label="Revert summary" title="Revert summary">
+                      <button type="button" onClick={() => resetMetadataField("blurb")} className={iconButtonClass("remove")} aria-label="Revert summary" title="Revert summary">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
@@ -772,14 +767,13 @@ export default function AdminContentRefreshPage() {
                     <input
                       id="metadata-city"
                       value={proposedArtist.artist_context?.city ?? ""}
-                      disabled={beforeArtist.is_curated}
                       onChange={(event) => updateArtistContext({ city: event.target.value })}
                       className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
                     />
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-city")} className={iconButtonClass("edit")} aria-label="Edit city" title="Edit city">
+                    <button type="button" onClick={() => focusControl("metadata-city")} className={iconButtonClass("edit")} aria-label="Edit city" title="Edit city">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("city")} className={iconButtonClass("remove")} aria-label="Revert city" title="Revert city">
+                    <button type="button" onClick={() => resetMetadataField("city")} className={iconButtonClass("remove")} aria-label="Revert city" title="Revert city">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -789,14 +783,13 @@ export default function AdminContentRefreshPage() {
                     <input
                       id="metadata-years-active"
                       value={proposedArtist.artist_context?.yearsActive ?? ""}
-                      disabled={beforeArtist.is_curated}
                       onChange={(event) => updateArtistContext({ yearsActive: event.target.value })}
                       className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
                     />
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-years-active")} className={iconButtonClass("edit")} aria-label="Edit years active" title="Edit years active">
+                    <button type="button" onClick={() => focusControl("metadata-years-active")} className={iconButtonClass("edit")} aria-label="Edit years active" title="Edit years active">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("yearsActive")} className={iconButtonClass("remove")} aria-label="Revert years active" title="Revert years active">
+                    <button type="button" onClick={() => resetMetadataField("yearsActive")} className={iconButtonClass("remove")} aria-label="Revert years active" title="Revert years active">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -816,7 +809,6 @@ export default function AdminContentRefreshPage() {
                   <input
                     id="metadata-wikipedia-url"
                     value={proposedArtist.wikipedia_url ?? ""}
-                    disabled={beforeArtist.is_curated}
                     onChange={(event) => setProposedArtist({
                       ...proposedArtist,
                       wikipedia_url: event.target.value,
@@ -824,10 +816,10 @@ export default function AdminContentRefreshPage() {
                     placeholder="https://en.wikipedia.org/wiki/..."
                     className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
                   />
-                  <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-wikipedia-url")} className={iconButtonClass("edit")} aria-label="Edit Wikipedia URL" title="Edit Wikipedia URL">
+                  <button type="button" onClick={() => focusControl("metadata-wikipedia-url")} className={iconButtonClass("edit")} aria-label="Edit Wikipedia URL" title="Edit Wikipedia URL">
                     <Pencil className="h-4 w-4" />
                   </button>
-                  <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("wikipediaUrl")} className={iconButtonClass("remove")} aria-label="Revert Wikipedia URL" title="Revert Wikipedia URL">
+                  <button type="button" onClick={() => resetMetadataField("wikipediaUrl")} className={iconButtonClass("remove")} aria-label="Revert Wikipedia URL" title="Revert Wikipedia URL">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -843,7 +835,6 @@ export default function AdminContentRefreshPage() {
                       <input
                         id={`related-artist-name-${index}`}
                         value={related.name ?? ""}
-                        disabled={beforeArtist.is_curated}
                         aria-label={`Related artist ${index + 1}`}
                         onChange={(event) => {
                           const relatedArtists = [...(proposedArtist.artist_context?.relatedArtists ?? [])]
@@ -863,7 +854,6 @@ export default function AdminContentRefreshPage() {
                       <input
                         id={`related-artist-reason-${index}`}
                         value={related.reason ?? ""}
-                        disabled={beforeArtist.is_curated}
                         aria-label={`Related artist reason ${index + 1}`}
                         onChange={(event) => {
                           const relatedArtists = [...(proposedArtist.artist_context?.relatedArtists ?? [])]
@@ -882,7 +872,6 @@ export default function AdminContentRefreshPage() {
                       />
                       <button
                         type="button"
-                        disabled={beforeArtist.is_curated}
                         onClick={() => focusControl(`related-artist-name-${index}`)}
                         className={iconButtonClass("edit")}
                         aria-label={`Edit related artist ${index + 1}`}
@@ -892,7 +881,6 @@ export default function AdminContentRefreshPage() {
                       </button>
                       <button
                         type="button"
-                        disabled={beforeArtist.is_curated}
                         onClick={() => {
                           const relatedArtists = (proposedArtist.artist_context?.relatedArtists ?? [])
                             .filter((_, itemIndex) => itemIndex !== index)
@@ -913,7 +901,6 @@ export default function AdminContentRefreshPage() {
                   ))}
                   <button
                     type="button"
-                    disabled={beforeArtist.is_curated}
                     onClick={() => setProposedArtist({
                       ...proposedArtist,
                       artist_context: proposedArtist.artist_context
@@ -943,75 +930,102 @@ export default function AdminContentRefreshPage() {
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <h2 className="font-display text-3xl tracking-[0.1em]">Video Preview</h2>
-                  <p className="mt-1 text-sm text-black/50">Current live videos are shown unchanged. Remove bad generated videos or replace a specific item by URL.</p>
+                  <p className="mt-1 text-sm text-black/50">Current artist-page videos are grouped by section. Remove bad generated videos or replace a specific item by URL.</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <AddVideoForm
-                    onAdd={(video) => {
-                      setVideos((current) => [
-                        ...current,
-                        { ...video, display_order: current.length },
-                      ])
-                      setManualVideoRemovals((current) =>
-                        current.filter((id) => id !== video.youtube_video_id),
-                      )
-                      setManualVideoReplacements((current) =>
-                        current.filter((id) => id !== video.youtube_video_id),
-                      )
-                    }}
-                  />
-                  <div className="text-xs uppercase tracking-[0.14em] text-black/40">{videos.length} live videos</div>
-                </div>
+                <div className="text-xs uppercase tracking-[0.14em] text-black/40">{videos.length} total videos</div>
               </div>
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                {videos.map((video, index) => (
-                  <VideoPreview
-                    key={`${video.youtube_video_id}-${index}`}
-                    video={video}
-                    isProtectedManual={beforeManualVideoIds.has(video.youtube_video_id)}
-                    changeLabel={
-                      beforeManualVideoIds.has(video.youtube_video_id)
-                        ? "Manual · protected"
-                        : video.is_manually_added
-                          ? "Manual replacement"
-                          : beforeVideoIds.has(video.youtube_video_id)
-                            ? "Current generated"
-                            : "Replacement"
-                    }
-                    onRemove={() => {
-                      const replacedProtectedVideo = video.is_manually_added
-                        && !beforeManualVideoIds.has(video.youtube_video_id)
-                        ? protectedManualVideosByReplacementPosition.get(video.display_order)
-                        : null
-                      setVideos((current) => current.filter((_, itemIndex) => itemIndex !== index))
-                      if (beforeManualVideoIds.has(video.youtube_video_id)) {
-                        setManualVideoRemovals((current) => [
-                          ...new Set([...current, video.youtube_video_id]),
-                        ])
-                        setManualVideoReplacements((current) =>
-                          current.filter((id) => id !== video.youtube_video_id),
-                        )
-                      } else if (replacedProtectedVideo) {
-                        restoreVideo(replacedProtectedVideo)
-                      } else if (beforeVideoIds.has(video.youtube_video_id)) {
-                        setExplicitVideoRemovals((current) => [
-                          ...new Set([...current, video.youtube_video_id]),
-                        ])
-                      }
-                    }}
-                    onReplace={(replacement, replacedManualVideoId) => {
-                      setVideos((current) => current.map((item, itemIndex) => itemIndex === index ? replacement : item))
-                      if (replacedManualVideoId) {
-                        setManualVideoReplacements((current) => [
-                          ...new Set([...current, replacedManualVideoId]),
-                        ])
-                        setManualVideoRemovals((current) =>
-                          current.filter((id) => id !== replacedManualVideoId),
-                        )
-                      }
-                    }}
-                  />
-                ))}
+              <div className="mt-6 space-y-10">
+                {videoSections.map((section) => {
+                  const sectionVideos = videosByType(videos, section.type)
+                  return (
+                    <section key={section.type} className="border-t border-stone-200 pt-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h3 className="font-display text-2xl tracking-[0.1em]">{section.title}</h3>
+                          <div className="mt-1 text-xs uppercase tracking-[0.14em] text-black/40">
+                            {sectionVideos.length} videos
+                          </div>
+                        </div>
+                        <AddVideoForm
+                          videoType={section.type}
+                          onAdd={(video) => {
+                            const typedVideo = {
+                              ...video,
+                              video_type: section.type,
+                              display_order: videosByType(videos, section.type).length,
+                            }
+                            setVideos((current) => [...current, typedVideo])
+                            setManualVideoRemovals((current) =>
+                              current.filter((id) => id !== videoKey(typedVideo)),
+                            )
+                            setManualVideoReplacements((current) =>
+                              current.filter((id) => id !== videoKey(typedVideo)),
+                            )
+                          }}
+                        />
+                      </div>
+                      {sectionVideos.length === 0 ? (
+                        <p className="mt-4 border border-stone-200 bg-white/25 p-4 text-sm text-black/45">
+                          {section.emptyText}
+                        </p>
+                      ) : (
+                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                          {sectionVideos.map((video) => (
+                            <VideoPreview
+                              key={videoKey(video)}
+                              video={video}
+                              videoType={section.type}
+                              isProtectedManual={beforeManualVideoIds.has(videoKey(video))}
+                              changeLabel={
+                                beforeManualVideoIds.has(videoKey(video))
+                                  ? "Manual · protected"
+                                  : video.is_manually_added
+                                    ? "Manual replacement"
+                                    : beforeVideoIds.has(videoKey(video))
+                                      ? "Current generated"
+                                      : "Replacement"
+                              }
+                              onRemove={() => {
+                                const replacedProtectedVideo = video.is_manually_added
+                                  && !beforeManualVideoIds.has(videoKey(video))
+                                  ? protectedManualVideosByReplacementPosition.get(`${section.type}:${video.display_order}`)
+                                  : null
+                                setVideos((current) => current.filter((item) => videoKey(item) !== videoKey(video)))
+                                if (beforeManualVideoIds.has(videoKey(video))) {
+                                  setManualVideoRemovals((current) => [
+                                    ...new Set([...current, videoKey(video)]),
+                                  ])
+                                  setManualVideoReplacements((current) =>
+                                    current.filter((id) => id !== videoKey(video)),
+                                  )
+                                } else if (replacedProtectedVideo) {
+                                  restoreVideo(replacedProtectedVideo)
+                                } else if (beforeVideoIds.has(videoKey(video))) {
+                                  setExplicitVideoRemovals((current) => [
+                                    ...new Set([...current, videoKey(video)]),
+                                  ])
+                                }
+                              }}
+                              onReplace={(replacement, replacedManualVideoKey) => {
+                                setVideos((current) => current.map((item) =>
+                                  videoKey(item) === videoKey(video) ? replacement : item
+                                ))
+                                if (replacedManualVideoKey) {
+                                  setManualVideoReplacements((current) => [
+                                    ...new Set([...current, replacedManualVideoKey]),
+                                  ])
+                                  setManualVideoRemovals((current) =>
+                                    current.filter((id) => id !== replacedManualVideoKey),
+                                  )
+                                }
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  )
+                })}
               </div>
               {removedVideos.length > 0 && (
                 <div className="mt-8">
@@ -1021,7 +1035,7 @@ export default function AdminContentRefreshPage() {
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
                     {removedVideos.map((video) => (
                       <div
-                        key={video.youtube_video_id}
+                        key={videoKey(video)}
                         className="flex items-start justify-between gap-3 border border-[#a33b33]/25 bg-[#a33b33]/5 p-3 text-sm text-[#82332d]"
                       >
                         <a
@@ -1051,7 +1065,7 @@ export default function AdminContentRefreshPage() {
                   </h3>
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
                     {replacedManualVideos.map((video) => (
-                      <div key={video.youtube_video_id} className="border border-[#9256a8]/25 bg-[#9256a8]/5 p-3 text-sm text-[#6d3d7c]">
+                      <div key={videoKey(video)} className="border border-[#9256a8]/25 bg-[#9256a8]/5 p-3 text-sm text-[#6d3d7c]">
                         {video.title}
                       </div>
                     ))}
@@ -1065,7 +1079,7 @@ export default function AdminContentRefreshPage() {
                   </h3>
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
                     {removedManualVideos.map((video) => (
-                      <div key={video.youtube_video_id} className="flex items-start justify-between gap-3 border border-[#a33b33]/25 bg-[#a33b33]/5 p-3 text-sm text-[#82332d]">
+                      <div key={videoKey(video)} className="flex items-start justify-between gap-3 border border-[#a33b33]/25 bg-[#a33b33]/5 p-3 text-sm text-[#82332d]">
                         <a
                           href={`https://www.youtube.com/watch?v=${video.youtube_video_id}`}
                           target="_blank"
@@ -1093,10 +1107,10 @@ export default function AdminContentRefreshPage() {
             {publishWarnings.map((warning) => <p key={warning} className="mb-3 border border-[#a33b33]/35 bg-[#a33b33]/5 p-3 text-sm text-[#82332d]"><strong>Publish blocked:</strong> {warning}</p>)}
             {hasManualMetadataEdits && (
               <p className="mb-3 border border-[#9256a8]/35 bg-[#9256a8]/5 p-3 text-sm text-[#6d3d7c]">
-                <strong>Manual metadata:</strong> Publishing will mark this artist as curated. Future metadata and same-vibe refreshes cannot overwrite it, but video and YouTube metadata refreshes remain available.
+                <strong>Manual metadata:</strong> Publishing keeps this artist curated so automated public rebuilds cannot overwrite your edits.
               </p>
             )}
-            <p className="mb-4 text-sm text-black/55">Publishing applies only the selected scopes. Manually selected videos are marked protected for future refreshes.</p>
+            <p className="mb-4 text-sm text-black/55">Publishing applies your edits from this preview. Manually selected videos are marked protected for future refreshes.</p>
             <button type="button" disabled={busy || published || publishWarnings.length > 0} onClick={handlePublish} className="bg-[#d94f43] px-6 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-white disabled:opacity-40">
               {busy ? "Publishing..." : published ? "Published" : `Publish ${selectedArtist?.name}`}
             </button>

@@ -15,6 +15,9 @@ export type RefreshVideo = {
   channel_title: string | null
 }
 
+export const editableVideoTypes = ["concert", "interview", "music_video"] as const
+export type EditableVideoType = typeof editableVideoTypes[number]
+
 type EditableArtist = {
   tags: string[] | null
   blurb: string | null
@@ -66,57 +69,63 @@ export function applyManualArtistEdits(
   const errors: string[] = []
 
   if (scopes.includes("metadata")) {
-    manualMetadataEdit = manualMetadataEdit
-      || JSON.stringify([
-        submitted.tags ?? [],
-        submitted.blurb,
-        submitted.artist_context?.city ?? null,
-        submitted.artist_context?.yearsActive ?? null,
-        submitted.wikipedia_url ?? null,
+    const metadataChanged = JSON.stringify([
+      submitted.tags ?? [],
+      submitted.blurb,
+      submitted.artist_context?.city ?? null,
+      submitted.artist_context?.yearsActive ?? null,
+      submitted.wikipedia_url ?? null,
+    ])
+      !== JSON.stringify([
+        generated.tags ?? [],
+        generated.blurb,
+        generated.artist_context?.city ?? null,
+        generated.artist_context?.yearsActive ?? null,
+        generated.wikipedia_url ?? null,
       ])
-        !== JSON.stringify([
-          generated.tags ?? [],
-          generated.blurb,
-          generated.artist_context?.city ?? null,
-          generated.artist_context?.yearsActive ?? null,
-          generated.wikipedia_url ?? null,
-        ])
-    const tags = normalizeTextList(submitted.tags)
-    const blurb = normalizeText(submitted.blurb)
-    const city = normalizeText(submitted.artist_context?.city)
-    const yearsActive = normalizeText(submitted.artist_context?.yearsActive)
-    const wikipediaUrl = normalizeText(submitted.wikipedia_url)
-    if (tags.length === 0) errors.push("Artist metadata requires at least one genre.")
-    if (!blurb) errors.push("Artist metadata requires a summary.")
 
-    artist.tags = tags
-    artist.blurb = blurb
-    artist.wikipedia_url = wikipediaUrl
-    context.genre = tags
-    context.sceneSummary = blurb ?? ""
-    context.city = city
-    context.yearsActive = yearsActive
+    if (metadataChanged) {
+      manualMetadataEdit = true
+      const tags = normalizeTextList(submitted.tags)
+      const blurb = normalizeText(submitted.blurb)
+      const city = normalizeText(submitted.artist_context?.city)
+      const yearsActive = normalizeText(submitted.artist_context?.yearsActive)
+      const wikipediaUrl = normalizeText(submitted.wikipedia_url)
+      if (tags.length === 0) errors.push("Artist metadata requires at least one genre.")
+      if (!blurb) errors.push("Artist metadata requires a summary.")
+
+      artist.tags = tags
+      artist.blurb = blurb
+      artist.wikipedia_url = wikipediaUrl
+      context.genre = tags
+      context.sceneSummary = blurb ?? ""
+      context.city = city
+      context.yearsActive = yearsActive
+    }
   }
 
   if (scopes.includes("same_vibe")) {
-    manualMetadataEdit = manualMetadataEdit
-      || JSON.stringify(submitted.artist_context?.relatedArtists ?? [])
-        !== JSON.stringify(generated.artist_context?.relatedArtists ?? [])
-    const relatedArtists = Array.isArray(submitted.artist_context?.relatedArtists)
-      ? submitted.artist_context.relatedArtists
-        .filter((item) => item && typeof item.name === "string")
-        .map((item) => ({
-          name: item.name.trim(),
-          reason: typeof item.reason === "string" ? item.reason.trim() : "",
-        }))
-        .filter((item) => item.name)
-      : []
-    if (relatedArtists.length === 0) {
-      errors.push("Same-vibe metadata requires at least one related artist.")
-    }
+    const sameVibeChanged = JSON.stringify(submitted.artist_context?.relatedArtists ?? [])
+      !== JSON.stringify(generated.artist_context?.relatedArtists ?? [])
 
-    context.relatedArtists = relatedArtists
-    artist.related_artists = relatedArtists.map((item) => item.name)
+    if (sameVibeChanged) {
+      manualMetadataEdit = true
+      const relatedArtists = Array.isArray(submitted.artist_context?.relatedArtists)
+        ? submitted.artist_context.relatedArtists
+          .filter((item) => item && typeof item.name === "string")
+          .map((item) => ({
+            name: item.name.trim(),
+            reason: typeof item.reason === "string" ? item.reason.trim() : "",
+          }))
+          .filter((item) => item.name)
+        : []
+      if (relatedArtists.length === 0) {
+        errors.push("Same-vibe metadata requires at least one related artist.")
+      }
+
+      context.relatedArtists = relatedArtists
+      artist.related_artists = relatedArtists.map((item) => item.name)
+    }
   }
 
   artist.artist_context = context
@@ -158,52 +167,42 @@ export function validatePublishRequest(input: {
   proposedVideos: RefreshVideo[]
   manualVideoRemovals?: string[]
   manualVideoReplacements: string[]
+  manualMetadataEdit?: boolean
 }): string[] {
   const errors: string[] = []
-
-  if (
-    input.isCurated
-    && input.scopes.some((scope) => scope === "metadata" || scope === "same_vibe")
-  ) {
-    errors.push("Curated artist metadata and same-vibe artists are protected.")
-  }
 
   if (input.scopes.includes("videos")) {
     if (input.proposedVideos.length === 0) {
       errors.push("A video refresh cannot publish an empty video list.")
     }
 
-    const proposedIds = new Set(
-      input.proposedVideos.map((video) => video.youtube_video_id),
-    )
+    const proposedKeys = new Set(input.proposedVideos.map(videoKey))
     const removalIds = new Set(input.manualVideoRemovals ?? [])
     const replacementIds = new Set(input.manualVideoReplacements)
     const existingManualVideos = input.existingVideos.filter(
       (video) => video.is_manually_added,
     )
-    const existingManualIds = new Set(
-      existingManualVideos.map((video) => video.youtube_video_id),
-    )
+    const existingManualKeys = new Set(existingManualVideos.map(videoKey))
     const missingManual = input.existingVideos.some(
       (video) =>
         video.is_manually_added
-        && !proposedIds.has(video.youtube_video_id)
-        && !removalIds.has(video.youtube_video_id)
-        && !replacementIds.has(video.youtube_video_id),
+        && !proposedKeys.has(videoKey(video))
+        && !removalIds.has(videoKey(video))
+        && !replacementIds.has(videoKey(video)),
     )
     if (missingManual) {
       errors.push("Manually added videos must be preserved or explicitly replaced.")
     }
 
     const invalidReplacement = input.manualVideoReplacements.some(
-      (id) => !existingManualIds.has(id) || proposedIds.has(id),
+      (id) => !existingManualKeys.has(id) || proposedKeys.has(id),
     )
     if (invalidReplacement) {
       errors.push("Manual video replacements must identify a removed protected video.")
     }
 
     const invalidRemoval = (input.manualVideoRemovals ?? []).some(
-      (id) => !existingManualIds.has(id) || proposedIds.has(id),
+      (id) => !existingManualKeys.has(id) || proposedKeys.has(id),
     )
     if (invalidRemoval) {
       errors.push("Manual video removals must identify a removed protected video.")
@@ -211,10 +210,11 @@ export function validatePublishRequest(input: {
 
     const replacementWithoutManualSuccessor = existingManualVideos.some(
       (existing) =>
-        replacementIds.has(existing.youtube_video_id)
+        replacementIds.has(videoKey(existing))
         && !input.proposedVideos.some(
           (proposed) =>
             proposed.is_manually_added
+            && videoType(proposed) === videoType(existing)
             && proposed.display_order === existing.display_order,
         ),
     )
@@ -222,7 +222,7 @@ export function validatePublishRequest(input: {
       errors.push("A protected manual video replacement must remain manual and keep its position.")
     }
 
-    if (proposedIds.size !== input.proposedVideos.length) {
+    if (proposedKeys.size !== input.proposedVideos.length) {
       errors.push("The proposed video list contains duplicates.")
     }
   }
@@ -251,6 +251,18 @@ export function normalizeVideoOrder(
     nextPosition += 1
     return normalized
   })
+}
+
+export function normalizeEditableVideoOrder(
+  videos: RefreshVideo[],
+  protectedManualPositionsByType: Record<string, number[]> = {},
+): RefreshVideo[] {
+  return editableVideoTypes.flatMap((type) =>
+    normalizeVideoOrder(
+      videos.filter((video) => videoType(video) === type),
+      protectedManualPositionsByType[type] ?? [],
+    ).map((video) => ({ ...video, video_type: type })),
+  )
 }
 
 export function mergeManualVideos(
@@ -284,6 +296,28 @@ export function mergeManualVideos(
     merged.splice(0, merged.length, ...withoutDuplicate)
   }
   return normalizeVideoOrder(merged)
+}
+
+export function videoType(video: Pick<RefreshVideo, "video_type">): EditableVideoType {
+  return editableVideoTypes.includes(video.video_type as EditableVideoType)
+    ? video.video_type as EditableVideoType
+    : "concert"
+}
+
+export function videoKey(video: Pick<RefreshVideo, "youtube_video_id" | "video_type">): string {
+  return `${videoType(video)}:${video.youtube_video_id}`
+}
+
+export function editableVideos(videos: RefreshVideo[]): RefreshVideo[] {
+  return videos
+    .filter((video) => editableVideoTypes.includes((video.video_type ?? "concert") as EditableVideoType))
+    .map((video, originalIndex) => ({ video, originalIndex }))
+    .sort((a, b) =>
+      editableVideoTypes.indexOf(videoType(a.video)) - editableVideoTypes.indexOf(videoType(b.video))
+      || a.video.display_order - b.video.display_order
+      || a.originalIndex - b.originalIndex
+    )
+    .map(({ video }) => video)
 }
 
 export function concertVideos(videos: RefreshVideo[]): RefreshVideo[] {

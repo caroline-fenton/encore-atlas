@@ -3,14 +3,17 @@ import test from "node:test"
 import {
   applyManualArtistEdits,
   concertVideos,
+  editableVideos,
   mergeManualVideos,
+  normalizeEditableVideoOrder,
   normalizeVideoOrder,
   parseYouTubeVideoId,
   validatePublishRequest,
+  videoKey,
   type RefreshVideo,
 } from "./refresh-policy.ts"
 
-function video(id: string, manual = false): RefreshVideo {
+function video(id: string, manual = false, video_type = "concert"): RefreshVideo {
   return {
     youtube_video_id: id,
     title: id,
@@ -22,7 +25,7 @@ function video(id: string, manual = false): RefreshVideo {
     search_query: "test",
     is_manually_added: manual,
     display_order: 9,
-    video_type: "concert",
+    video_type,
     channel_title: null,
   }
 }
@@ -34,18 +37,51 @@ test("parses supported YouTube URL formats", () => {
   assert.equal(parseYouTubeVideoId("not a video"), null)
 })
 
-test("blocks curated metadata publishing", () => {
-  const errors = validatePublishRequest({
+test("allows admins to revise curated metadata", () => {
+  assert.deepEqual(validatePublishRequest({
     scopes: ["metadata"],
     isCurated: true,
     existingVideos: [],
     proposedVideos: [],
     manualVideoReplacements: [],
-  })
+    manualMetadataEdit: true,
+  }), [])
+})
 
-  assert.deepEqual(errors, [
-    "Curated artist metadata and same-vibe artists are protected.",
-  ])
+test("allows all-scope curated previews when metadata was not edited", () => {
+  assert.deepEqual(validatePublishRequest({
+    scopes: ["metadata", "same_vibe", "videos"],
+    isCurated: true,
+    existingVideos: [],
+    proposedVideos: [video("generated01")],
+    manualVideoReplacements: [],
+    manualMetadataEdit: false,
+  }), [])
+})
+
+test("does not validate incomplete metadata when only videos changed", () => {
+  const incompleteArtist = {
+    tags: [],
+    blurb: null,
+    wikipedia_url: null,
+    related_artists: [],
+    artist_context: {
+      genre: [],
+      city: null,
+      yearsActive: null,
+      sceneSummary: "",
+      relatedArtists: [],
+    },
+  }
+
+  const result = applyManualArtistEdits(
+    incompleteArtist,
+    structuredClone(incompleteArtist),
+    ["metadata", "same_vibe", "videos"],
+  )
+
+  assert.equal(result.manualMetadataEdit, false)
+  assert.deepEqual(result.errors, [])
 })
 
 test("manual metadata edits are normalized and detected", () => {
@@ -136,10 +172,11 @@ test("an untouched generated metadata preview is not marked manual", () => {
 })
 
 test("requires manually added videos to survive a refresh", () => {
+  const manual = video("manualvideo", true)
   const errors = validatePublishRequest({
     scopes: ["videos"],
     isCurated: false,
-    existingVideos: [video("manualvideo", true)],
+    existingVideos: [manual],
     proposedVideos: [video("generated01")],
     manualVideoReplacements: [],
   })
@@ -148,12 +185,13 @@ test("requires manually added videos to survive a refresh", () => {
 })
 
 test("allows an explicitly confirmed manual video removal", () => {
+  const manual = video("manualvideo", true)
   assert.deepEqual(validatePublishRequest({
     scopes: ["videos"],
     isCurated: false,
-    existingVideos: [video("manualvideo", true)],
+    existingVideos: [manual],
     proposedVideos: [video("generated01")],
-    manualVideoRemovals: ["manualvideo"],
+    manualVideoRemovals: [videoKey(manual)],
     manualVideoReplacements: [],
   }), [])
 })
@@ -169,7 +207,7 @@ test("allows an explicitly confirmed manual video replacement", () => {
     isCurated: false,
     existingVideos: [existing],
     proposedVideos: [replacement],
-    manualVideoReplacements: ["manualvideo"],
+    manualVideoReplacements: [videoKey(existing)],
   }), [])
 })
 
@@ -182,7 +220,7 @@ test("rejects a manual replacement without a protected successor", () => {
     isCurated: false,
     existingVideos: [existing],
     proposedVideos: [video("replacement")],
-    manualVideoReplacements: ["manualvideo"],
+    manualVideoReplacements: [videoKey(existing)],
   })
 
   assert.ok(errors.includes(
@@ -238,8 +276,52 @@ test("normalization preserves a protected replacement position after an earlier 
     isCurated: false,
     existingVideos: [{ ...video("manualvideo", true), display_order: 2 }],
     proposedVideos: normalized,
-    manualVideoReplacements: ["manualvideo"],
+    manualVideoReplacements: ["concert:manualvideo"],
   }), [])
+})
+
+test("editable video helpers include all artist-page video categories", () => {
+  const items = [
+    { ...video("music", false, "music_video"), display_order: 2 },
+    { ...video("concert", false, "concert"), display_order: 1 },
+    { ...video("interview", false, "interview"), display_order: 0 },
+  ]
+
+  assert.deepEqual(
+    editableVideos(items).map((item) => item.youtube_video_id),
+    ["concert", "interview", "music"],
+  )
+  assert.deepEqual(
+    concertVideos(items).map((item) => item.youtube_video_id),
+    ["concert"],
+  )
+})
+
+test("video duplicate checks are scoped by video type", () => {
+  assert.deepEqual(validatePublishRequest({
+    scopes: ["videos"],
+    isCurated: false,
+    existingVideos: [],
+    proposedVideos: [
+      video("samevideo01", false, "concert"),
+      video("samevideo01", false, "interview"),
+    ],
+    manualVideoReplacements: [],
+  }), [])
+})
+
+test("normalizes display order independently for each video type", () => {
+  const normalized = normalizeEditableVideoOrder([
+    video("concert-a", false, "concert"),
+    video("interview-a", false, "interview"),
+    video("concert-b", false, "concert"),
+    video("music-a", false, "music_video"),
+  ])
+
+  assert.deepEqual(
+    normalized.map((item) => `${item.video_type}:${item.display_order}`),
+    ["concert:0", "concert:1", "interview:0", "music_video:0"],
+  )
 })
 
 test("manual video merge preserves protection while refreshing YouTube metadata", () => {
