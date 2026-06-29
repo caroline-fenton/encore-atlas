@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Check, Pencil, Plus, X } from "lucide-react"
+import { Check, Pencil, Plus, Search, X } from "lucide-react"
 import { Link } from "react-router-dom"
 import {
   generateRefreshPreview,
@@ -15,6 +15,7 @@ import {
   type RefreshScope,
   type RefreshVideo,
   type RefreshVideoType,
+  type VideoSearchQueries,
 } from "../services/adminContentRefresh"
 import { ensureSession } from "../services/auth"
 
@@ -103,6 +104,14 @@ function editableVideoSignature(videos: RefreshVideo[]) {
   })))
 }
 
+function defaultVideoSearchQueries(artistName: string): Required<VideoSearchQueries> {
+  return {
+    concert: `${artistName} live concert full set`,
+    interview: `${artistName} interview`,
+    music_video: `${artistName} official music video`,
+  }
+}
+
 function videoType(video: Pick<RefreshVideo, "video_type">): RefreshVideoType {
   return video.video_type === "interview" || video.video_type === "music_video"
     ? video.video_type
@@ -140,6 +149,23 @@ function stagePreviewVideos(beforeVideos: RefreshVideo[], proposedVideos: Refres
 
     return [...staged, ...additions]
   })
+}
+
+function duplicateVideoKeys(videos: RefreshVideo[]) {
+  const counts = new Map<string, number>()
+  for (const video of videos) {
+    const key = videoKey(video)
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  return new Set(
+    [...counts.entries()]
+      .filter(([, count]) => count > 1)
+      .map(([key]) => key),
+  )
+}
+
+function hasTargetedSearch(snapshot: ContentRefresh["proposed_snapshot"]) {
+  return Boolean(snapshot.video_search_queries)
 }
 
 function iconButtonClass(tone: "edit" | "remove" | "add" = "edit") {
@@ -241,6 +267,7 @@ function VideoPreview({
   videoType,
   changeLabel,
   isProtectedManual,
+  isDuplicate,
   onRemove,
   onReplace,
 }: {
@@ -248,6 +275,7 @@ function VideoPreview({
   videoType: RefreshVideoType
   changeLabel: string
   isProtectedManual: boolean
+  isDuplicate: boolean
   onRemove: () => void
   onReplace: (video: RefreshVideo, replacedManualVideoKey: string | null) => void
 }) {
@@ -290,7 +318,10 @@ function VideoPreview({
   }
 
   return (
-    <article className="border border-stone-300 bg-white/35 p-3">
+    <article className={[
+      "border bg-white/35 p-3",
+      isDuplicate ? "border-[#a33b33] ring-2 ring-[#a33b33]/15" : "border-stone-300",
+    ].join(" ")}>
       <div className="flex gap-4">
         <a href={watchUrl} target="_blank" rel="noreferrer" className="shrink-0">
           <img
@@ -304,11 +335,20 @@ function VideoPreview({
             <h3 className="text-sm font-semibold leading-snug">{video.title}</h3>
             <span className={[
               "text-[10px] font-semibold uppercase tracking-[0.14em]",
-              video.is_manually_added ? "text-[#3580b0]" : "text-black/40",
+              isDuplicate
+                ? "text-[#a33b33]"
+                : video.is_manually_added
+                  ? "text-[#3580b0]"
+                  : "text-black/40",
             ].join(" ")}>
-              {changeLabel}
+              {isDuplicate ? "Duplicate" : changeLabel}
             </span>
           </div>
+          {isDuplicate && (
+            <p className="mt-2 border border-[#a33b33]/25 bg-[#a33b33]/5 px-2 py-1 text-xs text-[#82332d]">
+              This video appears more than once in this section.
+            </p>
+          )}
           <a href={watchUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-xs text-[#3580b0] underline">
             {watchUrl}
           </a>
@@ -380,6 +420,10 @@ export default function AdminContentRefreshPage() {
   const [explicitVideoRemovals, setExplicitVideoRemovals] = useState<string[]>([])
   const [manualVideoReplacements, setManualVideoReplacements] = useState<string[]>([])
   const [manualVideoRemovals, setManualVideoRemovals] = useState<string[]>([])
+  const [showTargetedSearch, setShowTargetedSearch] = useState(false)
+  const [videoSearchQueries, setVideoSearchQueries] = useState<Required<VideoSearchQueries>>(
+    defaultVideoSearchQueries(""),
+  )
   const [busy, setBusy] = useState(false)
   const [previewing, setPreviewing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -423,6 +467,8 @@ export default function AdminContentRefreshPage() {
     () => Boolean(
       refresh?.scopes.includes("videos")
       && (
+        hasTargetedSearch(refresh.proposed_snapshot)
+        ||
         editableVideoSignature(videos) !== editableVideoSignature(refresh.proposed_snapshot.videos)
         || manualVideoReplacements.length > 0
         || manualVideoRemovals.length > 0
@@ -430,10 +476,14 @@ export default function AdminContentRefreshPage() {
     ),
     [manualVideoRemovals.length, manualVideoReplacements.length, refresh, videos],
   )
+  const duplicateKeys = useMemo(() => duplicateVideoKeys(videos), [videos])
   const publishWarnings = useMemo(() => {
     const warnings: string[] = []
     if (refresh?.scopes.includes("videos") && videos.length === 0) {
       warnings.push("A video refresh cannot publish an empty video list.")
+    }
+    if (refresh?.scopes.includes("videos") && duplicateKeys.size > 0) {
+      warnings.push("Resolve duplicate videos before publishing.")
     }
     if (
       refresh
@@ -443,7 +493,7 @@ export default function AdminContentRefreshPage() {
       warnings.push("Make at least one edit before publishing.")
     }
     return warnings
-  }, [hasManualMetadataEdits, hasVideoEdits, refresh, videos])
+  }, [duplicateKeys.size, hasManualMetadataEdits, hasVideoEdits, refresh, videos])
   const beforeVideoIds = useMemo(
     () => new Set(
       refresh?.before_snapshot.videos
@@ -558,7 +608,10 @@ export default function AdminContentRefreshPage() {
     }
   }
 
-  async function handlePreview(artist: AdminArtist) {
+  async function handlePreview(
+    artist: AdminArtist,
+    targetedQueries?: VideoSearchQueries,
+  ) {
     const requestId = previewRequestIdRef.current + 1
     previewRequestIdRef.current = requestId
     setBusy(true)
@@ -571,13 +624,19 @@ export default function AdminContentRefreshPage() {
     setManualVideoRemovals([])
     setPublished(false)
     try {
-      const result = await generateRefreshPreview(artist.id, previewScopes)
+      const result = await generateRefreshPreview(
+        artist.id,
+        previewScopes,
+        targetedQueries,
+      )
       if (previewRequestIdRef.current !== requestId) return
       setRefresh(result)
       setProposedArtist(result.proposed_snapshot.artist)
       setVideos(
         result.scopes.includes("videos")
-          ? stagePreviewVideos(
+          ? hasTargetedSearch(result.proposed_snapshot)
+            ? result.proposed_snapshot.videos
+            : stagePreviewVideos(
             result.before_snapshot.videos,
             result.proposed_snapshot.videos,
           )
@@ -599,7 +658,26 @@ export default function AdminContentRefreshPage() {
 
   function handleSelectArtist(artist: AdminArtist) {
     setSelectedArtist(artist)
+    setShowTargetedSearch(false)
+    setVideoSearchQueries(defaultVideoSearchQueries(artist.name))
     void handlePreview(artist)
+  }
+
+  function updateVideoSearchQuery(type: RefreshVideoType, value: string) {
+    setVideoSearchQueries((current) => ({
+      ...current,
+      [type]: value,
+    }))
+  }
+
+  function handleTargetedSearchPreview() {
+    if (!selectedArtist) return
+    const queries = Object.fromEntries(
+      Object.entries(videoSearchQueries)
+        .map(([type, value]) => [type, value.trim()])
+        .filter(([, value]) => value),
+    ) as VideoSearchQueries
+    void handlePreview(selectedArtist, queries)
   }
 
   async function handlePublish() {
@@ -932,8 +1010,73 @@ export default function AdminContentRefreshPage() {
                   <h2 className="font-display text-3xl tracking-[0.1em]">Video Preview</h2>
                   <p className="mt-1 text-sm text-black/50">Current artist-page videos are grouped by section. Remove bad generated videos or replace a specific item by URL.</p>
                 </div>
-                <div className="text-xs uppercase tracking-[0.14em] text-black/40">{videos.length} total videos</div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="text-xs uppercase tracking-[0.14em] text-black/40">{videos.length} total videos</div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTargetedSearch((value) => !value)}
+                    className="inline-flex items-center gap-2 border border-[#3580b0]/35 bg-white/45 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#3580b0] hover:bg-[#3580b0]/5"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    Search refresh
+                  </button>
+                </div>
               </div>
+              {hasTargetedSearch(refresh.proposed_snapshot) && (
+                <div className="mt-4 border border-[#3580b0]/25 bg-[#3580b0]/5 p-3 text-sm text-[#225b7d]">
+                  This preview was rebuilt from targeted YouTube search terms.
+                </div>
+              )}
+              {showTargetedSearch && (
+                <div className="mt-5 border border-[#3580b0]/25 bg-white/45 p-4">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {videoSections.map((section) => (
+                      <label key={section.type} className="block">
+                        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-black/55">
+                          {section.title} query
+                        </span>
+                        <input
+                          value={videoSearchQueries[section.type] ?? ""}
+                          onChange={(event) =>
+                            updateVideoSearchQuery(section.type, event.target.value)
+                          }
+                          className="mt-2 w-full border border-stone-300 bg-white/70 px-3 py-2 text-sm outline-none focus:border-[#3580b0]"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={
+                        busy
+                        || !Object.values(videoSearchQueries).some((value) => value.trim())
+                      }
+                      onClick={handleTargetedSearchPreview}
+                      className="inline-flex items-center gap-2 border border-[#3580b0] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#3580b0] disabled:opacity-40"
+                    >
+                      <Search className="h-3.5 w-3.5" />
+                      {previewing ? "Searching..." : "Preview targeted search"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        selectedArtist
+                          ? setVideoSearchQueries(defaultVideoSearchQueries(selectedArtist.name))
+                          : undefined
+                      }
+                      className="text-xs font-semibold uppercase tracking-[0.12em] text-black/45"
+                    >
+                      Reset queries
+                    </button>
+                  </div>
+                </div>
+              )}
+              {duplicateKeys.size > 0 && (
+                <div className="mt-5 border border-[#a33b33]/35 bg-[#a33b33]/5 p-4 text-sm text-[#82332d]">
+                  <strong>Duplicates found.</strong> Remove or replace repeated videos before publishing.
+                </div>
+              )}
               <div className="mt-6 space-y-10">
                 {videoSections.map((section) => {
                   const sectionVideos = videosByType(videos, section.type)
@@ -976,6 +1119,7 @@ export default function AdminContentRefreshPage() {
                               video={video}
                               videoType={section.type}
                               isProtectedManual={beforeManualVideoIds.has(videoKey(video))}
+                              isDuplicate={duplicateKeys.has(videoKey(video))}
                               changeLabel={
                                 beforeManualVideoIds.has(videoKey(video))
                                   ? "Manual · protected"
