@@ -355,6 +355,7 @@ Deno.serve(async (request) => {
         proposedVideos,
         manualVideoRemovals,
         manualVideoReplacements,
+        manualMetadataEdit: editedArtist.manualMetadataEdit,
       })
       errors.push(...editedArtist.errors)
       if (errors.length > 0) return json({ error: errors.join(" ") }, 400)

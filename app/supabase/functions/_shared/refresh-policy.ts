@@ -161,11 +161,13 @@ export function validatePublishRequest(input: {
   proposedVideos: RefreshVideo[]
   manualVideoRemovals?: string[]
   manualVideoReplacements: string[]
+  manualMetadataEdit?: boolean
 }): string[] {
   const errors: string[] = []
 
   if (
     input.isCurated
+    && input.manualMetadataEdit
     && input.scopes.some((scope) => scope === "metadata" || scope === "same_vibe")
   ) {
     errors.push("Curated artist metadata and same-vibe artists are protected.")

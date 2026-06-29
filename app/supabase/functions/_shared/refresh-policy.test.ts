@@ -44,11 +44,23 @@ test("blocks curated metadata publishing", () => {
     existingVideos: [],
     proposedVideos: [],
     manualVideoReplacements: [],
+    manualMetadataEdit: true,
   })
 
   assert.deepEqual(errors, [
     "Curated artist metadata and same-vibe artists are protected.",
   ])
+})
+
+test("allows all-scope curated previews when metadata was not edited", () => {
+  assert.deepEqual(validatePublishRequest({
+    scopes: ["metadata", "same_vibe", "videos"],
+    isCurated: true,
+    existingVideos: [],
+    proposedVideos: [video("generated01")],
+    manualVideoReplacements: [],
+    manualMetadataEdit: false,
+  }), [])
 })
 
 test("manual metadata edits are normalized and detected", () => {

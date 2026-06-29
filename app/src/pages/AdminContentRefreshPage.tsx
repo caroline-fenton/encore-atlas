@@ -18,27 +18,7 @@ import {
 } from "../services/adminContentRefresh"
 import { ensureSession } from "../services/auth"
 
-const scopeOptions: Array<{
-  value: RefreshScope
-  label: string
-  detail: string
-}> = [
-  {
-    value: "metadata",
-    label: "Artist metadata",
-    detail: "Only use when those fields are wrong or missing",
-  },
-  {
-    value: "same_vibe",
-    label: "Same-vibe artists",
-    detail: "Only use when related artists need repair",
-  },
-  {
-    value: "videos",
-    label: "Video content",
-    detail: "Review live videos, interviews, and music videos",
-  },
-]
+const previewScopes: RefreshScope[] = ["metadata", "same_vibe", "videos"]
 
 const videoSections: Array<{
   type: RefreshVideoType
@@ -394,7 +374,6 @@ export default function AdminContentRefreshPage() {
   const [query, setQuery] = useState("")
   const [artists, setArtists] = useState<AdminArtist[]>([])
   const [selectedArtist, setSelectedArtist] = useState<AdminArtist | null>(null)
-  const [scopes, setScopes] = useState<RefreshScope[]>(["videos"])
   const [refresh, setRefresh] = useState<ContentRefresh | null>(null)
   const [proposedArtist, setProposedArtist] = useState<RefreshArtist | null>(null)
   const [videos, setVideos] = useState<RefreshVideo[]>([])
@@ -402,6 +381,7 @@ export default function AdminContentRefreshPage() {
   const [manualVideoReplacements, setManualVideoReplacements] = useState<string[]>([])
   const [manualVideoRemovals, setManualVideoRemovals] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(false)
 
@@ -451,29 +431,15 @@ export default function AdminContentRefreshPage() {
   )
   const publishWarnings = useMemo(() => {
     const warnings: string[] = []
-    if (
-      refresh?.before_snapshot.artist.is_curated
-      && refresh.scopes.some((scope) => scope === "metadata" || scope === "same_vibe")
-    ) {
-      warnings.push("Curated metadata and same-vibe changes are preview-only and cannot be published.")
-    }
     if (refresh?.scopes.includes("videos") && videos.length === 0) {
       warnings.push("A video refresh cannot publish an empty video list.")
     }
     if (
-      refresh?.scopes.length === 1
-      && refresh.scopes.includes("videos")
-      && !hasVideoEdits
-    ) {
-      warnings.push("Remove or replace at least one video before publishing a video repair.")
-    }
-    if (
       refresh
-      && !(refresh.scopes.length === 1 && refresh.scopes.includes("videos"))
       && !hasManualMetadataEdits
       && !hasVideoEdits
     ) {
-      warnings.push("Make at least one selected edit before publishing.")
+      warnings.push("Make at least one edit before publishing.")
     }
     return warnings
   }, [hasManualMetadataEdits, hasVideoEdits, refresh, videos])
@@ -591,9 +557,9 @@ export default function AdminContentRefreshPage() {
     }
   }
 
-  async function handlePreview() {
-    if (!selectedArtist) return
+  async function handlePreview(artist: AdminArtist) {
     setBusy(true)
+    setPreviewing(true)
     setError(null)
     setRefresh(null)
     setProposedArtist(null)
@@ -602,7 +568,7 @@ export default function AdminContentRefreshPage() {
     setManualVideoRemovals([])
     setPublished(false)
     try {
-      const result = await generateRefreshPreview(selectedArtist.id, scopes)
+      const result = await generateRefreshPreview(artist.id, previewScopes)
       setRefresh(result)
       setProposedArtist(result.proposed_snapshot.artist)
       setVideos(
@@ -620,7 +586,13 @@ export default function AdminContentRefreshPage() {
       setError(previewError instanceof Error ? previewError.message : "Could not generate preview")
     } finally {
       setBusy(false)
+      setPreviewing(false)
     }
+  }
+
+  function handleSelectArtist(artist: AdminArtist) {
+    setSelectedArtist(artist)
+    void handlePreview(artist)
   }
 
   async function handlePublish() {
@@ -679,7 +651,7 @@ export default function AdminContentRefreshPage() {
         <div>
           <Link to="/" className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">← Encore Atlas</Link>
           <h1 className="mt-4 font-display text-5xl tracking-[0.12em]">Content Refresh</h1>
-          <p className="mt-2 text-sm text-black/55">Preview selected fixes before publishing. Existing metadata stays unchanged unless selected.</p>
+          <p className="mt-2 text-sm text-black/55">Search an artist to review metadata, same-vibe picks, and every artist-page video category before publishing fixes.</p>
         </div>
         <button type="button" onClick={() => signOutAdmin().then(() => window.location.reload())} className="text-xs font-semibold uppercase tracking-[0.15em] text-black/45">
           Sign out {session.email}
@@ -691,7 +663,7 @@ export default function AdminContentRefreshPage() {
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search existing artists" className="mt-2 w-full border border-stone-300 bg-white/45 px-4 py-3 text-sm outline-none focus:border-black/50" />
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {artists.map((artist) => (
-            <button key={artist.id} type="button" onClick={() => { setSelectedArtist(artist); setRefresh(null); setProposedArtist(null); setPublished(false) }} className={[
+            <button key={artist.id} type="button" onClick={() => handleSelectArtist(artist)} className={[
               "border p-3 text-left",
               selectedArtist?.id === artist.id ? "border-[#d94f43] bg-white/70" : "border-stone-300 bg-white/30",
             ].join(" ")}>
@@ -710,23 +682,14 @@ export default function AdminContentRefreshPage() {
           <h2 className="font-display text-3xl tracking-[0.1em]">{selectedArtist.name}</h2>
           {selectedArtist.is_curated && (
             <div className="mt-4 border border-[#a33b33]/35 bg-[#a33b33]/5 p-4 text-sm text-[#82332d]">
-              <strong>Curated artist: metadata is locked.</strong> You can review metadata and same-vibe fields, but publishing those scopes is disabled. Video repairs remain available.
+              <strong>Curated artist: metadata is locked.</strong> You can review metadata and same-vibe fields, while video repairs remain publishable.
             </div>
           )}
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            {scopeOptions.map((option) => (
-              <label key={option.value} className="flex cursor-pointer gap-3 border border-stone-300 bg-white/30 p-4">
-                <input type="checkbox" checked={scopes.includes(option.value)} onChange={() => setScopes((current) => current.includes(option.value) ? current.filter((scope) => scope !== option.value) : [...current, option.value])} />
-                <span>
-                  <span className="block text-sm font-semibold">{option.label}</span>
-                  <span className="mt-1 block text-xs leading-relaxed text-black/45">{option.detail}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-          <button type="button" disabled={busy || scopes.length === 0} onClick={handlePreview} className="mt-5 bg-black/80 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#f6f1e8] disabled:opacity-40">
-            {busy ? "Preparing preview..." : "Prepare preview"}
-          </button>
+          {previewing && (
+            <div className="mt-5 border border-stone-300 bg-white/30 p-4 text-sm text-black/50">
+              Preparing full content preview...
+            </div>
+          )}
         </section>
       )}
 
@@ -740,7 +703,7 @@ export default function AdminContentRefreshPage() {
               <div>
                 <h2 className="font-display text-3xl tracking-[0.1em]">Metadata Preview</h2>
                 <p className="mt-1 text-sm text-black/50">
-                  Left is the current site snapshot. Right is the proposed publish state for selected scopes.
+                  Left is the current site snapshot. Right is the proposed publish state.
                 </p>
               </div>
               {hasManualMetadataEdits && (
@@ -1150,7 +1113,7 @@ export default function AdminContentRefreshPage() {
                 <strong>Manual metadata:</strong> Publishing will mark this artist as curated. Future metadata and same-vibe refreshes cannot overwrite it, but video and YouTube metadata refreshes remain available.
               </p>
             )}
-            <p className="mb-4 text-sm text-black/55">Publishing applies only the selected scopes. Manually selected videos are marked protected for future refreshes.</p>
+            <p className="mb-4 text-sm text-black/55">Publishing applies your edits from this preview. Manually selected videos are marked protected for future refreshes.</p>
             <button type="button" disabled={busy || published || publishWarnings.length > 0} onClick={handlePublish} className="bg-[#d94f43] px-6 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-white disabled:opacity-40">
               {busy ? "Publishing..." : published ? "Published" : `Publish ${selectedArtist?.name}`}
             </button>
