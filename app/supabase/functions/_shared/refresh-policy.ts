@@ -15,6 +15,9 @@ export type RefreshVideo = {
   channel_title: string | null
 }
 
+export const editableVideoTypes = ["concert", "interview", "music_video"] as const
+export type EditableVideoType = typeof editableVideoTypes[number]
+
 type EditableArtist = {
   tags: string[] | null
   blurb: string | null
@@ -173,37 +176,33 @@ export function validatePublishRequest(input: {
       errors.push("A video refresh cannot publish an empty video list.")
     }
 
-    const proposedIds = new Set(
-      input.proposedVideos.map((video) => video.youtube_video_id),
-    )
+    const proposedKeys = new Set(input.proposedVideos.map(videoKey))
     const removalIds = new Set(input.manualVideoRemovals ?? [])
     const replacementIds = new Set(input.manualVideoReplacements)
     const existingManualVideos = input.existingVideos.filter(
       (video) => video.is_manually_added,
     )
-    const existingManualIds = new Set(
-      existingManualVideos.map((video) => video.youtube_video_id),
-    )
+    const existingManualKeys = new Set(existingManualVideos.map(videoKey))
     const missingManual = input.existingVideos.some(
       (video) =>
         video.is_manually_added
-        && !proposedIds.has(video.youtube_video_id)
-        && !removalIds.has(video.youtube_video_id)
-        && !replacementIds.has(video.youtube_video_id),
+        && !proposedKeys.has(videoKey(video))
+        && !removalIds.has(videoKey(video))
+        && !replacementIds.has(videoKey(video)),
     )
     if (missingManual) {
       errors.push("Manually added videos must be preserved or explicitly replaced.")
     }
 
     const invalidReplacement = input.manualVideoReplacements.some(
-      (id) => !existingManualIds.has(id) || proposedIds.has(id),
+      (id) => !existingManualKeys.has(id) || proposedKeys.has(id),
     )
     if (invalidReplacement) {
       errors.push("Manual video replacements must identify a removed protected video.")
     }
 
     const invalidRemoval = (input.manualVideoRemovals ?? []).some(
-      (id) => !existingManualIds.has(id) || proposedIds.has(id),
+      (id) => !existingManualKeys.has(id) || proposedKeys.has(id),
     )
     if (invalidRemoval) {
       errors.push("Manual video removals must identify a removed protected video.")
@@ -211,10 +210,11 @@ export function validatePublishRequest(input: {
 
     const replacementWithoutManualSuccessor = existingManualVideos.some(
       (existing) =>
-        replacementIds.has(existing.youtube_video_id)
+        replacementIds.has(videoKey(existing))
         && !input.proposedVideos.some(
           (proposed) =>
             proposed.is_manually_added
+            && videoType(proposed) === videoType(existing)
             && proposed.display_order === existing.display_order,
         ),
     )
@@ -222,7 +222,7 @@ export function validatePublishRequest(input: {
       errors.push("A protected manual video replacement must remain manual and keep its position.")
     }
 
-    if (proposedIds.size !== input.proposedVideos.length) {
+    if (proposedKeys.size !== input.proposedVideos.length) {
       errors.push("The proposed video list contains duplicates.")
     }
   }
@@ -251,6 +251,18 @@ export function normalizeVideoOrder(
     nextPosition += 1
     return normalized
   })
+}
+
+export function normalizeEditableVideoOrder(
+  videos: RefreshVideo[],
+  protectedManualPositionsByType: Record<string, number[]> = {},
+): RefreshVideo[] {
+  return editableVideoTypes.flatMap((type) =>
+    normalizeVideoOrder(
+      videos.filter((video) => videoType(video) === type),
+      protectedManualPositionsByType[type] ?? [],
+    ).map((video) => ({ ...video, video_type: type })),
+  )
 }
 
 export function mergeManualVideos(
@@ -284,6 +296,28 @@ export function mergeManualVideos(
     merged.splice(0, merged.length, ...withoutDuplicate)
   }
   return normalizeVideoOrder(merged)
+}
+
+export function videoType(video: Pick<RefreshVideo, "video_type">): EditableVideoType {
+  return editableVideoTypes.includes(video.video_type as EditableVideoType)
+    ? video.video_type as EditableVideoType
+    : "concert"
+}
+
+export function videoKey(video: Pick<RefreshVideo, "youtube_video_id" | "video_type">): string {
+  return `${videoType(video)}:${video.youtube_video_id}`
+}
+
+export function editableVideos(videos: RefreshVideo[]): RefreshVideo[] {
+  return videos
+    .filter((video) => editableVideoTypes.includes((video.video_type ?? "concert") as EditableVideoType))
+    .map((video, originalIndex) => ({ video, originalIndex }))
+    .sort((a, b) =>
+      editableVideoTypes.indexOf(videoType(a.video)) - editableVideoTypes.indexOf(videoType(b.video))
+      || a.video.display_order - b.video.display_order
+      || a.originalIndex - b.originalIndex
+    )
+    .map(({ video }) => video)
 }
 
 export function concertVideos(videos: RefreshVideo[]): RefreshVideo[] {

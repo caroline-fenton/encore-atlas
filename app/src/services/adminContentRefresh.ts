@@ -25,6 +25,8 @@ export type RefreshVideo = {
   channel_title: string | null
 }
 
+export type RefreshVideoType = "concert" | "interview" | "music_video"
+
 export type RefreshArtist = AdminArtist & {
   tags: string[] | null
   tag_source: string | null
@@ -103,9 +105,11 @@ export async function generateRefreshPreview(
 
 export async function previewReplacementVideo(
   youtubeUrl: string,
+  videoType: RefreshVideoType = "concert",
 ): Promise<RefreshVideo> {
   const data = await invoke<{ video: RefreshVideo }>("replace_video", {
     youtube_url: youtubeUrl,
+    video_type: videoType,
   })
   return data.video
 }

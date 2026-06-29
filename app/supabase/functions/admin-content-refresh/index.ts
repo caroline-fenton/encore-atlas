@@ -1,8 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
 import {
   applyManualArtistEdits,
-  concertVideos,
-  normalizeVideoOrder,
+  editableVideos,
+  normalizeEditableVideoOrder,
   parseYouTubeVideoId,
   validatePublishRequest,
   type RefreshScope,
@@ -237,7 +237,7 @@ Deno.serve(async (request) => {
       let proposedVideos = snapshot.videos
 
       if (scopes.includes("videos")) {
-        proposedVideos = concertVideos(snapshot.videos)
+        proposedVideos = editableVideos(snapshot.videos)
       }
 
       if (scopes.includes("metadata") || scopes.includes("same_vibe")) {
@@ -274,6 +274,10 @@ Deno.serve(async (request) => {
       )
       const detail = details.get(videoId)
       if (!detail) return json({ error: "That YouTube video is unavailable" }, 400)
+      const requestedVideoType = typeof body.video_type === "string"
+        && ["concert", "interview", "music_video"].includes(body.video_type)
+        ? body.video_type
+        : "concert"
       const video: RefreshVideo = {
         youtube_video_id: videoId,
         title: detail.title,
@@ -285,7 +289,7 @@ Deno.serve(async (request) => {
         search_query: "admin replacement",
         is_manually_added: true,
         display_order: 0,
-        video_type: "concert",
+        video_type: requestedVideoType,
         channel_title: detail.channelTitle,
       }
       return json({ video })
@@ -319,15 +323,19 @@ Deno.serve(async (request) => {
       if (refreshError) throw refreshError
       const before = refresh.before_snapshot as Snapshot
       const storedProposed = refresh.proposed_snapshot as Snapshot
-      const protectedReplacementPositions = concertVideos(before.videos)
+      const protectedReplacementPositionsByType = editableVideos(before.videos)
         .filter((video) =>
           video.is_manually_added
-          && manualVideoReplacements.includes(video.youtube_video_id)
+          && manualVideoReplacements.includes(`${video.video_type ?? "concert"}:${video.youtube_video_id}`)
         )
-        .map((video) => video.display_order)
-      const proposedVideos = normalizeVideoOrder(
+        .reduce<Record<string, number[]>>((positions, video) => {
+          const type = video.video_type ?? "concert"
+          positions[type] = [...(positions[type] ?? []), video.display_order]
+          return positions
+        }, {})
+      const proposedVideos = normalizeEditableVideoOrder(
         submittedVideos,
-        protectedReplacementPositions,
+        protectedReplacementPositionsByType,
       )
       const editedArtist = submittedArtist
         ? applyManualArtistEdits(
@@ -343,7 +351,7 @@ Deno.serve(async (request) => {
       const errors = validatePublishRequest({
         scopes: refresh.scopes as RefreshScope[],
         isCurated: before.artist.is_curated,
-        existingVideos: concertVideos(before.videos),
+        existingVideos: editableVideos(before.videos),
         proposedVideos,
         manualVideoRemovals,
         manualVideoReplacements,
