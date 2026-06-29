@@ -18,6 +18,7 @@ export type RefreshVideo = {
 type EditableArtist = {
   tags: string[] | null
   blurb: string | null
+  wikipedia_url?: string | null
   related_artists: string[] | null
   artist_context: {
     genre: string[]
@@ -71,22 +72,26 @@ export function applyManualArtistEdits(
         submitted.blurb,
         submitted.artist_context?.city ?? null,
         submitted.artist_context?.yearsActive ?? null,
+        submitted.wikipedia_url ?? null,
       ])
         !== JSON.stringify([
           generated.tags ?? [],
           generated.blurb,
           generated.artist_context?.city ?? null,
           generated.artist_context?.yearsActive ?? null,
+          generated.wikipedia_url ?? null,
         ])
     const tags = normalizeTextList(submitted.tags)
     const blurb = normalizeText(submitted.blurb)
     const city = normalizeText(submitted.artist_context?.city)
     const yearsActive = normalizeText(submitted.artist_context?.yearsActive)
+    const wikipediaUrl = normalizeText(submitted.wikipedia_url)
     if (tags.length === 0) errors.push("Artist metadata requires at least one genre.")
     if (!blurb) errors.push("Artist metadata requires a summary.")
 
     artist.tags = tags
     artist.blurb = blurb
+    artist.wikipedia_url = wikipediaUrl
     context.genre = tags
     context.sceneSummary = blurb ?? ""
     context.city = city
@@ -151,6 +156,7 @@ export function validatePublishRequest(input: {
   isCurated: boolean
   existingVideos: RefreshVideo[]
   proposedVideos: RefreshVideo[]
+  manualVideoRemovals?: string[]
   manualVideoReplacements: string[]
 }): string[] {
   const errors: string[] = []
@@ -170,6 +176,7 @@ export function validatePublishRequest(input: {
     const proposedIds = new Set(
       input.proposedVideos.map((video) => video.youtube_video_id),
     )
+    const removalIds = new Set(input.manualVideoRemovals ?? [])
     const replacementIds = new Set(input.manualVideoReplacements)
     const existingManualVideos = input.existingVideos.filter(
       (video) => video.is_manually_added,
@@ -181,6 +188,7 @@ export function validatePublishRequest(input: {
       (video) =>
         video.is_manually_added
         && !proposedIds.has(video.youtube_video_id)
+        && !removalIds.has(video.youtube_video_id)
         && !replacementIds.has(video.youtube_video_id),
     )
     if (missingManual) {
@@ -192,6 +200,13 @@ export function validatePublishRequest(input: {
     )
     if (invalidReplacement) {
       errors.push("Manual video replacements must identify a removed protected video.")
+    }
+
+    const invalidRemoval = (input.manualVideoRemovals ?? []).some(
+      (id) => !existingManualIds.has(id) || proposedIds.has(id),
+    )
+    if (invalidRemoval) {
+      errors.push("Manual video removals must identify a removed protected video.")
     }
 
     const replacementWithoutManualSuccessor = existingManualVideos.some(

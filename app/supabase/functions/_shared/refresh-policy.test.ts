@@ -52,6 +52,7 @@ test("manual metadata edits are normalized and detected", () => {
   const generated = {
     tags: ["rock"],
     blurb: "Generated summary",
+    wikipedia_url: null,
     related_artists: ["Peer"],
     artist_context: {
       genre: ["rock"],
@@ -64,6 +65,7 @@ test("manual metadata edits are normalized and detected", () => {
   const submitted = structuredClone(generated)
   submitted.tags = [" post-rock ", "post-rock"]
   submitted.blurb = "  Revised summary. "
+  submitted.wikipedia_url = "  https://en.wikipedia.org/wiki/Example_artist "
   submitted.artist_context.city = "  Chicago "
   submitted.artist_context.relatedArtists = [{
     name: " New Peer ",
@@ -79,6 +81,7 @@ test("manual metadata edits are normalized and detected", () => {
   assert.deepEqual(result.errors, [])
   assert.deepEqual(result.artist.tags, ["post-rock"])
   assert.equal(result.artist.blurb, "Revised summary.")
+  assert.equal(result.artist.wikipedia_url, "https://en.wikipedia.org/wiki/Example_artist")
   assert.equal(result.artist.artist_context?.sceneSummary, "Revised summary.")
   assert.deepEqual(result.artist.related_artists, ["New Peer"])
 })
@@ -87,6 +90,7 @@ test("manual metadata edits cannot clear required generated content", () => {
   const artist = {
     tags: ["rock"],
     blurb: "Summary",
+    wikipedia_url: null,
     related_artists: ["Peer"],
     artist_context: {
       genre: ["rock"],
@@ -111,6 +115,7 @@ test("an untouched generated metadata preview is not marked manual", () => {
   const artist = {
     tags: ["rock"],
     blurb: "Summary",
+    wikipedia_url: "https://en.wikipedia.org/wiki/Example_artist",
     related_artists: ["Peer"],
     artist_context: {
       genre: ["rock"],
@@ -140,6 +145,17 @@ test("requires manually added videos to survive a refresh", () => {
   })
 
   assert.ok(errors.includes("Manually added videos must be preserved or explicitly replaced."))
+})
+
+test("allows an explicitly confirmed manual video removal", () => {
+  assert.deepEqual(validatePublishRequest({
+    scopes: ["videos"],
+    isCurated: false,
+    existingVideos: [video("manualvideo", true)],
+    proposedVideos: [video("generated01")],
+    manualVideoRemovals: ["manualvideo"],
+    manualVideoReplacements: [],
+  }), [])
 })
 
 test("allows an explicitly confirmed manual video replacement", () => {

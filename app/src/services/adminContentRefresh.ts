@@ -40,6 +40,8 @@ export type RefreshArtist = AdminArtist & {
 export type RefreshSnapshot = {
   artist: RefreshArtist
   videos: RefreshVideo[]
+  manual_video_removals?: string[]
+  manual_video_replacements?: string[]
 }
 
 export type ContentRefresh = {
@@ -113,12 +115,14 @@ export async function publishContentRefresh(
   artist: RefreshArtist,
   videos: RefreshVideo[],
   manualVideoReplacements: string[],
+  manualVideoRemovals: string[],
 ): Promise<void> {
   await invoke("publish", {
     refresh_id: refreshId,
     proposed_artist: artist,
     proposed_videos: videos,
     manual_video_replacements: manualVideoReplacements,
+    manual_video_removals: manualVideoRemovals,
   })
 }
 
