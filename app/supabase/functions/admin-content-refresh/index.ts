@@ -2,12 +2,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
 import {
   applyManualArtistEdits,
   editableVideos,
+  mergeTargetedRefreshVideos,
   normalizeEditableVideoOrder,
   parseYouTubeVideoId,
   validatePublishRequest,
   type RefreshScope,
   type RefreshVideo,
 } from "../_shared/refresh-policy.ts"
+import { getAliases } from "../../../src/data/artistAliases.ts"
+import { decodeHtml } from "../../../src/utils/decodeHtml.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,6 +55,7 @@ type Snapshot = {
   videos: Array<RefreshVideo & { id?: string; artist_id?: string; created_at?: string }>
   manual_video_removals?: string[]
   manual_video_replacements?: string[]
+  video_search_queries?: VideoSearchQueries
 }
 
 type YouTubeVideoDetail = {
@@ -63,6 +67,18 @@ type YouTubeVideoDetail = {
   duration: string | null
   channelTitle: string | null
 }
+
+type YouTubeSearchItem = {
+  id: { videoId: string }
+  snippet: {
+    title: string
+    description: string | null
+    publishedAt: string | null
+    channelTitle: string | null
+  }
+}
+
+type VideoSearchQueries = Partial<Record<"concert" | "interview" | "music_video", string>>
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -136,6 +152,137 @@ async function youtubeVideoDetails(
     })
   }
   return details
+}
+
+async function youtubeSearch(
+  query: string,
+  apiKey: string,
+  maxResults = 25,
+): Promise<YouTubeSearchItem[]> {
+  const params = new URLSearchParams({
+    part: "snippet",
+    type: "video",
+    q: query,
+    maxResults: String(maxResults),
+    videoDuration: "any",
+    order: "relevance",
+    key: apiKey,
+  })
+  const response = await fetch(
+    `https://www.googleapis.com/youtube/v3/search?${params}`,
+  )
+  if (!response.ok) {
+    throw new Error(`YouTube search failed (${response.status})`)
+  }
+
+  const data = await response.json()
+  return data.items ?? []
+}
+
+function normalizeForMatch(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]/g, "")
+}
+
+function matchesArtistName(text: string, textNorm: string, name: string): boolean {
+  const stripped = name.replace(/^the\s+/, "")
+  const strippedNorm = normalizeForMatch(stripped)
+  const nameNorm = normalizeForMatch(name)
+
+  return (
+    text.includes(stripped)
+    || text.includes(name)
+    || (strippedNorm !== "" && textNorm.includes(strippedNorm))
+    || (nameNorm !== "" && textNorm.includes(nameNorm))
+  )
+}
+
+function isRelevantResult(item: YouTubeSearchItem, artistName: string): boolean {
+  const title = decodeHtml(item.snippet.title).toLowerCase()
+  const titleNorm = normalizeForMatch(title)
+  const channel = decodeHtml(item.snippet.channelTitle ?? "").toLowerCase()
+  const channelNorm = normalizeForMatch(channel)
+  const names = [
+    artistName.toLowerCase(),
+    ...getAliases(artistName).map((alias) => alias.toLowerCase()),
+  ]
+
+  return names.some((name) =>
+    matchesArtistName(title, titleNorm, name)
+    || matchesArtistName(channel, channelNorm, name)
+  )
+}
+
+function defaultVideoSearchQueries(artistName: string): Required<VideoSearchQueries> {
+  return {
+    concert: `${artistName} live concert full set`,
+    interview: `${artistName} interview`,
+    music_video: `${artistName} official music video`,
+  }
+}
+
+function parseVideoSearchQueries(value: unknown): VideoSearchQueries | null {
+  if (!value || typeof value !== "object") return null
+  const input = value as Record<string, unknown>
+  const queries: VideoSearchQueries = {}
+  for (const type of ["concert", "interview", "music_video"] as const) {
+    const query = typeof input[type] === "string" ? input[type].trim() : ""
+    if (query) queries[type] = query
+  }
+  return Object.keys(queries).length > 0 ? queries : null
+}
+
+async function targetedVideoPreview(
+  artistName: string,
+  queries: VideoSearchQueries,
+  existingVideos: RefreshVideo[],
+  apiKey: string,
+): Promise<RefreshVideo[]> {
+  const generated: RefreshVideo[] = []
+  const refreshedTypes: Array<"concert" | "interview" | "music_video"> = []
+
+  for (const type of ["concert", "interview", "music_video"] as const) {
+    const query = queries[type]
+    if (!query) continue
+    refreshedTypes.push(type)
+
+    const searchResults = (await youtubeSearch(query, apiKey, 25))
+      .filter((item) => isRelevantResult(item, artistName))
+    const details = await youtubeVideoDetails(
+      searchResults.map((item) => item.id.videoId),
+      apiKey,
+    )
+
+    generated.push(
+      ...searchResults.map((item, index) => {
+        const detail = details.get(item.id.videoId)
+        return {
+          youtube_video_id: item.id.videoId,
+          title: item.snippet.title,
+          description: detail?.description ?? item.snippet.description ?? null,
+          thumbnail_url: detail?.thumbnail ?? null,
+          published_at: detail?.publishedAt ?? item.snippet.publishedAt ?? null,
+          view_count: detail?.viewCount ?? null,
+          duration: detail?.duration ?? null,
+          search_query: query,
+          is_manually_added: false,
+          display_order: index,
+          video_type: type,
+          channel_title: detail?.channelTitle ?? item.snippet.channelTitle ?? null,
+        }
+      }),
+    )
+  }
+
+  return normalizeEditableVideoOrder(
+    mergeTargetedRefreshVideos(
+      generated,
+      editableVideos(existingVideos),
+      refreshedTypes,
+    ),
+  )
 }
 
 function editableArtistSnapshot(artist: ArtistRow): ArtistRow {
@@ -226,6 +373,9 @@ Deno.serve(async (request) => {
       if (!artistId || scopes.length === 0) {
         return json({ error: "An artist and at least one scope are required" }, 400)
       }
+      const requestedVideoSearchQueries = parseVideoSearchQueries(
+        body.video_search_queries,
+      )
 
       const { data: before, error: snapshotError } = await service.rpc(
         "current_artist_content_snapshot",
@@ -237,7 +387,14 @@ Deno.serve(async (request) => {
       let proposedVideos = snapshot.videos
 
       if (scopes.includes("videos")) {
-        proposedVideos = editableVideos(snapshot.videos)
+        proposedVideos = requestedVideoSearchQueries
+          ? await targetedVideoPreview(
+            snapshot.artist.name,
+            requestedVideoSearchQueries,
+            snapshot.videos,
+            Deno.env.get("YOUTUBE_API_KEY")!,
+          )
+          : editableVideos(snapshot.videos)
       }
 
       if (scopes.includes("metadata") || scopes.includes("same_vibe")) {
@@ -247,6 +404,12 @@ Deno.serve(async (request) => {
       const proposed: Snapshot = {
         artist: proposedArtist,
         videos: proposedVideos,
+      }
+      if (requestedVideoSearchQueries) {
+        proposed.video_search_queries = {
+          ...defaultVideoSearchQueries(snapshot.artist.name),
+          ...requestedVideoSearchQueries,
+        }
       }
       const { data: refresh, error } = await service
         .from("admin_content_refreshes")

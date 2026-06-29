@@ -26,6 +26,7 @@ export type RefreshVideo = {
 }
 
 export type RefreshVideoType = "concert" | "interview" | "music_video"
+export type VideoSearchQueries = Partial<Record<RefreshVideoType, string>>
 
 export type RefreshArtist = AdminArtist & {
   tags: string[] | null
@@ -44,6 +45,7 @@ export type RefreshSnapshot = {
   videos: RefreshVideo[]
   manual_video_removals?: string[]
   manual_video_replacements?: string[]
+  video_search_queries?: VideoSearchQueries
 }
 
 export type ContentRefresh = {
@@ -95,10 +97,12 @@ export async function searchAdminArtists(query: string): Promise<AdminArtist[]> 
 export async function generateRefreshPreview(
   artistId: string,
   scopes: RefreshScope[],
+  videoSearchQueries?: VideoSearchQueries,
 ): Promise<ContentRefresh> {
   const data = await invoke<{ refresh: ContentRefresh }>("preview", {
     artist_id: artistId,
     scopes,
+    ...(videoSearchQueries ? { video_search_queries: videoSearchQueries } : {}),
   })
   return data.refresh
 }

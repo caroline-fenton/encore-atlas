@@ -269,33 +269,54 @@ export function mergeManualVideos(
   generated: RefreshVideo[],
   existing: RefreshVideo[],
 ): RefreshVideo[] {
-  const merged = [...generated]
-  const manualVideos = existing
-    .filter((video) =>
-      (video.video_type ?? "concert") === "concert"
-      && video.is_manually_added
-    )
-    .sort((a, b) => a.display_order - b.display_order)
+  return editableVideoTypes.flatMap((type) => {
+    const merged = generated.filter((video) => videoType(video) === type)
+    const manualVideos = existing
+      .filter((video) => videoType(video) === type && video.is_manually_added)
+      .sort((a, b) => a.display_order - b.display_order)
 
-  for (const manual of manualVideos) {
-    const fresh = merged.find(
-      (video) => video.youtube_video_id === manual.youtube_video_id,
-    )
-    const protectedVideo = fresh
-      ? {
-        ...fresh,
-        is_manually_added: true,
-        display_order: manual.display_order,
-      }
-      : manual
-    const withoutDuplicate = merged.filter(
-      (video) => video.youtube_video_id !== manual.youtube_video_id,
-    )
-    const index = Math.min(manual.display_order, withoutDuplicate.length)
-    withoutDuplicate.splice(index, 0, protectedVideo)
-    merged.splice(0, merged.length, ...withoutDuplicate)
-  }
-  return normalizeVideoOrder(merged)
+    for (const manual of manualVideos) {
+      const fresh = merged.find(
+        (video) => video.youtube_video_id === manual.youtube_video_id,
+      )
+      const protectedVideo = fresh
+        ? {
+          ...fresh,
+          is_manually_added: true,
+          display_order: manual.display_order,
+          video_type: type,
+        }
+        : { ...manual, video_type: type }
+      const withoutDuplicate = merged.filter(
+        (video) => video.youtube_video_id !== manual.youtube_video_id,
+      )
+      const index = Math.min(manual.display_order, withoutDuplicate.length)
+      withoutDuplicate.splice(index, 0, protectedVideo)
+      merged.splice(0, merged.length, ...withoutDuplicate)
+    }
+
+    return normalizeVideoOrder(merged).map((video) => ({
+      ...video,
+      video_type: type,
+    }))
+  })
+}
+
+export function mergeTargetedRefreshVideos(
+  generated: RefreshVideo[],
+  existing: RefreshVideo[],
+  refreshedTypes: EditableVideoType[],
+): RefreshVideo[] {
+  const refreshedTypeSet = new Set(refreshedTypes)
+  const refreshedVideos = mergeManualVideos(generated, existing)
+    .filter((video) => refreshedTypeSet.has(videoType(video)))
+  const preservedVideos = editableVideos(existing)
+    .filter((video) => !refreshedTypeSet.has(videoType(video)))
+
+  return editableVideoTypes.flatMap((type) => [
+    ...refreshedVideos.filter((video) => videoType(video) === type),
+    ...preservedVideos.filter((video) => videoType(video) === type),
+  ])
 }
 
 export function videoType(video: Pick<RefreshVideo, "video_type">): EditableVideoType {

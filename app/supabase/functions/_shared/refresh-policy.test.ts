@@ -5,6 +5,7 @@ import {
   concertVideos,
   editableVideos,
   mergeManualVideos,
+  mergeTargetedRefreshVideos,
   normalizeEditableVideoOrder,
   normalizeVideoOrder,
   parseYouTubeVideoId,
@@ -354,6 +355,46 @@ test("manual video merge preserves protection while refreshing YouTube metadata"
   assert.equal(refreshedManual?.thumbnail_url, "fresh-thumbnail")
   assert.equal(refreshedManual?.view_count, 20)
   assert.equal(refreshedManual?.channel_title, "Fresh channel")
+})
+
+test("manual video merge preserves protected secondary videos", () => {
+  const manualInterview = {
+    ...video("interview01", true, "interview"),
+    display_order: 0,
+  }
+  const generatedInterview = video("interview02", false, "interview")
+  const generatedMusicVideo = video("musicvideo1", false, "music_video")
+
+  const merged = mergeManualVideos(
+    [generatedInterview, generatedMusicVideo],
+    [manualInterview],
+  )
+
+  assert.deepEqual(
+    merged.map((item) => `${item.video_type}:${item.youtube_video_id}:${item.display_order}:${item.is_manually_added}`),
+    [
+      "interview:interview01:0:true",
+      "interview:interview02:1:false",
+      "music_video:musicvideo1:0:false",
+    ],
+  )
+})
+
+test("targeted refresh preserves omitted video sections", () => {
+  const existingConcert = { ...video("oldconcert", false, "concert"), display_order: 0 }
+  const existingInterview = { ...video("oldinterview", false, "interview"), display_order: 0 }
+  const newConcert = { ...video("newconcert", false, "concert"), display_order: 0 }
+
+  const merged = mergeTargetedRefreshVideos(
+    [newConcert],
+    [existingConcert, existingInterview],
+    ["concert"],
+  )
+
+  assert.deepEqual(
+    merged.map((item) => `${item.video_type}:${item.youtube_video_id}`),
+    ["concert:newconcert", "interview:oldinterview"],
+  )
 })
 
 test("live refresh policy orders concert videos and leaves secondary categories out of scope", () => {
