@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Check, Pencil, Plus, X } from "lucide-react"
 import { Link } from "react-router-dom"
 import {
@@ -384,6 +384,7 @@ export default function AdminContentRefreshPage() {
   const [previewing, setPreviewing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(false)
+  const previewRequestIdRef = useRef(0)
 
   const loadSession = useCallback(async () => {
     setSessionError(null)
@@ -558,6 +559,8 @@ export default function AdminContentRefreshPage() {
   }
 
   async function handlePreview(artist: AdminArtist) {
+    const requestId = previewRequestIdRef.current + 1
+    previewRequestIdRef.current = requestId
     setBusy(true)
     setPreviewing(true)
     setError(null)
@@ -569,6 +572,7 @@ export default function AdminContentRefreshPage() {
     setPublished(false)
     try {
       const result = await generateRefreshPreview(artist.id, previewScopes)
+      if (previewRequestIdRef.current !== requestId) return
       setRefresh(result)
       setProposedArtist(result.proposed_snapshot.artist)
       setVideos(
@@ -583,10 +587,13 @@ export default function AdminContentRefreshPage() {
       setManualVideoReplacements([])
       setManualVideoRemovals([])
     } catch (previewError) {
+      if (previewRequestIdRef.current !== requestId) return
       setError(previewError instanceof Error ? previewError.message : "Could not generate preview")
     } finally {
-      setBusy(false)
-      setPreviewing(false)
+      if (previewRequestIdRef.current === requestId) {
+        setBusy(false)
+        setPreviewing(false)
+      }
     }
   }
 
