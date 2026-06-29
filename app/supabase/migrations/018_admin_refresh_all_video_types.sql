@@ -62,18 +62,7 @@ begin
     false
   );
 
-  if (
-    refresh_row.scopes && array['metadata', 'same_vibe']::text[]
-    and manual_metadata_edit
-    and coalesce((current_snapshot->'artist'->>'is_curated')::boolean, false)
-  ) then
-    raise exception 'Curated artist metadata and same-vibe artists are protected';
-  end if;
-
-  if (
-    'metadata' = any(refresh_row.scopes)
-    and not coalesce((current_snapshot->'artist'->>'is_curated')::boolean, false)
-  ) then
+  if 'metadata' = any(refresh_row.scopes) then
     update public.artists
     set tags = coalesce(
           array(select jsonb_array_elements_text(proposed_artist->'tags')),
@@ -95,10 +84,7 @@ begin
     where id = refresh_row.artist_id;
   end if;
 
-  if (
-    'same_vibe' = any(refresh_row.scopes)
-    and not coalesce((current_snapshot->'artist'->>'is_curated')::boolean, false)
-  ) then
+  if 'same_vibe' = any(refresh_row.scopes) then
     update public.artists
     set related_artists = coalesce(
           array(select jsonb_array_elements_text(proposed_artist->'related_artists')),

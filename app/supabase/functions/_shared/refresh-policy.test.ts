@@ -37,19 +37,15 @@ test("parses supported YouTube URL formats", () => {
   assert.equal(parseYouTubeVideoId("not a video"), null)
 })
 
-test("blocks curated metadata publishing", () => {
-  const errors = validatePublishRequest({
+test("allows admins to revise curated metadata", () => {
+  assert.deepEqual(validatePublishRequest({
     scopes: ["metadata"],
     isCurated: true,
     existingVideos: [],
     proposedVideos: [],
     manualVideoReplacements: [],
     manualMetadataEdit: true,
-  })
-
-  assert.deepEqual(errors, [
-    "Curated artist metadata and same-vibe artists are protected.",
-  ])
+  }), [])
 })
 
 test("allows all-scope curated previews when metadata was not edited", () => {

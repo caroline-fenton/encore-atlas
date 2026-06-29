@@ -165,14 +165,6 @@ export function validatePublishRequest(input: {
 }): string[] {
   const errors: string[] = []
 
-  if (
-    input.isCurated
-    && input.manualMetadataEdit
-    && input.scopes.some((scope) => scope === "metadata" || scope === "same_vibe")
-  ) {
-    errors.push("Curated artist metadata and same-vibe artists are protected.")
-  }
-
   if (input.scopes.includes("videos")) {
     if (input.proposedVideos.length === 0) {
       errors.push("A video refresh cannot publish an empty video list.")

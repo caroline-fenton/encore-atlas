@@ -682,7 +682,7 @@ export default function AdminContentRefreshPage() {
           <h2 className="font-display text-3xl tracking-[0.1em]">{selectedArtist.name}</h2>
           {selectedArtist.is_curated && (
             <div className="mt-4 border border-[#a33b33]/35 bg-[#a33b33]/5 p-4 text-sm text-[#82332d]">
-              <strong>Curated artist: metadata is locked.</strong> You can review metadata and same-vibe fields, while video repairs remain publishable.
+              <strong>Curated artist.</strong> Admin edits remain available, and automated public rebuilds cannot overwrite curated metadata.
             </div>
           )}
           {previewing && (
@@ -722,17 +722,16 @@ export default function AdminContentRefreshPage() {
                     <input
                       id="metadata-tags"
                       value={(proposedArtist.tags ?? []).join(", ")}
-                      disabled={beforeArtist.is_curated}
                       onChange={(event) => setProposedArtist({
                         ...proposedArtist,
                         tags: event.target.value.split(",").map((tag) => tag.trim()),
                       })}
                       className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
                     />
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-tags")} className={iconButtonClass("edit")} aria-label="Edit genres" title="Edit genres">
+                    <button type="button" onClick={() => focusControl("metadata-tags")} className={iconButtonClass("edit")} aria-label="Edit genres" title="Edit genres">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("tags")} className={iconButtonClass("remove")} aria-label="Revert genres" title="Revert genres">
+                    <button type="button" onClick={() => resetMetadataField("tags")} className={iconButtonClass("remove")} aria-label="Revert genres" title="Revert genres">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -742,16 +741,15 @@ export default function AdminContentRefreshPage() {
                     <textarea
                       id="metadata-blurb"
                       value={proposedArtist.blurb ?? ""}
-                      disabled={beforeArtist.is_curated}
                       rows={5}
                       onChange={(event) => setProposedArtist({ ...proposedArtist, blurb: event.target.value })}
                       className="min-w-0 flex-1 resize-y border border-stone-300 bg-white/60 px-3 py-2 text-sm leading-relaxed outline-none focus:border-[#9256a8] disabled:opacity-50"
                     />
                     <div className="flex flex-col gap-2">
-                      <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-blurb")} className={iconButtonClass("edit")} aria-label="Edit summary" title="Edit summary">
+                      <button type="button" onClick={() => focusControl("metadata-blurb")} className={iconButtonClass("edit")} aria-label="Edit summary" title="Edit summary">
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("blurb")} className={iconButtonClass("remove")} aria-label="Revert summary" title="Revert summary">
+                      <button type="button" onClick={() => resetMetadataField("blurb")} className={iconButtonClass("remove")} aria-label="Revert summary" title="Revert summary">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
@@ -762,14 +760,13 @@ export default function AdminContentRefreshPage() {
                     <input
                       id="metadata-city"
                       value={proposedArtist.artist_context?.city ?? ""}
-                      disabled={beforeArtist.is_curated}
                       onChange={(event) => updateArtistContext({ city: event.target.value })}
                       className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
                     />
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-city")} className={iconButtonClass("edit")} aria-label="Edit city" title="Edit city">
+                    <button type="button" onClick={() => focusControl("metadata-city")} className={iconButtonClass("edit")} aria-label="Edit city" title="Edit city">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("city")} className={iconButtonClass("remove")} aria-label="Revert city" title="Revert city">
+                    <button type="button" onClick={() => resetMetadataField("city")} className={iconButtonClass("remove")} aria-label="Revert city" title="Revert city">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -779,14 +776,13 @@ export default function AdminContentRefreshPage() {
                     <input
                       id="metadata-years-active"
                       value={proposedArtist.artist_context?.yearsActive ?? ""}
-                      disabled={beforeArtist.is_curated}
                       onChange={(event) => updateArtistContext({ yearsActive: event.target.value })}
                       className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
                     />
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-years-active")} className={iconButtonClass("edit")} aria-label="Edit years active" title="Edit years active">
+                    <button type="button" onClick={() => focusControl("metadata-years-active")} className={iconButtonClass("edit")} aria-label="Edit years active" title="Edit years active">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("yearsActive")} className={iconButtonClass("remove")} aria-label="Revert years active" title="Revert years active">
+                    <button type="button" onClick={() => resetMetadataField("yearsActive")} className={iconButtonClass("remove")} aria-label="Revert years active" title="Revert years active">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -806,7 +802,6 @@ export default function AdminContentRefreshPage() {
                   <input
                     id="metadata-wikipedia-url"
                     value={proposedArtist.wikipedia_url ?? ""}
-                    disabled={beforeArtist.is_curated}
                     onChange={(event) => setProposedArtist({
                       ...proposedArtist,
                       wikipedia_url: event.target.value,
@@ -814,10 +809,10 @@ export default function AdminContentRefreshPage() {
                     placeholder="https://en.wikipedia.org/wiki/..."
                     className="min-w-0 flex-1 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8] disabled:opacity-50"
                   />
-                  <button type="button" disabled={beforeArtist.is_curated} onClick={() => focusControl("metadata-wikipedia-url")} className={iconButtonClass("edit")} aria-label="Edit Wikipedia URL" title="Edit Wikipedia URL">
+                  <button type="button" onClick={() => focusControl("metadata-wikipedia-url")} className={iconButtonClass("edit")} aria-label="Edit Wikipedia URL" title="Edit Wikipedia URL">
                     <Pencil className="h-4 w-4" />
                   </button>
-                  <button type="button" disabled={beforeArtist.is_curated} onClick={() => resetMetadataField("wikipediaUrl")} className={iconButtonClass("remove")} aria-label="Revert Wikipedia URL" title="Revert Wikipedia URL">
+                  <button type="button" onClick={() => resetMetadataField("wikipediaUrl")} className={iconButtonClass("remove")} aria-label="Revert Wikipedia URL" title="Revert Wikipedia URL">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -833,7 +828,6 @@ export default function AdminContentRefreshPage() {
                       <input
                         id={`related-artist-name-${index}`}
                         value={related.name ?? ""}
-                        disabled={beforeArtist.is_curated}
                         aria-label={`Related artist ${index + 1}`}
                         onChange={(event) => {
                           const relatedArtists = [...(proposedArtist.artist_context?.relatedArtists ?? [])]
@@ -853,7 +847,6 @@ export default function AdminContentRefreshPage() {
                       <input
                         id={`related-artist-reason-${index}`}
                         value={related.reason ?? ""}
-                        disabled={beforeArtist.is_curated}
                         aria-label={`Related artist reason ${index + 1}`}
                         onChange={(event) => {
                           const relatedArtists = [...(proposedArtist.artist_context?.relatedArtists ?? [])]
@@ -872,7 +865,6 @@ export default function AdminContentRefreshPage() {
                       />
                       <button
                         type="button"
-                        disabled={beforeArtist.is_curated}
                         onClick={() => focusControl(`related-artist-name-${index}`)}
                         className={iconButtonClass("edit")}
                         aria-label={`Edit related artist ${index + 1}`}
@@ -882,7 +874,6 @@ export default function AdminContentRefreshPage() {
                       </button>
                       <button
                         type="button"
-                        disabled={beforeArtist.is_curated}
                         onClick={() => {
                           const relatedArtists = (proposedArtist.artist_context?.relatedArtists ?? [])
                             .filter((_, itemIndex) => itemIndex !== index)
@@ -903,7 +894,6 @@ export default function AdminContentRefreshPage() {
                   ))}
                   <button
                     type="button"
-                    disabled={beforeArtist.is_curated}
                     onClick={() => setProposedArtist({
                       ...proposedArtist,
                       artist_context: proposedArtist.artist_context
@@ -1110,7 +1100,7 @@ export default function AdminContentRefreshPage() {
             {publishWarnings.map((warning) => <p key={warning} className="mb-3 border border-[#a33b33]/35 bg-[#a33b33]/5 p-3 text-sm text-[#82332d]"><strong>Publish blocked:</strong> {warning}</p>)}
             {hasManualMetadataEdits && (
               <p className="mb-3 border border-[#9256a8]/35 bg-[#9256a8]/5 p-3 text-sm text-[#6d3d7c]">
-                <strong>Manual metadata:</strong> Publishing will mark this artist as curated. Future metadata and same-vibe refreshes cannot overwrite it, but video and YouTube metadata refreshes remain available.
+                <strong>Manual metadata:</strong> Publishing keeps this artist curated so automated public rebuilds cannot overwrite your edits.
               </p>
             )}
             <p className="mb-4 text-sm text-black/55">Publishing applies your edits from this preview. Manually selected videos are marked protected for future refreshes.</p>
