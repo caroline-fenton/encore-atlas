@@ -34,6 +34,20 @@ const videoSections: Array<{
 function valueText(value: unknown): string {
   if (value == null || value === "") return "Not set"
   if (Array.isArray(value)) return value.join(", ") || "None"
+  if (typeof value === "object") {
+    const epic = value as Partial<ReturnType<typeof defaultEpicTemplate>>
+    if ("enabled" in epic) {
+      return [
+        epic.enabled ? "Enabled" : "Disabled",
+        epic.heroImageUrl,
+        epic.tagline,
+        epic.featuredEra,
+        epic.featuredLiveMoment,
+        epic.introCopy,
+      ].filter(Boolean).join(" | ") || "Disabled"
+    }
+    return JSON.stringify(value)
+  }
   return String(value)
 }
 
@@ -88,6 +102,7 @@ function editableMetadataSignature(artist: RefreshArtist, scopes: RefreshScope[]
       city: artist.artist_context?.city ?? null,
       yearsActive: artist.artist_context?.yearsActive ?? null,
       wikipediaUrl: artist.wikipedia_url ?? null,
+      epicTemplate: artist.artist_context?.epicTemplate ?? null,
     } : null,
     sameVibe: scopes.includes("same_vibe")
       ? artist.artist_context?.relatedArtists ?? []
@@ -183,6 +198,17 @@ function focusControl(id: string) {
   window.requestAnimationFrame(() => {
     document.getElementById(id)?.focus()
   })
+}
+
+function defaultEpicTemplate() {
+  return {
+    enabled: false,
+    heroImageUrl: null,
+    tagline: null,
+    featuredEra: null,
+    featuredLiveMoment: null,
+    introCopy: null,
+  }
 }
 
 function AddVideoForm({
@@ -550,7 +576,19 @@ export default function AdminContentRefreshPage() {
     })
   }
 
-  function resetMetadataField(field: "tags" | "blurb" | "city" | "yearsActive" | "wikipediaUrl") {
+  function updateEpicTemplate(
+    patch: Partial<NonNullable<NonNullable<RefreshArtist["artist_context"]>["epicTemplate"]>>,
+  ) {
+    if (!proposedArtist?.artist_context) return
+    const epicTemplate = {
+      ...defaultEpicTemplate(),
+      ...(proposedArtist.artist_context.epicTemplate ?? {}),
+      ...patch,
+    }
+    updateArtistContext({ epicTemplate })
+  }
+
+  function resetMetadataField(field: "tags" | "blurb" | "city" | "yearsActive" | "wikipediaUrl" | "epicTemplate") {
     if (!proposedArtist || !refresh) return
     const currentArtist = refresh.before_snapshot.artist
     if (field === "tags") {
@@ -567,6 +605,12 @@ export default function AdminContentRefreshPage() {
     }
     if (field === "wikipediaUrl") {
       setProposedArtist({ ...proposedArtist, wikipedia_url: currentArtist.wikipedia_url ?? "" })
+      return
+    }
+    if (field === "epicTemplate") {
+      updateArtistContext({
+        epicTemplate: currentArtist.artist_context?.epicTemplate ?? defaultEpicTemplate(),
+      })
       return
     }
     updateArtistContext({ yearsActive: currentArtist.artist_context?.yearsActive ?? null })
@@ -903,6 +947,70 @@ export default function AdminContentRefreshPage() {
               </EditableField>
             ) : (
               <ChangeRow label="Wikipedia" before={beforeArtist.wikipedia_url} after={proposedArtist.wikipedia_url} />
+            )}
+            {refresh.scopes.includes("metadata") ? (
+              <EditableField label="Epic template" before={beforeArtist.artist_context?.epicTemplate}>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 text-sm font-semibold text-black/70">
+                    <input
+                      type="checkbox"
+                      checked={Boolean((proposedArtist.artist_context?.epicTemplate ?? defaultEpicTemplate()).enabled)}
+                      onChange={(event) => updateEpicTemplate({ enabled: event.target.checked })}
+                      className="h-4 w-4 accent-[#d94f43]"
+                    />
+                    Enable Epic Artist template
+                  </label>
+                  <div className="grid gap-3">
+                    <input
+                      id="epic-hero-image-url"
+                      value={(proposedArtist.artist_context?.epicTemplate ?? defaultEpicTemplate()).heroImageUrl ?? ""}
+                      onChange={(event) => updateEpicTemplate({ heroImageUrl: event.target.value })}
+                      placeholder="Hero/background image URL"
+                      className="min-w-0 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8]"
+                    />
+                    <input
+                      value={(proposedArtist.artist_context?.epicTemplate ?? defaultEpicTemplate()).tagline ?? ""}
+                      onChange={(event) => updateEpicTemplate({ tagline: event.target.value })}
+                      placeholder="Tagline"
+                      className="min-w-0 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8]"
+                    />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input
+                        value={(proposedArtist.artist_context?.epicTemplate ?? defaultEpicTemplate()).featuredEra ?? ""}
+                        onChange={(event) => updateEpicTemplate({ featuredEra: event.target.value })}
+                        placeholder="Featured era"
+                        className="min-w-0 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8]"
+                      />
+                      <input
+                        value={(proposedArtist.artist_context?.epicTemplate ?? defaultEpicTemplate()).featuredLiveMoment ?? ""}
+                        onChange={(event) => updateEpicTemplate({ featuredLiveMoment: event.target.value })}
+                        placeholder="Featured live moment"
+                        className="min-w-0 border border-stone-300 bg-white/60 px-3 py-2 text-sm outline-none focus:border-[#9256a8]"
+                      />
+                    </div>
+                    <textarea
+                      value={(proposedArtist.artist_context?.epicTemplate ?? defaultEpicTemplate()).introCopy ?? ""}
+                      rows={4}
+                      onChange={(event) => updateEpicTemplate({ introCopy: event.target.value })}
+                      placeholder="Curated intro copy"
+                      className="min-w-0 resize-y border border-stone-300 bg-white/60 px-3 py-2 text-sm leading-relaxed outline-none focus:border-[#9256a8]"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => focusControl("epic-hero-image-url")} className={iconButtonClass("edit")} aria-label="Edit Epic template image URL" title="Edit Epic template">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button type="button" onClick={() => resetMetadataField("epicTemplate")} className={iconButtonClass("remove")} aria-label="Revert Epic template" title="Revert Epic template">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs leading-relaxed text-black/45">
+                    Upload curated images to Supabase Storage or another approved host, then paste the URL here. If no image is set, the Epic page falls back to existing artist/video imagery.
+                  </p>
+                </div>
+              </EditableField>
+            ) : (
+              <ChangeRow label="Epic template" before={beforeArtist.artist_context?.epicTemplate} after={proposedArtist.artist_context?.epicTemplate} />
             )}
             {refresh.scopes.includes("same_vibe") ? (
               <EditableField label="Same vibe" before={beforeArtist.related_artists}>
