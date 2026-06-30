@@ -154,13 +154,12 @@ function stagePreviewVideos(beforeVideos: RefreshVideo[], proposedVideos: Refres
 function duplicateVideoKeys(videos: RefreshVideo[]) {
   const counts = new Map<string, number>()
   for (const video of videos) {
-    const key = videoKey(video)
-    counts.set(key, (counts.get(key) ?? 0) + 1)
+    counts.set(video.youtube_video_id, (counts.get(video.youtube_video_id) ?? 0) + 1)
   }
   return new Set(
     [...counts.entries()]
       .filter(([, count]) => count > 1)
-      .map(([key]) => key),
+      .map(([youtubeVideoId]) => youtubeVideoId),
   )
 }
 
@@ -346,7 +345,7 @@ function VideoPreview({
           </div>
           {isDuplicate && (
             <p className="mt-2 border border-[#a33b33]/25 bg-[#a33b33]/5 px-2 py-1 text-xs text-[#82332d]">
-              This video appears more than once in this section.
+              This video appears more than once in this preview.
             </p>
           )}
           <a href={watchUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-xs text-[#3580b0] underline">
@@ -1119,7 +1118,7 @@ export default function AdminContentRefreshPage() {
                               video={video}
                               videoType={section.type}
                               isProtectedManual={beforeManualVideoIds.has(videoKey(video))}
-                              isDuplicate={duplicateKeys.has(videoKey(video))}
+                              isDuplicate={duplicateKeys.has(video.youtube_video_id)}
                               changeLabel={
                                 beforeManualVideoIds.has(videoKey(video))
                                   ? "Manual · protected"
