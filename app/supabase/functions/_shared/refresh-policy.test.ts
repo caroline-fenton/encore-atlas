@@ -298,8 +298,8 @@ test("editable video helpers include all artist-page video categories", () => {
   )
 })
 
-test("video duplicate checks are scoped by video type", () => {
-  assert.deepEqual(validatePublishRequest({
+test("video duplicate checks reject repeated YouTube IDs across sections", () => {
+  assert.ok(validatePublishRequest({
     scopes: ["videos"],
     isCurated: false,
     existingVideos: [],
@@ -308,7 +308,7 @@ test("video duplicate checks are scoped by video type", () => {
       video("samevideo01", false, "interview"),
     ],
     manualVideoReplacements: [],
-  }), [])
+  }).includes("The proposed video list contains duplicates."))
 })
 
 test("normalizes display order independently for each video type", () => {

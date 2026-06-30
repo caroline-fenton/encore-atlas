@@ -222,7 +222,13 @@ export function validatePublishRequest(input: {
       errors.push("A protected manual video replacement must remain manual and keep its position.")
     }
 
-    if (proposedKeys.size !== input.proposedVideos.length) {
+    const proposedVideoIds = new Set(
+      input.proposedVideos.map((video) => video.youtube_video_id),
+    )
+    if (
+      proposedKeys.size !== input.proposedVideos.length
+      || proposedVideoIds.size !== input.proposedVideos.length
+    ) {
       errors.push("The proposed video list contains duplicates.")
     }
   }
