@@ -29,9 +29,19 @@ type EditableArtist = {
     yearsActive: string | null
     sceneSummary: string
     relatedArtists: Array<{ name: string; reason: string }>
+    epicTemplate?: EpicArtistTemplate | null
     [key: string]: unknown
   } | null
   [key: string]: unknown
+}
+
+type EpicArtistTemplate = {
+  enabled: boolean
+  heroImageUrl: string | null
+  tagline: string | null
+  featuredEra: string | null
+  featuredLiveMoment: string | null
+  introCopy: string | null
 }
 
 function normalizeText(value: unknown): string | null {
@@ -48,6 +58,21 @@ function normalizeTextList(value: unknown): string[] {
       .map((item) => item.trim())
       .filter(Boolean),
   )]
+}
+
+function normalizeEpicTemplate(value: unknown): EpicArtistTemplate {
+  const input = value && typeof value === "object"
+    ? value as Record<string, unknown>
+    : {}
+
+  return {
+    enabled: Boolean(input.enabled),
+    heroImageUrl: normalizeText(input.heroImageUrl),
+    tagline: normalizeText(input.tagline),
+    featuredEra: normalizeText(input.featuredEra),
+    featuredLiveMoment: normalizeText(input.featuredLiveMoment),
+    introCopy: normalizeText(input.introCopy),
+  }
 }
 
 export function applyManualArtistEdits(
@@ -69,12 +94,16 @@ export function applyManualArtistEdits(
   const errors: string[] = []
 
   if (scopes.includes("metadata")) {
+    const submittedEpicTemplate = submitted.artist_context?.epicTemplate
+      ?? generated.artist_context?.epicTemplate
+      ?? null
     const metadataChanged = JSON.stringify([
       submitted.tags ?? [],
       submitted.blurb,
       submitted.artist_context?.city ?? null,
       submitted.artist_context?.yearsActive ?? null,
       submitted.wikipedia_url ?? null,
+      submittedEpicTemplate,
     ])
       !== JSON.stringify([
         generated.tags ?? [],
@@ -82,6 +111,7 @@ export function applyManualArtistEdits(
         generated.artist_context?.city ?? null,
         generated.artist_context?.yearsActive ?? null,
         generated.wikipedia_url ?? null,
+        generated.artist_context?.epicTemplate ?? null,
       ])
 
     if (metadataChanged) {
@@ -101,6 +131,9 @@ export function applyManualArtistEdits(
       context.sceneSummary = blurb ?? ""
       context.city = city
       context.yearsActive = yearsActive
+      context.epicTemplate = normalizeEpicTemplate(
+        submittedEpicTemplate,
+      )
     }
   }
 

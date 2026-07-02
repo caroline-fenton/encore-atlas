@@ -256,6 +256,14 @@ type ArtistContext = {
   associatedWith: string[]
   sceneSummary: string
   relatedArtists: Array<{ name: string; reason: string }>
+  epicTemplate?: {
+    enabled: boolean
+    heroImageUrl: string | null
+    tagline: string | null
+    featuredEra: string | null
+    featuredLiveMoment: string | null
+    introCopy: string | null
+  } | null
 }
 
 type ClaudeTagResult = {

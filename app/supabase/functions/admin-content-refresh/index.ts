@@ -26,6 +26,14 @@ type ArtistContext = {
   associatedWith: string[]
   sceneSummary: string
   relatedArtists: Array<{ name: string; reason: string }>
+  epicTemplate?: {
+    enabled: boolean
+    heroImageUrl: string | null
+    tagline: string | null
+    featuredEra: string | null
+    featuredLiveMoment: string | null
+    introCopy: string | null
+  } | null
 }
 
 type ArtistRow = {
@@ -297,6 +305,14 @@ function editableArtistSnapshot(artist: ArtistRow): ArtistRow {
       artist.artist_context?.relatedArtists
       ?? artist.related_artists?.map((name) => ({ name, reason: "" }))
       ?? [],
+    epicTemplate: artist.artist_context?.epicTemplate ?? {
+      enabled: false,
+      heroImageUrl: null,
+      tagline: null,
+      featuredEra: null,
+      featuredLiveMoment: null,
+      introCopy: null,
+    },
   }
 
   return {

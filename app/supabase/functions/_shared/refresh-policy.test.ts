@@ -123,6 +123,52 @@ test("manual metadata edits are normalized and detected", () => {
   assert.deepEqual(result.artist.related_artists, ["New Peer"])
 })
 
+test("epic artist template edits are normalized with metadata", () => {
+  const generated = {
+    tags: ["rock"],
+    blurb: "Summary",
+    wikipedia_url: null,
+    related_artists: ["Peer"],
+    artist_context: {
+      genre: ["rock"],
+      city: null,
+      yearsActive: null,
+      sceneSummary: "Summary",
+      relatedArtists: [{ name: "Peer", reason: "" }],
+      epicTemplate: {
+        enabled: false,
+        heroImageUrl: null,
+        tagline: null,
+        featuredEra: null,
+        featuredLiveMoment: null,
+        introCopy: null,
+      },
+    },
+  }
+  const submitted = structuredClone(generated)
+  submitted.artist_context.epicTemplate = {
+    enabled: true,
+    heroImageUrl: " https://example.com/hero.jpg ",
+    tagline: "  A cathedral of feedback ",
+    featuredEra: "  1977-1978 ",
+    featuredLiveMoment: "",
+    introCopy: "  Start with the live set. ",
+  }
+
+  const result = applyManualArtistEdits(generated, submitted, ["metadata"])
+
+  assert.equal(result.manualMetadataEdit, true)
+  assert.deepEqual(result.errors, [])
+  assert.deepEqual(result.artist.artist_context?.epicTemplate, {
+    enabled: true,
+    heroImageUrl: "https://example.com/hero.jpg",
+    tagline: "A cathedral of feedback",
+    featuredEra: "1977-1978",
+    featuredLiveMoment: null,
+    introCopy: "Start with the live set.",
+  })
+})
+
 test("manual metadata edits cannot clear required generated content", () => {
   const artist = {
     tags: ["rock"],

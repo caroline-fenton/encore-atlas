@@ -8,6 +8,16 @@ export type ArtistContext = {
   associatedWith: string[]
   sceneSummary: string
   relatedArtists: Array<{ name: string; reason: string }>
+  epicTemplate?: EpicArtistTemplate | null
+}
+
+export type EpicArtistTemplate = {
+  enabled: boolean
+  heroImageUrl: string | null
+  tagline: string | null
+  featuredEra: string | null
+  featuredLiveMoment: string | null
+  introCopy: string | null
 }
 
 export type ArtistVideo = {
