@@ -11,6 +11,7 @@ import VideoCardSkeleton from "../components/shared/VideoCardSkeleton"
 import ErrorState from "../components/shared/ErrorState"
 import EmptyState from "../components/shared/EmptyState"
 import BuildingState from "../components/shared/BuildingState"
+import ArtistBio from "../components/shared/ArtistBio"
 import EpicArtistPage from "../components/liveShows/EpicArtistPage"
 import StandardArtistPage from "../components/liveShows/StandardArtistPage"
 
@@ -214,9 +215,12 @@ export default function LiveShowsPage() {
       )}
 
       {!error && !isLoading && !featured && !hasMore && (
-        <EmptyState
-          message={`No concert videos found for ${selectedArtistName}.`}
-        />
+        <>
+          <ArtistBio context={artistContext ?? null} isLoading={false} />
+          <EmptyState
+            message={`No concert videos found for ${selectedArtistName}.`}
+          />
+        </>
       )}
 
       {!error && !isLoading && !featured && hasMore && (
