@@ -54,6 +54,111 @@ export type ArtistPageData = {
   was_cache_hit: boolean
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object"
+    ? value as Record<string, unknown>
+    : null
+}
+
+function textOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === "string")
+}
+
+function normalizeRelatedArtists(value: unknown): ArtistContext["relatedArtists"] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (typeof item === "string") {
+        const name = textOrNull(item)
+        return name ? { name, reason: "" } : null
+      }
+
+      const related = asRecord(item)
+      const name = textOrNull(related?.name)
+      if (!name) return null
+      return {
+        name,
+        reason: textOrNull(related?.reason) ?? "",
+      }
+    })
+    .filter((item): item is ArtistContext["relatedArtists"][number] => item !== null)
+}
+
+export function normalizeEpicArtistTemplate(
+  value: unknown,
+): EpicArtistTemplate | null {
+  const epic = asRecord(value)
+  if (!epic) return null
+
+  return {
+    enabled: epic.enabled === true || epic.enabled === "true",
+    heroImageUrl: textOrNull(epic.heroImageUrl ?? epic.hero_image_url),
+    tagline: textOrNull(epic.tagline),
+    featuredEra: textOrNull(epic.featuredEra ?? epic.featured_era),
+    featuredLiveMoment: textOrNull(
+      epic.featuredLiveMoment ?? epic.featured_live_moment,
+    ),
+    introCopy: textOrNull(epic.introCopy ?? epic.intro_copy),
+  }
+}
+
+export function normalizeArtistContext(value: unknown): ArtistContext | null {
+  const context = asRecord(value)
+  if (!context) return null
+
+  return {
+    genre: normalizeStringList(context.genre),
+    city: textOrNull(context.city),
+    yearsActive: textOrNull(context.yearsActive ?? context.years_active),
+    knownFor: normalizeStringList(context.knownFor ?? context.known_for),
+    associatedWith: normalizeStringList(
+      context.associatedWith ?? context.associated_with,
+    ),
+    sceneSummary: textOrNull(context.sceneSummary ?? context.scene_summary) ?? "",
+    relatedArtists: normalizeRelatedArtists(
+      context.relatedArtists ?? context.related_artists,
+    ),
+    epicTemplate: normalizeEpicArtistTemplate(
+      context.epicTemplate ?? context.epic_template,
+    ),
+  }
+}
+
+function artistNameLookupVariants(artistName: string): string[] {
+  const normalized = artistName.trim().toLowerCase()
+  if (!normalized) return []
+
+  const variants = [normalized]
+  const withoutLeadingThe = normalized.replace(/^the\s+/, "")
+  if (withoutLeadingThe !== normalized) {
+    variants.push(withoutLeadingThe)
+  } else {
+    variants.push(`the ${normalized}`)
+  }
+
+  return [...new Set(variants)]
+}
+
+async function findCachedArtist(artistName: string) {
+  for (const variant of artistNameLookupVariants(artistName)) {
+    const escaped = variant.replace(/%/g, "\\%").replace(/_/g, "\\_")
+    const { data: artist } = await supabase
+      .from("artists")
+      .select("*")
+      .ilike("name", escaped)
+      .maybeSingle()
+
+    if (artist) return artist
+  }
+
+  return null
+}
+
 /**
  * Checks if an artist page is already cached in Supabase.
  * Returns the data if the artist has been through the build pipeline
@@ -62,14 +167,7 @@ export type ArtistPageData = {
 export async function getCachedArtistPage(
   artistName: string,
 ): Promise<ArtistPageData | null> {
-  const normalized = artistName.trim().toLowerCase()
-  const escaped = normalized.replace(/%/g, "\\%").replace(/_/g, "\\_")
-
-  const { data: artist } = await supabase
-    .from("artists")
-    .select("*")
-    .ilike("name", escaped)
-    .maybeSingle()
+  const artist = await findCachedArtist(artistName)
 
   // last_refreshed_at is set by the edge function after a successful build.
   // Using this instead of tags avoids perpetual rebuilds when tagging fails.
@@ -118,7 +216,7 @@ export async function getCachedArtistPage(
       decade: artist.decade,
       related_artists: artist.related_artists,
       is_curated: artist.is_curated,
-      artist_context: (artist.artist_context as ArtistContext) ?? null,
+      artist_context: normalizeArtistContext(artist.artist_context),
     },
     videos: byType("concert"),
     interview_videos: byType("interview"),
