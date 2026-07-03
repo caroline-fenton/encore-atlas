@@ -5,8 +5,10 @@ import type { ArtistPageLayoutProps } from "./ArtistPageLayoutTypes"
 import SameVibeSection from "./SameVibeSection"
 import VideoHero from "./VideoHero"
 
-function metaItems(values: Array<string | null | undefined>) {
-  return values.filter((value): value is string => Boolean(value?.trim()))
+function metaItems(items: Array<{ label: string; value: string | null | undefined }>) {
+  return items.filter((item): item is { label: string; value: string } =>
+    Boolean(item.value?.trim())
+  )
 }
 
 export default function EpicArtistPage({
@@ -37,10 +39,10 @@ export default function EpicArtistPage({
   const backgroundImage = epic?.heroImageUrl || bioImageUrl || activeVideo.thumbnailUrl
   const introCopy = epic?.introCopy || context?.sceneSummary || null
   const details = metaItems([
-    epic?.featuredEra,
-    epic?.featuredLiveMoment,
-    city,
-    yearsActive,
+    { label: "Featured era", value: epic?.featuredEra },
+    { label: "Live moment", value: epic?.featuredLiveMoment },
+    { label: "Origin", value: city },
+    { label: "Active years", value: yearsActive },
   ])
 
   return (
@@ -55,8 +57,9 @@ export default function EpicArtistPage({
         ) : (
           <div className="absolute inset-0 -z-20 bg-[#171412]" />
         )}
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(12,10,8,0.92),rgba(12,10,8,0.62)_46%,rgba(217,79,67,0.28))]" />
-        <div className="absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-t from-[#f6f1e8] to-transparent" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(12,10,8,0.94),rgba(12,10,8,0.68)_48%,rgba(217,79,67,0.24))]" />
+        <div className="absolute inset-y-0 left-0 -z-10 w-full bg-[linear-gradient(90deg,rgba(9,7,6,0.88),rgba(9,7,6,0.42)_42%,transparent_72%)]" />
+        <div className="absolute inset-x-0 bottom-0 -z-10 h-44 bg-[linear-gradient(to_top,rgba(9,7,6,0.86),transparent)]" />
 
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.55fr)] lg:items-end">
           <div className="space-y-5">
@@ -85,17 +88,22 @@ export default function EpicArtistPage({
             )}
 
             {details.length > 0 && (
-              <div className="grid gap-2 text-xs uppercase tracking-[0.12em] text-white/70 sm:grid-cols-2">
+              <div className="grid gap-3 text-xs uppercase tracking-[0.12em] text-white/78 sm:grid-cols-2">
                 {details.map((detail) => (
-                  <div key={detail} className="border-l-2 border-[#d94f43] pl-3">
-                    {detail}
+                  <div key={`${detail.label}:${detail.value}`} className="border-l-2 border-[#d94f43] pl-3">
+                    <div className="text-[9px] font-semibold tracking-[0.18em] text-white/45">
+                      {detail.label}
+                    </div>
+                    <div className="mt-1 text-white/82">
+                      {detail.value}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
             {introCopy && (
-              <p className="max-w-2xl text-sm leading-relaxed text-white/78">
+              <p className="max-w-2xl text-sm font-medium leading-relaxed text-white/88 drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
                 {introCopy}
               </p>
             )}
