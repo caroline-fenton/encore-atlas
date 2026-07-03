@@ -153,7 +153,7 @@ async function findCachedArtist(artistName: string) {
       .ilike("name", escaped)
       .maybeSingle()
 
-    if (artist) return artist
+    if (artist?.last_refreshed_at) return artist
   }
 
   return null
@@ -171,7 +171,7 @@ export async function getCachedArtistPage(
 
   // last_refreshed_at is set by the edge function after a successful build.
   // Using this instead of tags avoids perpetual rebuilds when tagging fails.
-  if (!artist || !artist.last_refreshed_at) {
+  if (!artist) {
     return null
   }
 
