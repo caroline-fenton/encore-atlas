@@ -62,8 +62,13 @@ export default function LiveShowsPage() {
   const pipelineFailed =
     pipelineSettled && !pipelineSucceeded
 
+  // "Not found" is a definitive rejection of the name itself (mixed-script
+  // junk, or no such MusicBrainz artist) — don't burn YouTube quota on
+  // live-search fallbacks that would only surface unrelated videos.
+  const artistNotFound = artistPage.notFound
+
   const youtubeResult = useArtistConcerts(
-    pipelineFailed ? selectedArtistName : "",
+    pipelineFailed && !artistNotFound ? selectedArtistName : "",
   )
 
   // Determine which data source to use
@@ -94,10 +99,10 @@ export default function LiveShowsPage() {
   const interviewsSynced = artistPage.data?.interviews_synced ?? false
   const musicVideosSynced = artistPage.data?.music_videos_synced ?? false
   const { videos: liveInterviewVideos } = useArtistInterviews(
-    pipelineSettled && !interviewsSynced ? selectedArtistName : "",
+    pipelineSettled && !artistNotFound && !interviewsSynced ? selectedArtistName : "",
   )
   const { videos: liveMusicVideos } = useArtistMusicVideos(
-    pipelineSettled && !musicVideosSynced ? selectedArtistName : "",
+    pipelineSettled && !artistNotFound && !musicVideosSynced ? selectedArtistName : "",
   )
   const interviewVideos = interviewsSynced
     ? mapCachedVideos(cachedInterviews ?? [])
@@ -159,6 +164,21 @@ export default function LiveShowsPage() {
           </h1>
         </header>
         <BuildingState artistName={selectedArtistName} />
+      </div>
+    )
+  }
+
+  if (artistNotFound) {
+    return (
+      <div className="space-y-8 pb-10">
+        <header>
+          <h1 className="font-display text-5xl md:text-6xl font-normal tracking-[0.22em] leading-none text-black/80 uppercase">
+            {selectedArtistName}
+          </h1>
+        </header>
+        <EmptyState
+          message={`We couldn't find an artist called "${selectedArtistName}". Check the spelling or try another name.`}
+        />
       </div>
     )
   }

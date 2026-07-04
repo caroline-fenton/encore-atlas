@@ -99,6 +99,29 @@ async function searchArtist(
   }
 }
 
+export type SubjectArtistVerification =
+  | { status: "verified"; canonicalName: string }
+  | { status: "not_found" }
+  | { status: "unavailable" }
+
+/**
+ * Single-name existence check for a page's subject artist — unlike
+ * verifyArtistNames (which batches related-artist suggestions), this makes
+ * one request with no pacing gap. "not_found" is a definitive MusicBrainz
+ * miss; "unavailable" means the lookup itself failed and callers should
+ * fail open rather than reject the name.
+ */
+export async function verifySubjectArtist(
+  name: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SubjectArtistVerification> {
+  const outcome = await searchArtist(name, fetchImpl)
+  if (!outcome.ok) return { status: "unavailable" }
+  return outcome.canonicalName
+    ? { status: "verified", canonicalName: outcome.canonicalName }
+    : { status: "not_found" }
+}
+
 /**
  * Verifies artist names against MusicBrainz, sequentially and rate-limited.
  *

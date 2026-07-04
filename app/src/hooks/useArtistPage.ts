@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import {
   getCachedArtistPage,
   buildArtistPage,
+  ArtistNotFoundError,
   type ArtistPageData,
 } from "../services/artistPage"
 
@@ -10,6 +11,10 @@ type UseArtistPageResult = {
   isLoading: boolean
   isBuilding: boolean
   error: string | null
+  // The edge function rejected the name as not being a real artist. This is
+  // a definitive answer, not a failure — the UI should show a friendly
+  // "artist not found" state and skip live-search fallbacks.
+  notFound: boolean
   retry: () => void
 }
 
@@ -23,6 +28,7 @@ export function useArtistPage(artistName: string): UseArtistPageResult {
   const [isLoading, setIsLoading] = useState(true)
   const [isBuilding, setIsBuilding] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notFound, setNotFound] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -37,6 +43,7 @@ export function useArtistPage(artistName: string): UseArtistPageResult {
       setIsLoading(true)
       setIsBuilding(false)
       setError(null)
+      setNotFound(false)
       setData(null)
 
       try {
@@ -56,9 +63,13 @@ export function useArtistPage(artistName: string): UseArtistPageResult {
         setData(result)
       } catch (err) {
         if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : "Failed to load artist page",
-          )
+          if (err instanceof ArtistNotFoundError) {
+            setNotFound(true)
+          } else {
+            setError(
+              err instanceof Error ? err.message : "Failed to load artist page",
+            )
+          }
         }
       } finally {
         if (!cancelled) {
@@ -78,5 +89,5 @@ export function useArtistPage(artistName: string): UseArtistPageResult {
 
   const retry = useCallback(() => setRetryCount((c) => c + 1), [])
 
-  return { data, isLoading, isBuilding, error, retry }
+  return { data, isLoading, isBuilding, error, notFound, retry }
 }

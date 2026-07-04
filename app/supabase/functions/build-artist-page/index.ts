@@ -4,10 +4,15 @@ import { decodeHtml } from "../../../src/utils/decodeHtml.ts"
 import { fetchWikipediaSummary } from "../../../src/utils/wikipedia.ts"
 import {
   filterRelatedArtists,
+  hasMixedScript,
   isSameArtistName,
   normalizeArtistName,
 } from "../../../src/utils/artistNameFilters.ts"
-import { MAX_LOOKUPS, verifyArtistNames } from "../_shared/musicbrainz.ts"
+import {
+  MAX_LOOKUPS,
+  verifyArtistNames,
+  verifySubjectArtist,
+} from "../_shared/musicbrainz.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -468,6 +473,39 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify(response), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       })
+    }
+
+    // ── SUBJECT VALIDATION ──
+    // Runs only on cache misses, so curated and already-built artists are
+    // never re-validated. Blocks junk subject names (stale links, search
+    // history pointing at deleted pages) from rebuilding garbage rows.
+    const rejectUnknownArtist = () =>
+      new Response(
+        JSON.stringify({
+          error: "artist_not_found",
+          message: `No artist found matching "${artist_name}"`,
+        }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      )
+
+    if (hasMixedScript(artist_name)) {
+      return rejectUnknownArtist()
+    }
+
+    // Existence check against MusicBrainz: a definitive miss rejects the
+    // build, while a transport failure fails open so MusicBrainz downtime
+    // can't take page building down with it. The canonical name is
+    // deliberately NOT swapped into the stored row — the ilike cache check
+    // above and artistNameLookupVariants in src/services/artistPage.ts both
+    // match on the user's normalized input, and a stored name that
+    // normalizes differently (e.g. "sigur rós" for input "sigur ros") would
+    // make the row unfindable and trigger a rebuild on every visit.
+    const subjectVerification = await verifySubjectArtist(artist_name)
+    if (subjectVerification.status === "not_found") {
+      return rejectUnknownArtist()
     }
 
     // ── CACHE MISS — BUILD THE PAGE ──
