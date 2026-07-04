@@ -1,5 +1,18 @@
+import { FunctionsHttpError } from "@supabase/supabase-js"
 import { supabase } from "./supabase"
 import { filterRelatedArtists } from "../utils/artistNameFilters"
+
+/**
+ * Thrown when the build-artist-page edge function rejects the subject name
+ * (mixed-script junk, or no matching MusicBrainz artist). The UI shows this
+ * as a friendly "artist not found" state instead of a generic failure.
+ */
+export class ArtistNotFoundError extends Error {
+  constructor(artistName: string) {
+    super(`We couldn't find an artist called "${artistName}".`)
+    this.name = "ArtistNotFoundError"
+  }
+}
 
 export type ArtistContext = {
   genre: string[]
@@ -247,6 +260,12 @@ export async function buildArtistPage(
   })
 
   if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null)
+      if (body?.error === "artist_not_found") {
+        throw new ArtistNotFoundError(artistName)
+      }
+    }
     throw new Error(`Failed to build artist page: ${error.message}`)
   }
 

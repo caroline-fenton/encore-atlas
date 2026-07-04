@@ -5,6 +5,7 @@ import {
   MAX_LOOKUPS,
   pickCanonicalName,
   verifyArtistNames,
+  verifySubjectArtist,
   type MusicBrainzArtist,
 } from "./musicbrainz.ts"
 
@@ -23,6 +24,21 @@ test("pickCanonicalName matches via aliases", () => {
     { name: "Sigur Rós", aliases: [{ name: "Sigur Ros" }] },
   ]
   assert.equal(pickCanonicalName("Sigur Ros", candidates), "Sigur Rós")
+})
+
+test("pickCanonicalName matches punctuation-only names raw", () => {
+  // "!!!" normalizes to the empty string, so matching falls back to a raw
+  // case-insensitive comparison instead of rejecting outright.
+  const candidates: MusicBrainzArtist[] = [
+    { name: "!!!", aliases: [{ name: "Chk Chk Chk" }] },
+  ]
+  assert.equal(pickCanonicalName("!!!", candidates), "!!!")
+  assert.equal(pickCanonicalName("!!! ", candidates), "!!!")
+
+  // Raw matching is exact — different punctuation is not the same artist.
+  assert.equal(pickCanonicalName("!!?", candidates), null)
+  // Whitespace-only queries still match nothing.
+  assert.equal(pickCanonicalName("   ", candidates), null)
 })
 
 test("pickCanonicalName returns null when nothing matches", () => {
@@ -75,6 +91,59 @@ test("verifyArtistNames maps verified, unknown, and errored lookups", async () =
   assert.equal(results.get("Portishead"), "Portishead") // verified
   assert.equal(results.get("Fake Band"), null) // definitively absent → drop
   assert.equal(results.get("Unreachable"), "Unreachable") // fail open
+})
+
+test("verifySubjectArtist verifies a known artist with its canonical name", async () => {
+  const fakeFetch = (() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ artists: [{ name: "Radiohead" }] }), {
+        status: 200,
+      }),
+    )) as typeof fetch
+
+  assert.deepEqual(await verifySubjectArtist("radio head", fakeFetch), {
+    status: "verified",
+    canonicalName: "Radiohead",
+  })
+})
+
+test("verifySubjectArtist verifies punctuation-only artists like !!!", async () => {
+  const fakeFetch = (() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ artists: [{ name: "!!!" }] }), {
+        status: 200,
+      }),
+    )) as typeof fetch
+
+  assert.deepEqual(await verifySubjectArtist("!!!", fakeFetch), {
+    status: "verified",
+    canonicalName: "!!!",
+  })
+})
+
+test("verifySubjectArtist reports a definitive MusicBrainz miss", async () => {
+  const fakeFetch = (() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ artists: [] }), { status: 200 }),
+    )) as typeof fetch
+
+  assert.deepEqual(await verifySubjectArtist("The Velvet Underworld", fakeFetch), {
+    status: "not_found",
+  })
+})
+
+test("verifySubjectArtist reports transport failures as unavailable", async () => {
+  const networkDown = (() =>
+    Promise.reject(new Error("network down"))) as typeof fetch
+  assert.deepEqual(await verifySubjectArtist("Radiohead", networkDown), {
+    status: "unavailable",
+  })
+
+  const serverError = (() =>
+    Promise.resolve(new Response("oops", { status: 503 }))) as typeof fetch
+  assert.deepEqual(await verifySubjectArtist("Radiohead", serverError), {
+    status: "unavailable",
+  })
 })
 
 test("verifyArtistNames drops names beyond the lookup cap", async () => {

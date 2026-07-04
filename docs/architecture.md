@@ -36,3 +36,15 @@ The `LiveShowsPage` (artist detail page) also surfaces a "Same Vibe" section of 
 ### 2026-06-16 — Shared Wikipedia helper with (band) disambiguation fallback
 - Added `src/utils/wikipedia.ts` with a single `fetchWikipediaSummary` export, replacing three duplicated `fetchWikipedia` implementations in `src/services/wikipedia.ts`, `build-artist-page/index.ts`, and `admin-content-refresh/index.ts`.
 - The helper now tries `{Artist} (band)` before falling back to `{Artist}`, fixing cases where the bare name resolves to an unrelated primary-topic article (e.g. "Destroyer" → naval warship). The Wikipedia REST API follows redirects, so the `(band)` attempt is a no-op for artists without a separate band article.
+
+### 2026-07-04 — Related-artist validation: deterministic filters + MusicBrainz verification
+- Added `src/utils/artistNameFilters.ts` (`hasMixedScript`, `normalizeArtistName`, `isSameArtistName`, `filterRelatedArtists`) — shared by the edge function (fresh builds) and the client (`normalizeArtistContext`, `LiveShowsPage` legacy `related_artists` fallback) so pre-validation cached rows are also cleaned at render time.
+- Added `supabase/functions/_shared/musicbrainz.ts`: sequential, ~1/s rate-limited artist existence checks against the MusicBrainz search API (`verifyArtistNames`, `pickCanonicalName`, `escapeLucene`, `MAX_LOOKUPS = 12`). Verified names are canonicalized; transport failures fail open; definitive misses are dropped.
+- `build-artist-page` filters Claude's suggestions deterministically before any DB write, kicks off MusicBrainz verification concurrently with video writes, then persists only verified names (re-checking self-references/duplicates introduced by canonicalization).
+- Added `node --test` suites in `supabase/functions/_shared/` (`artist-name-filters.test.ts`, `musicbrainz.test.ts`); `npm test` runs the glob.
+
+### 2026-07-04 — Subject artist name validation in build-artist-page
+- `build-artist-page` now validates the incoming `artist_name` itself on cache misses (after the cache check, so curated/cached artists are unaffected): mixed-script names and names with no MusicBrainz match are rejected with a 404 `{ error: "artist_not_found" }` body. MusicBrainz transport failures fail open.
+- Added single-lookup `verifySubjectArtist` to `_shared/musicbrainz.ts` with a tri-state result (`verified` / `not_found` / `unavailable`).
+- The MusicBrainz canonical name is *not* written to the row — stored names remain the user's normalized lowercase input so the `ilike` cache check and `artistNameLookupVariants` keep finding them (ilike is not diacritic-insensitive).
+- Frontend: `buildArtistPage` (`src/services/artistPage.ts`) parses the `FunctionsHttpError` response body and throws a typed `ArtistNotFoundError`; `useArtistPage` exposes a `notFound` flag; `LiveShowsPage` renders a friendly not-found state and suppresses the YouTube live-search fallbacks (concerts/interviews/music videos) for rejected names.
