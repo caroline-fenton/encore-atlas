@@ -171,7 +171,7 @@ function SceneDetail({
                   )}
                   <div className="p-5">
                     <div className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: scene.accent }}>
-                      {String(index + 1).padStart(2, "0")} · Scene artist
+                      {String(index + 1).padStart(2, "0")}
                     </div>
                     <h3 className="mt-2 font-display text-3xl tracking-[0.08em] text-black/80">{artist.name.toUpperCase()}</h3>
                     <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-black/50">
@@ -217,7 +217,7 @@ export default function SceneExplorerPage() {
         <div className="font-typewriter text-[10px] uppercase tracking-[0.3em] text-black/40">A field guide to music history</div>
         <h1 className="mt-3 font-display text-6xl leading-none tracking-[0.08em] text-black/80 md:text-8xl">SCENE EXPLORER</h1>
         <p className="mt-5 max-w-2xl text-base leading-relaxed text-black/55">
-          Scenes are more than genres. They are rooms, labels, friendships, rivalries, and a particular moment in a particular place. Start with an existing Atlas artist, then follow the connections.
+          Sonic deep dives in time and space.
         </p>
       </header>
 
