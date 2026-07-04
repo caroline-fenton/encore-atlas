@@ -3,6 +3,7 @@ import MerchSidebar from "../shared/MerchSidebar"
 import ContentCards from "./ContentCards"
 import type { ArtistPageLayoutProps } from "./ArtistPageLayoutTypes"
 import SameVibeSection from "./SameVibeSection"
+import UpcomingShowsSection from "./UpcomingShowsSection"
 import VideoHero from "./VideoHero"
 
 function metaItems(items: Array<{ label: string; value: string | null | undefined }>) {
@@ -152,10 +153,12 @@ export default function EpicArtistPage({
                   onSelectArtist={onSelectArtist}
                 />
               )}
+              <UpcomingShowsSection artistName={artistName} />
               <MerchSidebar artistId={artistId} artistName={artistName} />
             </div>
 
-            <div className="lg:hidden">
+            <div className="space-y-10 lg:hidden">
+              <UpcomingShowsSection artistName={artistName} />
               <MerchSidebar artistId={artistId} artistName={artistName} />
             </div>
           </aside>
