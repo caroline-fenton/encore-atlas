@@ -63,9 +63,6 @@ export default function EpicArtistPage({
 
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.55fr)] lg:items-end">
           <div className="space-y-5">
-            <div className="inline-flex border border-white/30 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80">
-              Epic Artist
-            </div>
             <div>
               <h1 className="font-display text-5xl font-normal uppercase leading-[0.9] tracking-[0.18em] text-white sm:text-6xl lg:text-7xl">
                 {artistName}

@@ -215,9 +215,6 @@ export default function SceneExplorerPage() {
       <header className="max-w-3xl">
         <div className="font-typewriter text-[10px] uppercase tracking-[0.3em] text-black/40">A field guide to music history</div>
         <h1 className="mt-3 font-display text-6xl leading-none tracking-[0.08em] text-black/80 md:text-8xl">SCENE EXPLORER</h1>
-        <p className="mt-5 max-w-2xl text-base leading-relaxed text-black/55">
-          Sonic deep dives in time and space.
-        </p>
       </header>
 
       <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
@@ -227,7 +224,7 @@ export default function SceneExplorerPage() {
       </div>
 
       <p className="border-t border-stone-300 pt-6 font-typewriter text-[10px] uppercase tracking-[0.2em] text-black/35">
-        Built from artists and persisted live performances already in Encore Atlas. More scene files will appear as the archive grows.
+        Built from artists and live performances already in Encore Atlas. More scene files will appear as the archive grows.
       </p>
     </div>
   )
