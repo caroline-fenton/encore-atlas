@@ -40,7 +40,7 @@ export default function SameVibeSection({
                 name: artist.name.toUpperCase(),
               })
             }
-            className="group relative aspect-square min-w-0 overflow-hidden border border-black/35 bg-white/50 p-3 text-left transition hover:-translate-y-0.5 hover:border-black/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/60"
+            className="group relative min-h-28 min-w-0 overflow-hidden border border-black/35 bg-white/50 p-3 text-left transition hover:-translate-y-0.5 hover:border-black/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/60 lg:min-h-24"
             style={{
               backgroundColor: SAME_VIBE_COLORS[i % SAME_VIBE_COLORS.length],
             }}
@@ -52,9 +52,12 @@ export default function SameVibeSection({
                 backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
               }}
             />
-            <div className="relative flex h-full items-end">
-              <div className="w-full border-l-2 border-black/28 bg-[#f6f1e8]/90 px-3 py-2">
-                <span className="block break-words font-display text-[1.35rem] uppercase leading-[0.92] text-black/86 transition group-hover:text-black sm:text-[1.45rem] lg:text-[1.35rem]">
+            <div className="relative flex min-h-[5.75rem] flex-col justify-between gap-5 lg:min-h-20">
+              <span className="font-mono text-[10px] font-semibold text-black/42">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <div className="border-l-2 border-black/28 bg-[#f6f1e8]/90 px-3 py-2">
+                <span className="block break-words font-display text-[1.45rem] uppercase leading-[0.92] text-black/86 transition group-hover:text-black">
                   {artist.name}
                 </span>
               </div>
