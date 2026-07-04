@@ -42,7 +42,14 @@ export function pickCanonicalName(
   candidates: MusicBrainzArtist[],
 ): string | null {
   const target = normalizeArtistName(queryName)
-  if (!target) return null
+  // Punctuation-only names ("!!!") normalize to the empty string, which
+  // would match everything — compare those raw and case-insensitively
+  // instead, so real punctuation-only artists can still verify.
+  const rawTarget = queryName.trim().toLowerCase()
+  if (!rawTarget) return null
+  const matches = target
+    ? (n: string) => normalizeArtistName(n) === target
+    : (n: string) => n.trim().toLowerCase() === rawTarget
 
   for (const candidate of candidates) {
     if (!candidate.name) continue
@@ -51,7 +58,7 @@ export function pickCanonicalName(
       candidate["sort-name"] ?? "",
       ...(candidate.aliases ?? []).map((a) => a.name ?? ""),
     ]
-    if (namesToCheck.some((n) => n && normalizeArtistName(n) === target)) {
+    if (namesToCheck.some((n) => n && matches(n))) {
       return candidate.name
     }
   }

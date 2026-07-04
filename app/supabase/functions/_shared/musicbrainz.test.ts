@@ -26,6 +26,21 @@ test("pickCanonicalName matches via aliases", () => {
   assert.equal(pickCanonicalName("Sigur Ros", candidates), "Sigur Rós")
 })
 
+test("pickCanonicalName matches punctuation-only names raw", () => {
+  // "!!!" normalizes to the empty string, so matching falls back to a raw
+  // case-insensitive comparison instead of rejecting outright.
+  const candidates: MusicBrainzArtist[] = [
+    { name: "!!!", aliases: [{ name: "Chk Chk Chk" }] },
+  ]
+  assert.equal(pickCanonicalName("!!!", candidates), "!!!")
+  assert.equal(pickCanonicalName("!!! ", candidates), "!!!")
+
+  // Raw matching is exact — different punctuation is not the same artist.
+  assert.equal(pickCanonicalName("!!?", candidates), null)
+  // Whitespace-only queries still match nothing.
+  assert.equal(pickCanonicalName("   ", candidates), null)
+})
+
 test("pickCanonicalName returns null when nothing matches", () => {
   const candidates: MusicBrainzArtist[] = [
     { name: "Radiohead" },
@@ -89,6 +104,20 @@ test("verifySubjectArtist verifies a known artist with its canonical name", asyn
   assert.deepEqual(await verifySubjectArtist("radio head", fakeFetch), {
     status: "verified",
     canonicalName: "Radiohead",
+  })
+})
+
+test("verifySubjectArtist verifies punctuation-only artists like !!!", async () => {
+  const fakeFetch = (() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ artists: [{ name: "!!!" }] }), {
+        status: 200,
+      }),
+    )) as typeof fetch
+
+  assert.deepEqual(await verifySubjectArtist("!!!", fakeFetch), {
+    status: "verified",
+    canonicalName: "!!!",
   })
 })
 
