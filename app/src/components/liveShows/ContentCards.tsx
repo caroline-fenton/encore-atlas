@@ -93,9 +93,7 @@ function VideoCard({
       className="group flex-none text-left"
       style={{ width: "260px" }}
     >
-      <div className="relative h-[146px] border border-black/50 shadow-md">
-        {/* White inset border */}
-        <div className="absolute inset-0 border-[3px] border-white/80 z-10 pointer-events-none" />
+      <div className="relative h-[146px] overflow-hidden bg-black/5">
         <img
           src={video.thumbnailUrl}
           alt={video.title}

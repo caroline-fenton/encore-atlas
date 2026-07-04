@@ -6,9 +6,7 @@ type Props = {
 
 export default function VideoHero({ video }: Props) {
   return (
-    <div className="relative w-full border border-black/50 shadow-md">
-      {/* White inset border */}
-      <div className="absolute inset-0 border-[4px] border-white/80 z-10 pointer-events-none" />
+    <div className="w-full overflow-hidden bg-black">
       <div className="aspect-video w-full bg-black">
         <iframe
           src={`https://www.youtube.com/embed/${video.id}`}
