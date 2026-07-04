@@ -149,12 +149,11 @@ function SceneDetail({
               {artists.map((artist, index) => (
                 <article key={artist.id} className="group overflow-hidden border border-stone-300 bg-white/35">
                   {artist.video && (
-                    <a
-                      href={`https://www.youtube.com/watch?v=${artist.video.youtube_video_id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Watch ${artist.video.title} by ${artist.name} on YouTube`}
-                      className="relative block aspect-video overflow-hidden bg-black/10"
+                    <button
+                      type="button"
+                      onClick={() => openArtist(artist)}
+                      aria-label={`Explore ${artist.name} in Encore Atlas`}
+                      className="relative block aspect-video w-full overflow-hidden bg-black/10 text-left"
                     >
                       <img
                         src={artist.video.thumbnail_url ?? `https://img.youtube.com/vi/${artist.video.youtube_video_id}/hqdefault.jpg`}
@@ -167,7 +166,7 @@ function SceneDetail({
                       {artist.video.duration && (
                         <span className="absolute bottom-3 right-3 bg-black/75 px-2 py-1 font-mono text-[10px] text-white">{artist.video.duration}</span>
                       )}
-                    </a>
+                    </button>
                   )}
                   <div className="p-5">
                     <div className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: scene.accent }}>
