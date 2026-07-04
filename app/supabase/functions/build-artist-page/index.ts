@@ -2,6 +2,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
 import { getAliases } from "../../../src/data/artistAliases.ts"
 import { decodeHtml } from "../../../src/utils/decodeHtml.ts"
 import { fetchWikipediaSummary } from "../../../src/utils/wikipedia.ts"
+import {
+  filterRelatedArtists,
+  isSameArtistName,
+  normalizeArtistName,
+} from "../../../src/utils/artistNameFilters.ts"
+import { verifyArtistNames } from "../_shared/musicbrainz.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -170,6 +176,9 @@ Guidelines:
 - "sceneSummary" should be 1-2 sentences max.
 - "relatedArtists" should include 8-12 artists a curious listener might search next.
 - For each related artist, give a short reason under 12 words.
+- Every related artist must be a real, established act you are confident exists (the kind with a MusicBrainz or Wikipedia entry). If you are not sure an artist exists, leave them out — a shorter list of real artists beats a longer list with inventions.
+- Never include ${artistName} itself in "relatedArtists".
+- Write each artist name exactly as the artist is officially known, in one consistent script — never mix scripts or languages within a single name (e.g. do not combine Arabic and Latin words in one name).
 - If you are uncertain about a field, use null or a cautious phrase rather than inventing facts.
 - Do not copy text from Wikipedia or any source verbatim.
 `
@@ -184,6 +193,47 @@ Guidelines:
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
+      // Structured outputs: the response is guaranteed to be valid JSON
+      // matching this schema, so parsing can no longer fail on prose or
+      // markdown fences.
+      output_config: {
+        format: {
+          type: "json_schema",
+          schema: {
+            type: "object",
+            properties: {
+              genre: { type: "array", items: { type: "string" } },
+              city: { anyOf: [{ type: "string" }, { type: "null" }] },
+              yearsActive: { anyOf: [{ type: "string" }, { type: "null" }] },
+              knownFor: { type: "array", items: { type: "string" } },
+              associatedWith: { type: "array", items: { type: "string" } },
+              sceneSummary: { type: "string" },
+              relatedArtists: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    reason: { type: "string" },
+                  },
+                  required: ["name", "reason"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: [
+              "genre",
+              "city",
+              "yearsActive",
+              "knownFor",
+              "associatedWith",
+              "sceneSummary",
+              "relatedArtists",
+            ],
+            additionalProperties: false,
+          },
+        },
+      },
       messages: [{ role: "user", content: prompt }],
     }),
   })
@@ -210,14 +260,19 @@ Guidelines:
       knownFor: Array.isArray(parsed.knownFor) ? parsed.knownFor : [],
       associatedWith: Array.isArray(parsed.associatedWith) ? parsed.associatedWith : [],
       sceneSummary: typeof parsed.sceneSummary === "string" ? parsed.sceneSummary : "",
-      relatedArtists: Array.isArray(parsed.relatedArtists)
-        ? parsed.relatedArtists
-            .filter((r: unknown) => r && typeof (r as { name?: unknown }).name === "string")
-            .map((r: { name: string; reason?: string }) => ({
-              name: r.name,
-              reason: typeof r.reason === "string" ? r.reason : "",
-            }))
-        : [],
+      // Deterministic cleanup before any DB write: drops self-references,
+      // mixed-script names ("راديو head"), empties, and duplicates.
+      relatedArtists: filterRelatedArtists(
+        artistName,
+        Array.isArray(parsed.relatedArtists)
+          ? parsed.relatedArtists
+              .filter((r: unknown) => r && typeof (r as { name?: unknown }).name === "string")
+              .map((r: { name: string; reason?: string }) => ({
+                name: r.name,
+                reason: typeof r.reason === "string" ? r.reason : "",
+              }))
+          : [],
+      ),
     }
 
     return {
@@ -446,6 +501,13 @@ Deno.serve(async (req) => {
       artist_name, videoTitles, wiki?.extract ?? null, anthropicApiKey,
     )
 
+    // Verify Claude's related-artist suggestions against MusicBrainz.
+    // Lookups are paced at ~1/s, so start now and await after the video
+    // writes below to hide most of the latency.
+    const verifiedNamesPromise = verifyArtistNames(
+      tagResult.artist_context?.relatedArtists.map((r) => r.name) ?? [],
+    )
+
     // ── WRITE TO DATABASE ──
 
     // Write artist metadata without last_refreshed_at yet — that only gets
@@ -637,16 +699,41 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Resolve the MusicBrainz checks: keep only suggestions that map to a
+    // real artist, swap in the canonical name ("radio head" → "Radiohead"),
+    // and re-check for self-references and duplicates introduced by
+    // canonicalization.
+    const verifiedNames = await verifiedNamesPromise
+    if (tagResult.artist_context) {
+      const seen = new Set<string>()
+      const verified: Array<{ name: string; reason: string }> = []
+      for (const related of tagResult.artist_context.relatedArtists) {
+        const canonical = verifiedNames.get(related.name)
+        if (!canonical) continue // MusicBrainz has no such artist
+        if (isSameArtistName(canonical, artist_name)) continue
+        const key = normalizeArtistName(canonical)
+        if (seen.has(key)) continue
+        seen.add(key)
+        verified.push({ name: canonical, reason: related.reason })
+      }
+      tagResult.artist_context.relatedArtists = verified
+      tagResult.related_artists = verified.map((r) => r.name)
+    }
+
     // Mark as fully built once concert videos are persisted, recording which
     // secondary categories were successfully synced so the frontend can
     // fall back to live search only for categories that were never
     // attempted (rather than ones that completed with zero results).
+    // Also swap in the MusicBrainz-verified related artists — the initial
+    // artist write above ran before verification finished.
     if (concertWriteOk) {
       const { data: completedArtists, error: completeError } = await supabase
         .from("artists")
         .update({
           last_refreshed_at: new Date().toISOString(),
           video_types_synced: syncedTypes,
+          related_artists: tagResult.related_artists,
+          artist_context: tagResult.artist_context,
         })
         .eq("id", artistId)
         .eq("is_curated", false)

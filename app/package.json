@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test supabase/functions/_shared/refresh-policy.test.ts"
+    "test": "node --test \"supabase/functions/_shared/*.test.ts\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.100.0",
