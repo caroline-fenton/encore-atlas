@@ -1,4 +1,5 @@
 import { supabase } from "./supabase"
+import { filterRelatedArtists } from "../utils/artistNameFilters"
 
 export type ArtistContext = {
   genre: string[]
@@ -107,7 +108,10 @@ export function normalizeEpicArtistTemplate(
   }
 }
 
-export function normalizeArtistContext(value: unknown): ArtistContext | null {
+export function normalizeArtistContext(
+  value: unknown,
+  subjectName = "",
+): ArtistContext | null {
   const context = asRecord(value)
   if (!context) return null
 
@@ -120,8 +124,12 @@ export function normalizeArtistContext(value: unknown): ArtistContext | null {
       context.associatedWith ?? context.associated_with,
     ),
     sceneSummary: textOrNull(context.sceneSummary ?? context.scene_summary) ?? "",
-    relatedArtists: normalizeRelatedArtists(
-      context.relatedArtists ?? context.related_artists,
+    // Rows cached before server-side validation existed can contain
+    // mixed-script names, self-references, or duplicates — filter them here
+    // so the UI never shows them.
+    relatedArtists: filterRelatedArtists(
+      subjectName,
+      normalizeRelatedArtists(context.relatedArtists ?? context.related_artists),
     ),
     epicTemplate: normalizeEpicArtistTemplate(
       context.epicTemplate ?? context.epic_template,
@@ -216,7 +224,7 @@ export async function getCachedArtistPage(
       decade: artist.decade,
       related_artists: artist.related_artists,
       is_curated: artist.is_curated,
-      artist_context: normalizeArtistContext(artist.artist_context),
+      artist_context: normalizeArtistContext(artist.artist_context, artist.name),
     },
     videos: byType("concert"),
     interview_videos: byType("interview"),

@@ -6,6 +6,7 @@ import { useArtistConcerts, useArtistInterviews, useArtistMusicVideos } from "..
 import { useArtistPage } from "../hooks/useArtistPage"
 import { useDecadeFilter } from "../hooks/useDecadeFilter"
 import { useWatchHistory } from "../hooks/useWatchHistory"
+import { filterRelatedArtists } from "../utils/artistNameFilters"
 import VideoHeroSkeleton from "../components/shared/VideoHeroSkeleton"
 import VideoCardSkeleton from "../components/shared/VideoCardSkeleton"
 import ErrorState from "../components/shared/ErrorState"
@@ -128,12 +129,18 @@ export default function LiveShowsPage() {
   const activeVideo = nowPlaying ?? featured
   const artistContext = artistPage.data?.artist.artist_context
   const contextRelatedArtists = artistContext?.relatedArtists ?? []
+  // The raw related_artists column fallback (legacy rows without
+  // artist_context) predates validation, so it needs the same filtering
+  // the context list gets in normalizeArtistContext.
   const relatedArtists = contextRelatedArtists.length > 0
     ? contextRelatedArtists
-    : (artistPage.data?.artist.related_artists ?? []).map((name) => ({
-        name,
-        reason: "",
-      }))
+    : filterRelatedArtists(
+        artistPage.data?.artist.name ?? "",
+        (artistPage.data?.artist.related_artists ?? []).map((name) => ({
+          name,
+          reason: "",
+        })),
+      )
 
   const handleSelectVideo = useCallback((video: Video) => {
     setNowPlaying(video)
