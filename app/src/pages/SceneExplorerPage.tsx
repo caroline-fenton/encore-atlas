@@ -149,12 +149,11 @@ function SceneDetail({
               {artists.map((artist, index) => (
                 <article key={artist.id} className="group overflow-hidden border border-stone-300 bg-white/35">
                   {artist.video && (
-                    <a
-                      href={`https://www.youtube.com/watch?v=${artist.video.youtube_video_id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Watch ${artist.video.title} by ${artist.name} on YouTube`}
-                      className="relative block aspect-video overflow-hidden bg-black/10"
+                    <button
+                      type="button"
+                      onClick={() => openArtist(artist)}
+                      aria-label={`Explore ${artist.name} in Encore Atlas`}
+                      className="relative block aspect-video w-full overflow-hidden bg-black/10 text-left"
                     >
                       <img
                         src={artist.video.thumbnail_url ?? `https://img.youtube.com/vi/${artist.video.youtube_video_id}/hqdefault.jpg`}
@@ -167,11 +166,11 @@ function SceneDetail({
                       {artist.video.duration && (
                         <span className="absolute bottom-3 right-3 bg-black/75 px-2 py-1 font-mono text-[10px] text-white">{artist.video.duration}</span>
                       )}
-                    </a>
+                    </button>
                   )}
                   <div className="p-5">
                     <div className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: scene.accent }}>
-                      {String(index + 1).padStart(2, "0")} · Scene artist
+                      {String(index + 1).padStart(2, "0")}
                     </div>
                     <h3 className="mt-2 font-display text-3xl tracking-[0.08em] text-black/80">{artist.name.toUpperCase()}</h3>
                     <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-black/50">
@@ -216,9 +215,6 @@ export default function SceneExplorerPage() {
       <header className="max-w-3xl">
         <div className="font-typewriter text-[10px] uppercase tracking-[0.3em] text-black/40">A field guide to music history</div>
         <h1 className="mt-3 font-display text-6xl leading-none tracking-[0.08em] text-black/80 md:text-8xl">SCENE EXPLORER</h1>
-        <p className="mt-5 max-w-2xl text-base leading-relaxed text-black/55">
-          Scenes are more than genres. They are rooms, labels, friendships, rivalries, and a particular moment in a particular place. Start with an existing Atlas artist, then follow the connections.
-        </p>
       </header>
 
       <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
@@ -228,7 +224,7 @@ export default function SceneExplorerPage() {
       </div>
 
       <p className="border-t border-stone-300 pt-6 font-typewriter text-[10px] uppercase tracking-[0.2em] text-black/35">
-        Built from artists and persisted live performances already in Encore Atlas. More scene files will appear as the archive grows.
+        Built from artists and live performances already in Encore Atlas. More scene files will appear as the archive grows.
       </p>
     </div>
   )
