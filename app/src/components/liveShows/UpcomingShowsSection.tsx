@@ -1,5 +1,4 @@
 import { ExternalLink } from "lucide-react"
-import { useUpcomingShows } from "../../hooks/useUpcomingShows"
 import type { UpcomingShow } from "../../services/upcomingShows"
 
 const MAX_VISIBLE_SHOWS = 4
@@ -59,21 +58,26 @@ function ShowCard({ show, currentYear }: { show: UpcomingShow; currentYear: numb
 }
 
 type Props = {
-  artistName: string
+  shows: UpcomingShow[]
+  allShowsUrl: string | null
+  isLoading: boolean
   className?: string
 }
 
 /**
  * Ticketmaster tour dates for the artist page sidebar. Renders nothing while
  * loading or when the artist has no upcoming shows — most classic-era artists
- * won't, and an empty box would read as an epitaph.
+ * won't, and an empty box would read as an epitaph. Data comes from the
+ * layout's single useUpcomingShows call: the desktop and mobile copies are
+ * both mounted (only CSS hides one), so fetching here would double the
+ * edge-function traffic.
  */
 export default function UpcomingShowsSection({
-  artistName,
+  shows,
+  allShowsUrl,
+  isLoading,
   className = "",
 }: Props) {
-  const { shows, allShowsUrl, isLoading } = useUpcomingShows(artistName)
-
   if (isLoading || shows.length === 0) return null
 
   const currentYear = new Date().getFullYear()

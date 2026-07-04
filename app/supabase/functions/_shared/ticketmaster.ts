@@ -19,7 +19,10 @@ export type TicketmasterEvent = {
   id?: string
   name?: string
   url?: string
-  dates?: { start?: { localDate?: string } }
+  dates?: {
+    start?: { localDate?: string }
+    status?: { code?: string }
+  }
   _embedded?: {
     venues?: Array<{
       name?: string
@@ -37,6 +40,11 @@ export type UpcomingShow = {
   city: string | null
   url: string | null
 }
+
+// Canceled shows aren't happening; postponed shows still carry their
+// original (now wrong) date because the new one is TBD. Rescheduled events
+// are kept — Ticketmaster updates dates.start to the new date once it's set.
+const EXCLUDED_STATUS_CODES = new Set(["canceled", "cancelled", "postponed"])
 
 /**
  * Returns the first attraction whose name matches the query after
@@ -79,6 +87,9 @@ export function normalizeShows(events: TicketmasterEvent[]): UpcomingShow[] {
     const venue = event._embedded?.venues?.[0]
     const venueName = venue?.name?.trim()
     if (!event.id || !date || !venueName) continue
+
+    const statusCode = event.dates?.status?.code?.trim().toLowerCase()
+    if (statusCode && EXCLUDED_STATUS_CODES.has(statusCode)) continue
 
     const key = `${date}:${venueName.toLowerCase()}`
     if (seen.has(key)) continue

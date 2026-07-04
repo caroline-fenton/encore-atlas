@@ -60,11 +60,15 @@ function event(overrides: Partial<{
   state: string
   country: string
   url: string
+  status: string
 }>): TicketmasterEvent {
   return {
     id: overrides.id ?? "E1",
     url: overrides.url,
-    dates: { start: { localDate: overrides.date ?? "2026-09-14" } },
+    dates: {
+      start: { localDate: overrides.date ?? "2026-09-14" },
+      status: overrides.status ? { code: overrides.status } : undefined,
+    },
     _embedded: {
       venues: [{
         name: overrides.venue ?? "Royal Albert Hall",
@@ -121,6 +125,24 @@ test("normalizeShows keeps one row per venue-night", () => {
     event({ id: "E3", date: "2026-09-15" }),
   ])
   assert.deepEqual(shows.map((s) => s.id), ["E1", "E3"])
+})
+
+test("normalizeShows drops canceled and postponed events", () => {
+  const shows = normalizeShows([
+    event({ id: "E1", status: "canceled" }),
+    event({ id: "E2", date: "2026-09-15", status: "cancelled" }),
+    event({ id: "E3", date: "2026-09-16", status: "postponed" }),
+    event({ id: "E4", date: "2026-09-17", status: "onsale" }),
+  ])
+  assert.deepEqual(shows.map((s) => s.id), ["E4"])
+})
+
+test("normalizeShows keeps rescheduled events and events without a status", () => {
+  const shows = normalizeShows([
+    event({ id: "E1", status: "rescheduled" }),
+    event({ id: "E2", date: "2026-09-15" }),
+  ])
+  assert.deepEqual(shows.map((s) => s.id), ["E1", "E2"])
 })
 
 test("normalizeShows sorts by date ascending", () => {
