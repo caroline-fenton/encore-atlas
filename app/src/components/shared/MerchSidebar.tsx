@@ -102,16 +102,17 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
               href={store.url}
               target="_blank"
               rel="noreferrer"
-              className="group block text-black/40 transition"
+              className="group flex items-center gap-1 text-black/40 transition"
               onMouseEnter={(e) => { e.currentTarget.style.color = hoverColor }}
               onMouseLeave={(e) => { e.currentTarget.style.color = "" }}
             >
               <span className={hasCuratedMerch
                 ? "font-display text-xs tracking-[0.08em]"
-                : "text-base font-bold tracking-wide lowercase"
+                : "font-mono text-[11px]"
               }>
                 {store.name}
               </span>
+              <ExternalLink className="h-2.5 w-2.5 shrink-0" />
             </a>
           )
         })}
