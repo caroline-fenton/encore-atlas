@@ -16,7 +16,10 @@ const MUSICBRAINZ_SEARCH_URL = "https://musicbrainz.org/ws/2/artist/"
 const USER_AGENT = "EncoreAtlas/1.0 (fenton.caroline@gmail.com)"
 const REQUEST_GAP_MS = 1000
 const REQUEST_TIMEOUT_MS = 5000
-const MAX_LOOKUPS = 12
+// Hard ceiling on lookups per build, to keep the rate-limited sequential
+// pass bounded. Callers should slice their list to this before persisting
+// anything — names beyond the cap are dropped, not passed through.
+export const MAX_LOOKUPS = 12
 
 export type MusicBrainzArtist = {
   name?: string
@@ -107,19 +110,21 @@ async function searchArtist(
 export async function verifyArtistNames(
   names: string[],
   fetchImpl: typeof fetch = fetch,
+  requestGapMs: number = REQUEST_GAP_MS,
 ): Promise<Map<string, string | null>> {
   const results = new Map<string, string | null>()
   const toCheck = names.slice(0, MAX_LOOKUPS)
 
-  // Names beyond the lookup cap pass through unverified rather than being
-  // dropped for a reason unrelated to their validity.
+  // Names beyond the lookup cap are dropped — passing them through would
+  // let anything past position MAX_LOOKUPS bypass validation entirely.
+  // Callers slice to MAX_LOOKUPS up front, so this is a safety valve.
   for (const name of names.slice(MAX_LOOKUPS)) {
-    results.set(name, name)
+    results.set(name, null)
   }
 
   for (let i = 0; i < toCheck.length; i++) {
     if (i > 0) {
-      await new Promise((resolve) => setTimeout(resolve, REQUEST_GAP_MS))
+      await new Promise((resolve) => setTimeout(resolve, requestGapMs))
     }
     const name = toCheck[i]
     const outcome = await searchArtist(name, fetchImpl)

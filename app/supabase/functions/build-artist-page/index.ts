@@ -7,7 +7,7 @@ import {
   isSameArtistName,
   normalizeArtistName,
 } from "../../../src/utils/artistNameFilters.ts"
-import { verifyArtistNames } from "../_shared/musicbrainz.ts"
+import { MAX_LOOKUPS, verifyArtistNames } from "../_shared/musicbrainz.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -261,7 +261,9 @@ Guidelines:
       associatedWith: Array.isArray(parsed.associatedWith) ? parsed.associatedWith : [],
       sceneSummary: typeof parsed.sceneSummary === "string" ? parsed.sceneSummary : "",
       // Deterministic cleanup before any DB write: drops self-references,
-      // mixed-script names ("راديو head"), empties, and duplicates.
+      // mixed-script names ("راديو head"), empties, and duplicates. Capped
+      // at MAX_LOOKUPS so every persisted name gets a MusicBrainz check —
+      // the prompt's 8-12 range is advisory, not schema-enforced.
       relatedArtists: filterRelatedArtists(
         artistName,
         Array.isArray(parsed.relatedArtists)
@@ -272,7 +274,7 @@ Guidelines:
                 reason: typeof r.reason === "string" ? r.reason : "",
               }))
           : [],
-      ),
+      ).slice(0, MAX_LOOKUPS),
     }
 
     return {
@@ -718,22 +720,36 @@ Deno.serve(async (req) => {
       }
       tagResult.artist_context.relatedArtists = verified
       tagResult.related_artists = verified.map((r) => r.name)
+
+      // The initial artist write ran before verification finished, so swap
+      // in the verified values now — unconditionally, not just on completed
+      // builds, or a build with zero concert videos would leave unverified
+      // names in the row.
+      const { error: verifiedWriteError } = await supabase
+        .from("artists")
+        .update({
+          related_artists: tagResult.related_artists,
+          artist_context: tagResult.artist_context,
+        })
+        .eq("id", artistId)
+        .eq("is_curated", false)
+      if (verifiedWriteError) {
+        throw new Error(
+          `Failed to persist verified related artists: ${verifiedWriteError.message}`,
+        )
+      }
     }
 
     // Mark as fully built once concert videos are persisted, recording which
     // secondary categories were successfully synced so the frontend can
     // fall back to live search only for categories that were never
     // attempted (rather than ones that completed with zero results).
-    // Also swap in the MusicBrainz-verified related artists — the initial
-    // artist write above ran before verification finished.
     if (concertWriteOk) {
       const { data: completedArtists, error: completeError } = await supabase
         .from("artists")
         .update({
           last_refreshed_at: new Date().toISOString(),
           video_types_synced: syncedTypes,
-          related_artists: tagResult.related_artists,
-          artist_context: tagResult.artist_context,
         })
         .eq("id", artistId)
         .eq("is_curated", false)

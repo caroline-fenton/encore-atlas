@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import {
   escapeLucene,
+  MAX_LOOKUPS,
   pickCanonicalName,
   verifyArtistNames,
   type MusicBrainzArtist,
@@ -68,9 +69,26 @@ test("verifyArtistNames maps verified, unknown, and errored lookups", async () =
   const results = await verifyArtistNames(
     ["Portishead", "Fake Band", "Unreachable"],
     fakeFetch,
+    0,
   )
 
   assert.equal(results.get("Portishead"), "Portishead") // verified
   assert.equal(results.get("Fake Band"), null) // definitively absent → drop
   assert.equal(results.get("Unreachable"), "Unreachable") // fail open
+})
+
+test("verifyArtistNames drops names beyond the lookup cap", async () => {
+  const fakeFetch = (() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ artists: [] }), { status: 200 }),
+    )) as typeof fetch
+
+  const names = Array.from({ length: MAX_LOOKUPS + 2 }, (_, i) => `Band ${i}`)
+  const results = await verifyArtistNames(names, fakeFetch, 0)
+
+  // Everything gets an entry, but nothing past the cap sneaks through
+  // unverified.
+  assert.equal(results.size, names.length)
+  assert.equal(results.get(`Band ${MAX_LOOKUPS}`), null)
+  assert.equal(results.get(`Band ${MAX_LOOKUPS + 1}`), null)
 })
