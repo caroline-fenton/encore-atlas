@@ -268,8 +268,11 @@ async function targetedVideoPreview(
         const detail = details.get(item.id.videoId)
         return {
           youtube_video_id: item.id.videoId,
-          title: item.snippet.title,
-          description: detail?.description ?? item.snippet.description ?? null,
+          // search snippet fields are HTML-escaped by the YouTube API; videos.list details are not
+          title: decodeHtml(item.snippet.title),
+          description:
+            detail?.description ??
+            (item.snippet.description ? decodeHtml(item.snippet.description) : null),
           thumbnail_url: detail?.thumbnail ?? null,
           published_at: detail?.publishedAt ?? item.snippet.publishedAt ?? null,
           view_count: detail?.viewCount ?? null,
@@ -278,7 +281,9 @@ async function targetedVideoPreview(
           is_manually_added: false,
           display_order: index,
           video_type: type,
-          channel_title: detail?.channelTitle ?? item.snippet.channelTitle ?? null,
+          channel_title:
+            detail?.channelTitle ??
+            (item.snippet.channelTitle ? decodeHtml(item.snippet.channelTitle) : null),
         }
       }),
     )
