@@ -1,8 +1,10 @@
+import { useUpcomingShows } from "../../hooks/useUpcomingShows"
 import ArtistBio from "../shared/ArtistBio"
 import MerchSidebar from "../shared/MerchSidebar"
 import ContentCards from "./ContentCards"
 import type { ArtistPageLayoutProps } from "./ArtistPageLayoutTypes"
 import SameVibeSection from "./SameVibeSection"
+import UpcomingShowsSection from "./UpcomingShowsSection"
 import VideoHero from "./VideoHero"
 
 export default function StandardArtistPage({
@@ -28,6 +30,8 @@ export default function StandardArtistPage({
   onSelectDecade,
   onLoadMore,
 }: ArtistPageLayoutProps) {
+  const upcomingShows = useUpcomingShows(artistName)
+
   return (
     <>
       <header>
@@ -87,10 +91,14 @@ export default function StandardArtistPage({
               />
             )}
 
+            <UpcomingShowsSection {...upcomingShows} />
+
             <MerchSidebar artistId={artistId} artistName={artistName} />
           </div>
 
-          <div className="lg:hidden">
+          <div className="space-y-10 lg:hidden">
+            <UpcomingShowsSection {...upcomingShows} />
+
             <MerchSidebar artistId={artistId} artistName={artistName} />
           </div>
         </aside>

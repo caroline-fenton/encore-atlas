@@ -1,6 +1,6 @@
 import { getMerchForArtist, getCategoryLabel, getStoreLinks } from "../../data/merch"
 import type { MerchItem } from "../../types/merch"
-import { ExternalLink, ShoppingBag } from "lucide-react"
+import { ShoppingBag } from "lucide-react"
 
 function FeaturedCard({ item }: { item: MerchItem }) {
   return (
@@ -26,9 +26,8 @@ function FeaturedCard({ item }: { item: MerchItem }) {
         {item.description && (
           <p className="font-typewriter text-[11px] text-black/50">{item.description}</p>
         )}
-        <div className="flex items-center gap-1 text-[10px] font-typewriter text-black/40">
-          <ExternalLink className="h-2.5 w-2.5 shrink-0" />
-          <span>View on {item.storeName}</span>
+        <div className="text-[10px] font-typewriter text-black/40">
+          View on {item.storeName}
         </div>
       </div>
     </a>
@@ -52,9 +51,8 @@ function ItemCard({ item }: { item: MerchItem }) {
         <div className="font-display text-xs tracking-[0.08em] text-black/80 group-hover:text-[#d94f43] leading-snug">
           {item.name}
         </div>
-        <div className="flex items-center gap-1 text-[10px] font-typewriter text-black/40">
-          <ExternalLink className="h-2.5 w-2.5 shrink-0" />
-          <span>{item.storeName}</span>
+        <div className="text-[10px] font-typewriter text-black/40">
+          {item.storeName}
         </div>
       </div>
     </a>
@@ -108,7 +106,7 @@ export default function MerchSidebar({ artistId, artistName }: Props) {
             >
               <span className={hasCuratedMerch
                 ? "font-display text-xs tracking-[0.08em]"
-                : "text-base font-bold tracking-wide lowercase"
+                : "font-mono text-[11px]"
               }>
                 {store.name}
               </span>

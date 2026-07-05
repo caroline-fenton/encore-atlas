@@ -1,8 +1,10 @@
+import { useUpcomingShows } from "../../hooks/useUpcomingShows"
 import ArtistBio from "../shared/ArtistBio"
 import MerchSidebar from "../shared/MerchSidebar"
 import ContentCards from "./ContentCards"
 import type { ArtistPageLayoutProps } from "./ArtistPageLayoutTypes"
 import SameVibeSection from "./SameVibeSection"
+import UpcomingShowsSection from "./UpcomingShowsSection"
 import VideoHero from "./VideoHero"
 
 function metaItems(items: Array<{ label: string; value: string | null | undefined }>) {
@@ -35,6 +37,7 @@ export default function EpicArtistPage({
   onSelectDecade,
   onLoadMore,
 }: ArtistPageLayoutProps) {
+  const upcomingShows = useUpcomingShows(artistName)
   const epic = context?.epicTemplate
   const backgroundImage = epic?.heroImageUrl || bioImageUrl || activeVideo.thumbnailUrl
   const introCopy = epic?.introCopy || context?.sceneSummary || null
@@ -152,10 +155,12 @@ export default function EpicArtistPage({
                   onSelectArtist={onSelectArtist}
                 />
               )}
+              <UpcomingShowsSection {...upcomingShows} />
               <MerchSidebar artistId={artistId} artistName={artistName} />
             </div>
 
-            <div className="lg:hidden">
+            <div className="space-y-10 lg:hidden">
+              <UpcomingShowsSection {...upcomingShows} />
               <MerchSidebar artistId={artistId} artistName={artistName} />
             </div>
           </aside>

@@ -25,10 +25,10 @@ export default function SameVibeSection({
 }: Props) {
   return (
     <div className={className}>
-      <div className="mb-4 font-display text-xl uppercase tracking-[0.1em] text-black/80">
+      <div className="mb-5 font-display text-xl uppercase tracking-[0.1em] text-black/80">
         Same Vibe
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-1">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-1">
         {artists.map((artist, i) => (
           <button
             key={artist.name}
