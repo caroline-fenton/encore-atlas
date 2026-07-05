@@ -1,4 +1,3 @@
-import { ExternalLink } from "lucide-react"
 import type { UpcomingShow } from "../../services/upcomingShows"
 
 const MAX_VISIBLE_SHOWS = 4
@@ -67,7 +66,6 @@ function ShowCard({
           </div>
         )}
       </div>
-      <ExternalLink className="h-2.5 w-2.5 shrink-0 text-black/40" />
     </a>
   )
 }
@@ -124,10 +122,9 @@ export default function UpcomingShowsSection({
           href={allShowsUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 font-mono text-[11px] text-black/40 transition hover:text-[#d94f43]"
+          className="font-mono text-[11px] text-black/40 transition hover:text-[#d94f43]"
         >
           All tour dates
-          <ExternalLink className="h-2.5 w-2.5" />
         </a>
       )}
     </div>
