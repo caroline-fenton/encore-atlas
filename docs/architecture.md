@@ -8,6 +8,11 @@ The `LiveShowsPage` (artist detail page) also surfaces a "Same Vibe" section of 
 
 ## Changelog
 
+### 2026-07-05 — HTML entity decoding moved to persist time (PR #39)
+- `build-artist-page` and `admin-content-refresh` now run `decodeHtml` on YouTube **search** snippet fields before persisting (`title` always; `description`/`channel_title` only on their snippet fallbacks — `videos.list` detail values are returned unescaped and are stored as-is).
+- `claudeTag` receives decoded video titles in its prompt.
+- Existing `artist_videos` rows are being repaired by a one-time SQL replace-chain (run post-deploy). Render-time `decodeHtml` calls in the five public video-card components are now redundant no-ops, kept temporarily; slated for removal in the data-quality prevention PR, after which stored text is the single display-ready source.
+
 ### 2026-06-13 — Persist interviews/music videos with sync tracking and channel titles
 - Added migration 009 follow-up: widened the `artist_videos` uniqueness constraint to `(artist_id, youtube_video_id, video_type)` so the same video can appear under multiple categories (e.g. concert + interview) without one upsert overwriting another.
 - Added migration 010: widened `artist_videos.view_count` to `bigint` to support official music videos with 2B+ views.
