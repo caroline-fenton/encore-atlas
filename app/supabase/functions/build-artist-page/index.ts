@@ -535,7 +535,7 @@ Deno.serve(async (req) => {
     const details = await youtubeVideoDetails(videoIds, youtubeApiKey)
 
     // Fetch Wikipedia for context, then pass to Claude for bio generation
-    const videoTitles = topResults.map((r) => r.snippet.title)
+    const videoTitles = topResults.map((r) => decodeHtml(r.snippet.title))
     const wiki = await fetchWikipediaSummary(artist_name).catch(() => null)
     const tagResult = await claudeTag(
       artist_name, videoTitles, wiki?.extract ?? null, anthropicApiKey,
@@ -620,13 +620,18 @@ Deno.serve(async (req) => {
       return {
         artist_id: artistId,
         youtube_video_id: item.id.videoId,
-        title: item.snippet.title,
-        description: detail?.description ?? item.snippet.description ?? null,
+        // search snippet fields are HTML-escaped by the YouTube API; videos.list details are not
+        title: decodeHtml(item.snippet.title),
+        description:
+          detail?.description ??
+          (item.snippet.description ? decodeHtml(item.snippet.description) : null),
         thumbnail_url: detail?.thumbnail ?? null,
         published_at: detail?.publishedAt ?? item.snippet.publishedAt ?? null,
         view_count: detail?.viewCount ?? null,
         duration: detail?.duration ? parseDuration(detail.duration) : null,
-        channel_title: detail?.channelTitle ?? item.snippet.channelTitle ?? null,
+        channel_title:
+          detail?.channelTitle ??
+          (item.snippet.channelTitle ? decodeHtml(item.snippet.channelTitle) : null),
         search_query: `${artist_name} live concert full set`,
         display_order: index,
         video_type: "concert",
@@ -702,13 +707,17 @@ Deno.serve(async (req) => {
             return {
               artist_id: artistId,
               youtube_video_id: item.id.videoId,
-              title: item.snippet.title,
-              description: detail?.description ?? item.snippet.description ?? null,
+              title: decodeHtml(item.snippet.title),
+              description:
+                detail?.description ??
+                (item.snippet.description ? decodeHtml(item.snippet.description) : null),
               thumbnail_url: detail?.thumbnail ?? null,
               published_at: detail?.publishedAt ?? item.snippet.publishedAt ?? null,
               view_count: detail?.viewCount ?? null,
               duration: detail?.duration ? parseDuration(detail.duration) : null,
-              channel_title: detail?.channelTitle ?? item.snippet.channelTitle ?? null,
+              channel_title:
+                detail?.channelTitle ??
+                (item.snippet.channelTitle ? decodeHtml(item.snippet.channelTitle) : null),
               search_query: query,
               display_order: index,
               video_type: type,
