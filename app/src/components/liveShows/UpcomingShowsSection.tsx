@@ -2,6 +2,9 @@ import { ExternalLink } from "lucide-react"
 import type { UpcomingShow } from "../../services/upcomingShows"
 
 const MAX_VISIBLE_SHOWS = 4
+// Same trio the merch store links cycle through, so the sidebar shares one
+// accent rhythm.
+const STUB_ACCENTS = ["#d94f43", "#4db8e8", "#5a9a6e"]
 const MONTHS = [
   "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
@@ -19,7 +22,15 @@ function showDateParts(
   return { month, day: match[3], year: Number(match[1]) }
 }
 
-function ShowCard({ show, currentYear }: { show: UpcomingShow; currentYear: number }) {
+function ShowCard({
+  show,
+  currentYear,
+  accent,
+}: {
+  show: UpcomingShow
+  currentYear: number
+  accent: string
+}) {
   const dateParts = showDateParts(show.date)
 
   return (
@@ -27,11 +38,15 @@ function ShowCard({ show, currentYear }: { show: UpcomingShow; currentYear: numb
       href={show.url ?? undefined}
       target="_blank"
       rel="noreferrer"
-      className="group flex items-center gap-3 border border-stone-200 bg-white/60 p-3 transition hover:border-[#d94f43]/30 hover:shadow-sm"
+      style={{ "--stub-accent": accent } as React.CSSProperties}
+      className="group flex items-center gap-3 border border-stone-200 bg-white/60 p-3 transition hover:border-(--stub-accent)/30 hover:shadow-sm"
     >
       {dateParts && (
         <div className="shrink-0 border-r border-dashed border-black/25 pr-3 text-center font-mono">
-          <div className="text-[10px] font-semibold tracking-[0.15em] text-[#d94f43]">
+          <div
+            className="text-[10px] font-semibold tracking-[0.15em]"
+            style={{ color: accent }}
+          >
             {dateParts.month}
           </div>
           <div className="text-lg leading-tight text-black/80">
@@ -43,7 +58,7 @@ function ShowCard({ show, currentYear }: { show: UpcomingShow; currentYear: numb
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <div className="font-display text-xs tracking-[0.08em] text-black/80 group-hover:text-[#d94f43] leading-snug">
+        <div className="font-display text-xs tracking-[0.08em] text-black/80 group-hover:text-(--stub-accent) leading-snug">
           {show.venue}
         </div>
         {show.city && (
@@ -94,8 +109,13 @@ export default function UpcomingShowsSection({
       </div>
 
       <div className="space-y-2">
-        {shows.slice(0, MAX_VISIBLE_SHOWS).map((show) => (
-          <ShowCard key={show.id} show={show} currentYear={currentYear} />
+        {shows.slice(0, MAX_VISIBLE_SHOWS).map((show, i) => (
+          <ShowCard
+            key={show.id}
+            show={show}
+            currentYear={currentYear}
+            accent={STUB_ACCENTS[i % STUB_ACCENTS.length]}
+          />
         ))}
       </div>
 
