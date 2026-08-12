@@ -13,6 +13,7 @@ import {
   verifyArtistNames,
   verifySubjectArtist,
 } from "../_shared/musicbrainz.ts"
+import { dedupeVideosAcrossTypes, type RefreshVideo } from "../_shared/refresh-policy.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -633,6 +634,7 @@ Deno.serve(async (req) => {
           detail?.channelTitle ??
           (item.snippet.channelTitle ? decodeHtml(item.snippet.channelTitle) : null),
         search_query: `${artist_name} live concert full set`,
+        is_manually_added: false,
         display_order: index,
         video_type: "concert",
       }
@@ -690,10 +692,16 @@ Deno.serve(async (req) => {
     }
 
     if (needsSecondarySearches) {
-      const secondarySearches: Array<{ query: string; type: string }> = [
+      const secondarySearches: Array<{ query: string; type: "interview" | "music_video" }> = [
         { query: `${artist_name} interview`, type: "interview" },
         { query: `${artist_name} official music video`, type: "music_video" },
       ]
+
+      // Search results are gathered for both types before anything is
+      // written so a video that satisfies two queries (e.g. a live set that
+      // also reads as an "official" video) can be deduped across them —
+      // see the merge below.
+      const secondaryCandidates: Partial<Record<"interview" | "music_video", RefreshVideo[]>> = {}
 
       for (const { query, type } of secondarySearches) {
         try {
@@ -702,10 +710,9 @@ Deno.serve(async (req) => {
           const ids = items.map((i) => i.id.videoId)
           const typeDetails = await youtubeVideoDetails(ids, youtubeApiKey)
 
-          const rows = items.map((item, index) => {
+          secondaryCandidates[type] = items.map((item, index) => {
             const detail = typeDetails.get(item.id.videoId)
             return {
-              artist_id: artistId,
               youtube_video_id: item.id.videoId,
               title: decodeHtml(item.snippet.title),
               description:
@@ -719,11 +726,42 @@ Deno.serve(async (req) => {
                 detail?.channelTitle ??
                 (item.snippet.channelTitle ? decodeHtml(item.snippet.channelTitle) : null),
               search_query: query,
+              is_manually_added: false,
               display_order: index,
               video_type: type,
             }
           })
+        } catch (err) {
+          if (
+            err instanceof Error
+            && err.message.includes("Artist was curated while the public build was running")
+          ) {
+            throw err
+          }
+          console.error(`YouTube search failed for ${type}:`, err)
+        }
+      }
 
+      // A video that satisfies two of these queries stays in concert if it's
+      // already there; otherwise interview wins over music_video by default.
+      const dedupedSecondary = dedupeVideosAcrossTypes(
+        [
+          ...(secondaryCandidates.interview ?? []),
+          ...(secondaryCandidates.music_video ?? []),
+        ],
+        concertRows,
+      )
+
+      for (const type of ["interview", "music_video"] as const) {
+        // The search itself failed — leave this category unattempted rather
+        // than recording it as synced with (falsely) zero results.
+        if (!secondaryCandidates[type]) continue
+
+        const rows = dedupedSecondary
+          .filter((video) => video.video_type === type)
+          .map((video) => ({ ...video, artist_id: artistId }))
+
+        try {
           if (rows.length > 0) {
             const { error } = await supabase.rpc(
               "upsert_public_build_videos",

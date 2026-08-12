@@ -3,6 +3,7 @@ import test from "node:test"
 import {
   applyManualArtistEdits,
   concertVideos,
+  dedupeVideosAcrossTypes,
   editableVideos,
   mergeManualVideos,
   mergeTargetedRefreshVideos,
@@ -440,6 +441,70 @@ test("targeted refresh preserves omitted video sections", () => {
   assert.deepEqual(
     merged.map((item) => `${item.video_type}:${item.youtube_video_id}`),
     ["concert:newconcert", "interview:oldinterview"],
+  )
+})
+
+test("dedupe keeps a cross-type duplicate in its pre-refresh category", () => {
+  const existing = [
+    { ...video("liveset", false, "concert"), display_order: 0 },
+  ]
+  const proposed = [
+    { ...video("liveset", false, "concert"), display_order: 0 },
+    { ...video("liveset", false, "music_video"), display_order: 0 },
+    { ...video("officialmv", false, "music_video"), display_order: 1 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, existing)
+
+  assert.deepEqual(
+    deduped.map((item) => `${item.video_type}:${item.youtube_video_id}`),
+    ["concert:liveset", "music_video:officialmv"],
+  )
+})
+
+test("dedupe protects a manually added copy over a fresh duplicate", () => {
+  const proposed = [
+    { ...video("liveset", false, "music_video"), display_order: 0 },
+    { ...video("liveset", true, "concert"), display_order: 0 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, [])
+
+  assert.deepEqual(
+    deduped.map((item) => `${item.video_type}:${item.youtube_video_id}:${item.is_manually_added}`),
+    ["concert:liveset:true"],
+  )
+})
+
+test("dedupe falls back to a fixed type order for brand-new duplicates", () => {
+  const proposed = [
+    { ...video("kimmelclip", false, "interview"), display_order: 0 },
+    { ...video("kimmelclip", false, "music_video"), display_order: 0 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, [])
+
+  assert.deepEqual(
+    deduped.map((item) => `${item.video_type}:${item.youtube_video_id}`),
+    ["interview:kimmelclip"],
+  )
+})
+
+test("dedupe renormalizes display order per type after dropping losers", () => {
+  const proposed = [
+    { ...video("concert-a", false, "concert"), display_order: 0 },
+    { ...video("liveset", false, "concert"), display_order: 1 },
+    { ...video("liveset", false, "music_video"), display_order: 0 },
+    { ...video("officialmv", false, "music_video"), display_order: 1 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, [
+    { ...video("liveset", false, "concert"), display_order: 1 },
+  ])
+
+  assert.deepEqual(
+    deduped.map((item) => `${item.video_type}:${item.youtube_video_id}:${item.display_order}`),
+    ["concert:concert-a:0", "concert:liveset:1", "music_video:officialmv:0"],
   )
 })
 

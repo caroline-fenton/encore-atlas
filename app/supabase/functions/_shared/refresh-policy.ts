@@ -358,6 +358,46 @@ export function mergeTargetedRefreshVideos(
   ])
 }
 
+export function dedupeVideosAcrossTypes(
+  videos: RefreshVideo[],
+  existingVideos: RefreshVideo[],
+): RefreshVideo[] {
+  const existingTypeByVideoId = new Map<string, EditableVideoType>()
+  for (const existing of existingVideos) {
+    if (!existingTypeByVideoId.has(existing.youtube_video_id)) {
+      existingTypeByVideoId.set(existing.youtube_video_id, videoType(existing))
+    }
+  }
+
+  const candidatesByVideoId = new Map<string, RefreshVideo[]>()
+  for (const video of videos) {
+    const candidates = candidatesByVideoId.get(video.youtube_video_id) ?? []
+    candidates.push(video)
+    candidatesByVideoId.set(video.youtube_video_id, candidates)
+  }
+
+  const winners = new Set<RefreshVideo>()
+  for (const candidates of candidatesByVideoId.values()) {
+    if (candidates.length === 1) {
+      winners.add(candidates[0])
+      continue
+    }
+
+    const manual = candidates.find((candidate) => candidate.is_manually_added)
+    const previousType = existingTypeByVideoId.get(candidates[0].youtube_video_id)
+    const previouslyTyped = previousType
+      ? candidates.find((candidate) => videoType(candidate) === previousType)
+      : undefined
+    const byFixedTypeOrder = [...candidates].sort(
+      (a, b) => editableVideoTypes.indexOf(videoType(a)) - editableVideoTypes.indexOf(videoType(b)),
+    )[0]
+
+    winners.add(manual ?? previouslyTyped ?? byFixedTypeOrder)
+  }
+
+  return normalizeEditableVideoOrder(videos.filter((video) => winners.has(video)))
+}
+
 export function videoType(video: Pick<RefreshVideo, "video_type">): EditableVideoType {
   return editableVideoTypes.includes(video.video_type as EditableVideoType)
     ? video.video_type as EditableVideoType
