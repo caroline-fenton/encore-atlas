@@ -144,15 +144,24 @@ function videosByType(videos: RefreshVideo[], type: RefreshVideoType) {
 }
 
 function stagePreviewVideos(beforeVideos: RefreshVideo[], proposedVideos: RefreshVideo[]) {
+  // A video the backend cross-type deduped out of this type's proposed
+  // list survives elsewhere in proposedVideos under its winning type — drop
+  // it here instead of falling back to the pre-refresh copy, or the
+  // duplicate the policy just resolved would be silently restored.
+  const proposedVideoIds = new Set(proposedVideos.map((video) => video.youtube_video_id))
   return videoSections.flatMap(({ type }) => {
     const proposedByKey = new Map(
       videosByType(proposedVideos, type).map((video) => [videoKey(video), video]),
     )
-    const staged = videosByType(beforeVideos, type).map((video) => ({
-      ...(proposedByKey.get(videoKey(video)) ?? video),
-      video_type: type,
-      display_order: video.display_order,
-    }))
+    const staged = videosByType(beforeVideos, type)
+      .filter((video) =>
+        proposedByKey.has(videoKey(video)) || !proposedVideoIds.has(video.youtube_video_id)
+      )
+      .map((video) => ({
+        ...(proposedByKey.get(videoKey(video)) ?? video),
+        video_type: type,
+        display_order: video.display_order,
+      }))
     const stagedKeys = new Set(staged.map(videoKey))
     const additions = videosByType(proposedVideos, type)
       .filter((video) => !stagedKeys.has(videoKey(video)))
