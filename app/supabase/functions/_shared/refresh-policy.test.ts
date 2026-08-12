@@ -490,6 +490,29 @@ test("dedupe falls back to a fixed type order for brand-new duplicates", () => {
   )
 })
 
+test("dedupe honors any pre-existing type, not just the first one seen", () => {
+  // A legacy duplicate already sitting under two types in existingVideos —
+  // a targeted refresh drops the music_video copy and adds a fresh concert
+  // candidate. The surviving pre-existing interview copy should win over
+  // the brand-new concert one, even though existingVideos lists
+  // music_video first.
+  const existing = [
+    { ...video("legacydup", false, "music_video"), display_order: 0 },
+    { ...video("legacydup", false, "interview"), display_order: 0 },
+  ]
+  const proposed = [
+    { ...video("legacydup", false, "interview"), display_order: 0 },
+    { ...video("legacydup", false, "concert"), display_order: 0 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, existing)
+
+  assert.deepEqual(
+    deduped.map((item) => item.video_type),
+    ["interview"],
+  )
+})
+
 test("dedupe requires existingVideos duplicates to also appear in the candidate list", () => {
   const existing = [{ ...video("liveset", false, "concert"), display_order: 0 }]
 

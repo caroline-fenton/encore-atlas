@@ -362,11 +362,11 @@ export function dedupeVideosAcrossTypes(
   videos: RefreshVideo[],
   existingVideos: RefreshVideo[],
 ): RefreshVideo[] {
-  const existingTypeByVideoId = new Map<string, EditableVideoType>()
+  const existingTypesByVideoId = new Map<string, Set<EditableVideoType>>()
   for (const existing of existingVideos) {
-    if (!existingTypeByVideoId.has(existing.youtube_video_id)) {
-      existingTypeByVideoId.set(existing.youtube_video_id, videoType(existing))
-    }
+    const types = existingTypesByVideoId.get(existing.youtube_video_id) ?? new Set<EditableVideoType>()
+    types.add(videoType(existing))
+    existingTypesByVideoId.set(existing.youtube_video_id, types)
   }
 
   const candidatesByVideoId = new Map<string, RefreshVideo[]>()
@@ -374,6 +374,10 @@ export function dedupeVideosAcrossTypes(
     const candidates = candidatesByVideoId.get(video.youtube_video_id) ?? []
     candidates.push(video)
     candidatesByVideoId.set(video.youtube_video_id, candidates)
+  }
+
+  function byFixedTypeOrder(a: RefreshVideo, b: RefreshVideo): number {
+    return editableVideoTypes.indexOf(videoType(a)) - editableVideoTypes.indexOf(videoType(b))
   }
 
   const winners = new Set<RefreshVideo>()
@@ -384,15 +388,15 @@ export function dedupeVideosAcrossTypes(
     }
 
     const manual = candidates.find((candidate) => candidate.is_manually_added)
-    const previousType = existingTypeByVideoId.get(candidates[0].youtube_video_id)
-    const previouslyTyped = previousType
-      ? candidates.find((candidate) => videoType(candidate) === previousType)
+    const existingTypes = existingTypesByVideoId.get(candidates[0].youtube_video_id)
+    const previouslyTyped = existingTypes
+      ? candidates
+        .filter((candidate) => existingTypes.has(videoType(candidate)))
+        .sort(byFixedTypeOrder)[0]
       : undefined
-    const byFixedTypeOrder = [...candidates].sort(
-      (a, b) => editableVideoTypes.indexOf(videoType(a)) - editableVideoTypes.indexOf(videoType(b)),
-    )[0]
+    const winnerByFixedOrder = [...candidates].sort(byFixedTypeOrder)[0]
 
-    winners.add(manual ?? previouslyTyped ?? byFixedTypeOrder)
+    winners.add(manual ?? previouslyTyped ?? winnerByFixedOrder)
   }
 
   return normalizeEditableVideoOrder(videos.filter((video) => winners.has(video)))
