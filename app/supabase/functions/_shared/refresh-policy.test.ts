@@ -490,6 +490,35 @@ test("dedupe falls back to a fixed type order for brand-new duplicates", () => {
   )
 })
 
+test("dedupe requires existingVideos duplicates to also appear in the candidate list", () => {
+  const existing = [{ ...video("liveset", false, "concert"), display_order: 0 }]
+
+  // Regression guard: existingVideos alone does not form a duplicate group —
+  // grouping only happens within the first argument. A caller that passes
+  // an existing video solely as existingVideos (not also as a candidate)
+  // will not have it deduped against, even though the same ID is proposed
+  // under a different type here.
+  const notActuallyDeduped = dedupeVideosAcrossTypes(
+    [{ ...video("liveset", false, "music_video"), display_order: 0 }],
+    existing,
+  )
+  assert.deepEqual(
+    notActuallyDeduped.map((item) => item.video_type),
+    ["music_video"],
+  )
+
+  // The correct call pattern includes existingVideos in the candidate list
+  // too, which resolves the same collision as expected.
+  const deduped = dedupeVideosAcrossTypes(
+    [...existing, { ...video("liveset", false, "music_video"), display_order: 0 }],
+    existing,
+  )
+  assert.deepEqual(
+    deduped.map((item) => item.video_type),
+    ["concert"],
+  )
+})
+
 test("dedupe renormalizes display order per type after dropping losers", () => {
   const proposed = [
     { ...video("concert-a", false, "concert"), display_order: 0 },

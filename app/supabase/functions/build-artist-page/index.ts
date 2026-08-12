@@ -744,8 +744,15 @@ Deno.serve(async (req) => {
 
       // A video that satisfies two of these queries stays in concert if it's
       // already there; otherwise interview wins over music_video by default.
+      // dedupeVideosAcrossTypes only groups duplicates within its first
+      // argument, so concertRows must be included there too — passing it
+      // only as existingVideos wouldn't catch a video that matches concert
+      // plus exactly one secondary type (no group of size >1 would ever
+      // form). Concert-typed winners are dropped below by the per-type
+      // filter, since concertRows were already persisted separately above.
       const dedupedSecondary = dedupeVideosAcrossTypes(
         [
+          ...concertRows,
           ...(secondaryCandidates.interview ?? []),
           ...(secondaryCandidates.music_video ?? []),
         ],
