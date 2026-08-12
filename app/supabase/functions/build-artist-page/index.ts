@@ -779,6 +779,27 @@ Deno.serve(async (req) => {
             }
           }
 
+          // A prior incomplete build attempt (last_refreshed_at still null,
+          // re-entering this path on the next request) may already have
+          // persisted a cross-type duplicate that this dedup pass now
+          // excludes from `rows`. upsert_public_build_videos only inserts
+          // or updates, so the stale loser row would otherwise survive and
+          // keep reappearing on every cache hit — clear it explicitly.
+          const winningIds = rows.map((row) => row.youtube_video_id)
+          const staleVideos = supabase
+            .from("artist_videos")
+            .delete()
+            .eq("artist_id", artistId)
+            .eq("video_type", type)
+          const { error: staleError } = await (
+            winningIds.length > 0
+              ? staleVideos.not("youtube_video_id", "in", `(${winningIds.join(",")})`)
+              : staleVideos
+          )
+          if (staleError) {
+            throw new Error(`Failed to clear stale ${type} videos: ${staleError.message}`)
+          }
+
           syncedTypes.push(type)
           secondaryRows[type] = rows.map(toBuiltVideoRow)
         } catch (err) {
