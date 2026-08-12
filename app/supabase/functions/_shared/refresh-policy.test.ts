@@ -476,6 +476,25 @@ test("dedupe protects a manually added copy over a fresh duplicate", () => {
   )
 })
 
+test("dedupe leaves both copies when two manual picks collide", () => {
+  // Two protected copies of the same video is an admin's own choice, not an
+  // algorithmic accident — silently dropping one would remove a manually
+  // added video with no visible loser for validatePublishRequest's
+  // preserve-or-replace check to point the admin at. Both must survive so
+  // the existing duplicate-resolution UI can surface the conflict.
+  const proposed = [
+    { ...video("doubleprotected", true, "concert"), display_order: 0 },
+    { ...video("doubleprotected", true, "music_video"), display_order: 0 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, [])
+
+  assert.deepEqual(
+    deduped.map((item) => item.video_type).sort(),
+    ["concert", "music_video"],
+  )
+})
+
 test("dedupe falls back to a fixed type order for brand-new duplicates", () => {
   const proposed = [
     { ...video("kimmelclip", false, "interview"), display_order: 0 },

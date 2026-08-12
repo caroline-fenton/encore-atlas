@@ -387,7 +387,17 @@ export function dedupeVideosAcrossTypes(
       continue
     }
 
-    const manual = candidates.find((candidate) => candidate.is_manually_added)
+    const manualCandidates = candidates.filter((candidate) => candidate.is_manually_added)
+    if (manualCandidates.length > 1) {
+      // Two protected picks collide — dropping one silently would remove a
+      // manually added video without the explicit removal/replacement
+      // validatePublishRequest requires, and with no visible loser left for
+      // the admin to resolve. Leave both candidates for the existing
+      // duplicate-resolution UI to surface instead of choosing for them.
+      for (const candidate of candidates) winners.add(candidate)
+      continue
+    }
+
     const existingTypes = existingTypesByVideoId.get(candidates[0].youtube_video_id)
     const previouslyTyped = existingTypes
       ? candidates
@@ -396,7 +406,7 @@ export function dedupeVideosAcrossTypes(
       : undefined
     const winnerByFixedOrder = [...candidates].sort(byFixedTypeOrder)[0]
 
-    winners.add(manual ?? previouslyTyped ?? winnerByFixedOrder)
+    winners.add(manualCandidates[0] ?? previouslyTyped ?? winnerByFixedOrder)
   }
 
   return normalizeEditableVideoOrder(videos.filter((video) => winners.has(video)))
