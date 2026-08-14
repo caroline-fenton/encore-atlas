@@ -8,6 +8,19 @@
 -- p_video_type is optional and defaults to null (no cleanup), so the
 -- concert write — which never needs this — is unaffected. Manually added
 -- rows are never touched by the public builder.
+--
+-- The guard also now checks last_refreshed_at, not just is_curated.
+-- publish_admin_content_refresh only sets is_curated for a manually edited
+-- metadata/same_vibe publish (018_admin_refresh_all_video_types.sql) — a
+-- video-only publish (or one where the admin accepted generated metadata
+-- as-is) leaves is_curated false but does set last_refreshed_at. Without
+-- this, a public builder that started before that publish, and is only now
+-- reaching a later write, could still pass the old is_curated-only guard
+-- and delete the admin's freshly published, non-manual video rows as
+-- "stale". last_refreshed_at is only ever set here (at the very end of a
+-- successful build) or by that publish, and this guard only ever runs
+-- while it's still null, so any non-null value here means someone else's
+-- write landed after this attempt's snapshot was taken.
 
 drop function if exists public.upsert_public_build_videos(uuid, jsonb);
 
@@ -26,6 +39,7 @@ begin
   from public.artists
   where id = p_artist_id
     and not is_curated
+    and last_refreshed_at is null
   for update;
 
   if not found then
