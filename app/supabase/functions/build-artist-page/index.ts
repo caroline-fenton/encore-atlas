@@ -769,35 +769,21 @@ Deno.serve(async (req) => {
           .map((video) => ({ ...video, artist_id: artistId }))
 
         try {
-          if (rows.length > 0) {
-            const { error } = await supabase.rpc(
-              "upsert_public_build_videos",
-              { p_artist_id: artistId, p_videos: rows },
-            )
-            if (error) {
-              throw new Error(`Failed to insert ${type} videos: ${error.message}`)
-            }
-          }
-
-          // A prior incomplete build attempt (last_refreshed_at still null,
-          // re-entering this path on the next request) may already have
-          // persisted a cross-type duplicate that this dedup pass now
-          // excludes from `rows`. upsert_public_build_videos only inserts
-          // or updates, so the stale loser row would otherwise survive and
-          // keep reappearing on every cache hit — clear it explicitly.
-          const winningIds = rows.map((row) => row.youtube_video_id)
-          const staleVideos = supabase
-            .from("artist_videos")
-            .delete()
-            .eq("artist_id", artistId)
-            .eq("video_type", type)
-          const { error: staleError } = await (
-            winningIds.length > 0
-              ? staleVideos.not("youtube_video_id", "in", `(${winningIds.join(",")})`)
-              : staleVideos
+          // p_video_type tells the guarded function to also clear any
+          // stale row this dedup pass excluded from `rows` — e.g. a
+          // cross-type duplicate a prior incomplete build attempt already
+          // persisted under this type. That cleanup runs inside the same
+          // curation lock as the write (see migration 019), unlike a
+          // separate post-RPC delete, which could erase a concurrent
+          // admin publish landing after the write's lock is released.
+          // Always call this, even when rows is empty, so a category with
+          // zero relevant results this time still clears prior rows.
+          const { error } = await supabase.rpc(
+            "upsert_public_build_videos",
+            { p_artist_id: artistId, p_videos: rows, p_video_type: type },
           )
-          if (staleError) {
-            throw new Error(`Failed to clear stale ${type} videos: ${staleError.message}`)
+          if (error) {
+            throw new Error(`Failed to insert ${type} videos: ${error.message}`)
           }
 
           syncedTypes.push(type)
