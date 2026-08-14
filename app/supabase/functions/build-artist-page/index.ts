@@ -642,9 +642,17 @@ Deno.serve(async (req) => {
 
     let concertWriteOk = false
     if (concertRows.length > 0) {
+      // p_video_type: a retry of an incomplete build can find a different
+      // concert set than an earlier attempt did — without this, a video no
+      // longer found here but persisted as "concert" by that earlier
+      // attempt would survive untouched, and could duplicate a fresh
+      // secondary-type candidate for the same video below (dedup only sees
+      // this attempt's in-memory concertRows, not what's actually in the
+      // DB). Cleared here, inside the same curation-locked write as the
+      // concert insert, before the secondary loop runs.
       const { error: videoError } = await supabase.rpc(
         "upsert_public_build_videos",
-        { p_artist_id: artistId, p_videos: concertRows },
+        { p_artist_id: artistId, p_videos: concertRows, p_video_type: "concert" },
       )
 
       if (videoError) {
