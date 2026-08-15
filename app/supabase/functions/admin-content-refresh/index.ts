@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0"
 import {
   applyManualArtistEdits,
+  dedupeVideosAcrossTypes,
   editableVideos,
   mergeTargetedRefreshVideos,
   normalizeEditableVideoOrder,
@@ -416,6 +417,7 @@ Deno.serve(async (request) => {
             Deno.env.get("YOUTUBE_API_KEY")!,
           )
           : editableVideos(snapshot.videos)
+        proposedVideos = dedupeVideosAcrossTypes(proposedVideos, snapshot.videos)
       }
 
       if (scopes.includes("metadata") || scopes.includes("same_vibe")) {

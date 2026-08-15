@@ -3,6 +3,7 @@ import test from "node:test"
 import {
   applyManualArtistEdits,
   concertVideos,
+  dedupeVideosAcrossTypes,
   editableVideos,
   mergeManualVideos,
   mergeTargetedRefreshVideos,
@@ -440,6 +441,141 @@ test("targeted refresh preserves omitted video sections", () => {
   assert.deepEqual(
     merged.map((item) => `${item.video_type}:${item.youtube_video_id}`),
     ["concert:newconcert", "interview:oldinterview"],
+  )
+})
+
+test("dedupe keeps a cross-type duplicate in its pre-refresh category", () => {
+  const existing = [
+    { ...video("liveset", false, "concert"), display_order: 0 },
+  ]
+  const proposed = [
+    { ...video("liveset", false, "concert"), display_order: 0 },
+    { ...video("liveset", false, "music_video"), display_order: 0 },
+    { ...video("officialmv", false, "music_video"), display_order: 1 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, existing)
+
+  assert.deepEqual(
+    deduped.map((item) => `${item.video_type}:${item.youtube_video_id}`),
+    ["concert:liveset", "music_video:officialmv"],
+  )
+})
+
+test("dedupe protects a manually added copy over a fresh duplicate", () => {
+  const proposed = [
+    { ...video("liveset", false, "music_video"), display_order: 0 },
+    { ...video("liveset", true, "concert"), display_order: 0 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, [])
+
+  assert.deepEqual(
+    deduped.map((item) => `${item.video_type}:${item.youtube_video_id}:${item.is_manually_added}`),
+    ["concert:liveset:true"],
+  )
+})
+
+test("dedupe leaves both copies when two manual picks collide", () => {
+  // Two protected copies of the same video is an admin's own choice, not an
+  // algorithmic accident — silently dropping one would remove a manually
+  // added video with no visible loser for validatePublishRequest's
+  // preserve-or-replace check to point the admin at. Both must survive so
+  // the existing duplicate-resolution UI can surface the conflict.
+  const proposed = [
+    { ...video("doubleprotected", true, "concert"), display_order: 0 },
+    { ...video("doubleprotected", true, "music_video"), display_order: 0 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, [])
+
+  assert.deepEqual(
+    deduped.map((item) => item.video_type).sort(),
+    ["concert", "music_video"],
+  )
+})
+
+test("dedupe falls back to a fixed type order for brand-new duplicates", () => {
+  const proposed = [
+    { ...video("kimmelclip", false, "interview"), display_order: 0 },
+    { ...video("kimmelclip", false, "music_video"), display_order: 0 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, [])
+
+  assert.deepEqual(
+    deduped.map((item) => `${item.video_type}:${item.youtube_video_id}`),
+    ["interview:kimmelclip"],
+  )
+})
+
+test("dedupe honors any pre-existing type, not just the first one seen", () => {
+  // A legacy duplicate already sitting under two types in existingVideos —
+  // a targeted refresh drops the music_video copy and adds a fresh concert
+  // candidate. The surviving pre-existing interview copy should win over
+  // the brand-new concert one, even though existingVideos lists
+  // music_video first.
+  const existing = [
+    { ...video("legacydup", false, "music_video"), display_order: 0 },
+    { ...video("legacydup", false, "interview"), display_order: 0 },
+  ]
+  const proposed = [
+    { ...video("legacydup", false, "interview"), display_order: 0 },
+    { ...video("legacydup", false, "concert"), display_order: 0 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, existing)
+
+  assert.deepEqual(
+    deduped.map((item) => item.video_type),
+    ["interview"],
+  )
+})
+
+test("dedupe requires existingVideos duplicates to also appear in the candidate list", () => {
+  const existing = [{ ...video("liveset", false, "concert"), display_order: 0 }]
+
+  // Regression guard: existingVideos alone does not form a duplicate group —
+  // grouping only happens within the first argument. A caller that passes
+  // an existing video solely as existingVideos (not also as a candidate)
+  // will not have it deduped against, even though the same ID is proposed
+  // under a different type here.
+  const notActuallyDeduped = dedupeVideosAcrossTypes(
+    [{ ...video("liveset", false, "music_video"), display_order: 0 }],
+    existing,
+  )
+  assert.deepEqual(
+    notActuallyDeduped.map((item) => item.video_type),
+    ["music_video"],
+  )
+
+  // The correct call pattern includes existingVideos in the candidate list
+  // too, which resolves the same collision as expected.
+  const deduped = dedupeVideosAcrossTypes(
+    [...existing, { ...video("liveset", false, "music_video"), display_order: 0 }],
+    existing,
+  )
+  assert.deepEqual(
+    deduped.map((item) => item.video_type),
+    ["concert"],
+  )
+})
+
+test("dedupe renormalizes display order per type after dropping losers", () => {
+  const proposed = [
+    { ...video("concert-a", false, "concert"), display_order: 0 },
+    { ...video("liveset", false, "concert"), display_order: 1 },
+    { ...video("liveset", false, "music_video"), display_order: 0 },
+    { ...video("officialmv", false, "music_video"), display_order: 1 },
+  ]
+
+  const deduped = dedupeVideosAcrossTypes(proposed, [
+    { ...video("liveset", false, "concert"), display_order: 1 },
+  ])
+
+  assert.deepEqual(
+    deduped.map((item) => `${item.video_type}:${item.youtube_video_id}:${item.display_order}`),
+    ["concert:concert-a:0", "concert:liveset:1", "music_video:officialmv:0"],
   )
 })
 

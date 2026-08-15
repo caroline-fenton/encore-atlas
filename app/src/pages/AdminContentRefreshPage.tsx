@@ -111,12 +111,21 @@ function editableMetadataSignature(artist: RefreshArtist, scopes: RefreshScope[]
 }
 
 function editableVideoSignature(videos: RefreshVideo[]) {
-  return JSON.stringify(videos.map((video) => ({
-    youtube_video_id: video.youtube_video_id,
-    is_manually_added: video.is_manually_added,
-    display_order: video.display_order,
-    video_type: video.video_type,
-  })))
+  // Sorted by key so this only reflects actual content differences, not
+  // incidental array ordering — needed since callers compare snapshots
+  // (e.g. before vs proposed) that aren't guaranteed to share array order.
+  return JSON.stringify(
+    videos
+      .map((video) => ({
+        youtube_video_id: video.youtube_video_id,
+        is_manually_added: video.is_manually_added,
+        display_order: video.display_order,
+        video_type: video.video_type,
+      }))
+      .sort((a, b) =>
+        `${a.video_type}:${a.youtube_video_id}`.localeCompare(`${b.video_type}:${b.youtube_video_id}`)
+      ),
+  )
 }
 
 function defaultVideoSearchQueries(artistName: string): Required<VideoSearchQueries> {
@@ -144,15 +153,24 @@ function videosByType(videos: RefreshVideo[], type: RefreshVideoType) {
 }
 
 function stagePreviewVideos(beforeVideos: RefreshVideo[], proposedVideos: RefreshVideo[]) {
+  // A video the backend cross-type deduped out of this type's proposed
+  // list survives elsewhere in proposedVideos under its winning type — drop
+  // it here instead of falling back to the pre-refresh copy, or the
+  // duplicate the policy just resolved would be silently restored.
+  const proposedVideoIds = new Set(proposedVideos.map((video) => video.youtube_video_id))
   return videoSections.flatMap(({ type }) => {
     const proposedByKey = new Map(
       videosByType(proposedVideos, type).map((video) => [videoKey(video), video]),
     )
-    const staged = videosByType(beforeVideos, type).map((video) => ({
-      ...(proposedByKey.get(videoKey(video)) ?? video),
-      video_type: type,
-      display_order: video.display_order,
-    }))
+    const staged = videosByType(beforeVideos, type)
+      .filter((video) =>
+        proposedByKey.has(videoKey(video)) || !proposedVideoIds.has(video.youtube_video_id)
+      )
+      .map((video) => ({
+        ...(proposedByKey.get(videoKey(video)) ?? video),
+        video_type: type,
+        display_order: video.display_order,
+      }))
     const stagedKeys = new Set(staged.map(videoKey))
     const additions = videosByType(proposedVideos, type)
       .filter((video) => !stagedKeys.has(videoKey(video)))
@@ -495,6 +513,13 @@ export default function AdminContentRefreshPage() {
         hasTargetedSearch(refresh.proposed_snapshot)
         ||
         editableVideoSignature(videos) !== editableVideoSignature(refresh.proposed_snapshot.videos)
+        // The backend's cross-type dedup can change proposed_snapshot from
+        // before_snapshot with nothing left for the admin to stage — e.g. a
+        // duplicate whose surviving copy already had the same display_order
+        // stages identically to the deduped proposal. That's still a real
+        // change worth publishing, not "no edit".
+        || editableVideoSignature(refresh.proposed_snapshot.videos)
+          !== editableVideoSignature(refresh.before_snapshot.videos)
         || manualVideoReplacements.length > 0
         || manualVideoRemovals.length > 0
       )

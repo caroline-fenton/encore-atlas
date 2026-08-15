@@ -358,6 +358,60 @@ export function mergeTargetedRefreshVideos(
   ])
 }
 
+export function dedupeVideosAcrossTypes(
+  videos: RefreshVideo[],
+  existingVideos: RefreshVideo[],
+): RefreshVideo[] {
+  const existingTypesByVideoId = new Map<string, Set<EditableVideoType>>()
+  for (const existing of existingVideos) {
+    const types = existingTypesByVideoId.get(existing.youtube_video_id) ?? new Set<EditableVideoType>()
+    types.add(videoType(existing))
+    existingTypesByVideoId.set(existing.youtube_video_id, types)
+  }
+
+  const candidatesByVideoId = new Map<string, RefreshVideo[]>()
+  for (const video of videos) {
+    const candidates = candidatesByVideoId.get(video.youtube_video_id) ?? []
+    candidates.push(video)
+    candidatesByVideoId.set(video.youtube_video_id, candidates)
+  }
+
+  function byFixedTypeOrder(a: RefreshVideo, b: RefreshVideo): number {
+    return editableVideoTypes.indexOf(videoType(a)) - editableVideoTypes.indexOf(videoType(b))
+  }
+
+  const winners = new Set<RefreshVideo>()
+  for (const candidates of candidatesByVideoId.values()) {
+    if (candidates.length === 1) {
+      winners.add(candidates[0])
+      continue
+    }
+
+    const manualCandidates = candidates.filter((candidate) => candidate.is_manually_added)
+    if (manualCandidates.length > 1) {
+      // Two protected picks collide — dropping one silently would remove a
+      // manually added video without the explicit removal/replacement
+      // validatePublishRequest requires, and with no visible loser left for
+      // the admin to resolve. Leave both candidates for the existing
+      // duplicate-resolution UI to surface instead of choosing for them.
+      for (const candidate of candidates) winners.add(candidate)
+      continue
+    }
+
+    const existingTypes = existingTypesByVideoId.get(candidates[0].youtube_video_id)
+    const previouslyTyped = existingTypes
+      ? candidates
+        .filter((candidate) => existingTypes.has(videoType(candidate)))
+        .sort(byFixedTypeOrder)[0]
+      : undefined
+    const winnerByFixedOrder = [...candidates].sort(byFixedTypeOrder)[0]
+
+    winners.add(manualCandidates[0] ?? previouslyTyped ?? winnerByFixedOrder)
+  }
+
+  return normalizeEditableVideoOrder(videos.filter((video) => winners.has(video)))
+}
+
 export function videoType(video: Pick<RefreshVideo, "video_type">): EditableVideoType {
   return editableVideoTypes.includes(video.video_type as EditableVideoType)
     ? video.video_type as EditableVideoType

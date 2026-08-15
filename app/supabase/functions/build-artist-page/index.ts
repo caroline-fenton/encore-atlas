@@ -13,6 +13,7 @@ import {
   verifyArtistNames,
   verifySubjectArtist,
 } from "../_shared/musicbrainz.ts"
+import { dedupeVideosAcrossTypes, type RefreshVideo } from "../_shared/refresh-policy.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -633,6 +634,7 @@ Deno.serve(async (req) => {
           detail?.channelTitle ??
           (item.snippet.channelTitle ? decodeHtml(item.snippet.channelTitle) : null),
         search_query: `${artist_name} live concert full set`,
+        is_manually_added: false,
         display_order: index,
         video_type: "concert",
       }
@@ -640,9 +642,17 @@ Deno.serve(async (req) => {
 
     let concertWriteOk = false
     if (concertRows.length > 0) {
+      // p_video_type: a retry of an incomplete build can find a different
+      // concert set than an earlier attempt did — without this, a video no
+      // longer found here but persisted as "concert" by that earlier
+      // attempt would survive untouched, and could duplicate a fresh
+      // secondary-type candidate for the same video below (dedup only sees
+      // this attempt's in-memory concertRows, not what's actually in the
+      // DB). Cleared here, inside the same curation-locked write as the
+      // concert insert, before the secondary loop runs.
       const { error: videoError } = await supabase.rpc(
         "upsert_public_build_videos",
-        { p_artist_id: artistId, p_videos: concertRows },
+        { p_artist_id: artistId, p_videos: concertRows, p_video_type: "concert" },
       )
 
       if (videoError) {
@@ -690,10 +700,16 @@ Deno.serve(async (req) => {
     }
 
     if (needsSecondarySearches) {
-      const secondarySearches: Array<{ query: string; type: string }> = [
+      const secondarySearches: Array<{ query: string; type: "interview" | "music_video" }> = [
         { query: `${artist_name} interview`, type: "interview" },
         { query: `${artist_name} official music video`, type: "music_video" },
       ]
+
+      // Search results are gathered for both types before anything is
+      // written so a video that satisfies two queries (e.g. a live set that
+      // also reads as an "official" video) can be deduped across them —
+      // see the merge below.
+      const secondaryCandidates: Partial<Record<"interview" | "music_video", RefreshVideo[]>> = {}
 
       for (const { query, type } of secondarySearches) {
         try {
@@ -702,10 +718,9 @@ Deno.serve(async (req) => {
           const ids = items.map((i) => i.id.videoId)
           const typeDetails = await youtubeVideoDetails(ids, youtubeApiKey)
 
-          const rows = items.map((item, index) => {
+          secondaryCandidates[type] = items.map((item, index) => {
             const detail = typeDetails.get(item.id.videoId)
             return {
-              artist_id: artistId,
               youtube_video_id: item.id.videoId,
               title: decodeHtml(item.snippet.title),
               description:
@@ -719,19 +734,64 @@ Deno.serve(async (req) => {
                 detail?.channelTitle ??
                 (item.snippet.channelTitle ? decodeHtml(item.snippet.channelTitle) : null),
               search_query: query,
+              is_manually_added: false,
               display_order: index,
               video_type: type,
             }
           })
+        } catch (err) {
+          if (
+            err instanceof Error
+            && err.message.includes("Artist was curated while the public build was running")
+          ) {
+            throw err
+          }
+          console.error(`YouTube search failed for ${type}:`, err)
+        }
+      }
 
-          if (rows.length > 0) {
-            const { error } = await supabase.rpc(
-              "upsert_public_build_videos",
-              { p_artist_id: artistId, p_videos: rows },
-            )
-            if (error) {
-              throw new Error(`Failed to insert ${type} videos: ${error.message}`)
-            }
+      // A video that satisfies two of these queries stays in concert if it's
+      // already there; otherwise interview wins over music_video by default.
+      // dedupeVideosAcrossTypes only groups duplicates within its first
+      // argument, so concertRows must be included there too — passing it
+      // only as existingVideos wouldn't catch a video that matches concert
+      // plus exactly one secondary type (no group of size >1 would ever
+      // form). Concert-typed winners are dropped below by the per-type
+      // filter, since concertRows were already persisted separately above.
+      const dedupedSecondary = dedupeVideosAcrossTypes(
+        [
+          ...concertRows,
+          ...(secondaryCandidates.interview ?? []),
+          ...(secondaryCandidates.music_video ?? []),
+        ],
+        concertRows,
+      )
+
+      for (const type of ["interview", "music_video"] as const) {
+        // The search itself failed — leave this category unattempted rather
+        // than recording it as synced with (falsely) zero results.
+        if (!secondaryCandidates[type]) continue
+
+        const rows = dedupedSecondary
+          .filter((video) => video.video_type === type)
+          .map((video) => ({ ...video, artist_id: artistId }))
+
+        try {
+          // p_video_type tells the guarded function to also clear any
+          // stale row this dedup pass excluded from `rows` — e.g. a
+          // cross-type duplicate a prior incomplete build attempt already
+          // persisted under this type. That cleanup runs inside the same
+          // curation lock as the write (see migration 019), unlike a
+          // separate post-RPC delete, which could erase a concurrent
+          // admin publish landing after the write's lock is released.
+          // Always call this, even when rows is empty, so a category with
+          // zero relevant results this time still clears prior rows.
+          const { error } = await supabase.rpc(
+            "upsert_public_build_videos",
+            { p_artist_id: artistId, p_videos: rows, p_video_type: type },
+          )
+          if (error) {
+            throw new Error(`Failed to insert ${type} videos: ${error.message}`)
           }
 
           syncedTypes.push(type)
