@@ -711,14 +711,18 @@ Deno.serve(async (req) => {
       // see the merge below.
       const secondaryCandidates: Partial<Record<"interview" | "music_video", RefreshVideo[]>> = {}
 
-      for (const { query, type } of secondarySearches) {
-        try {
+      // Run both searches concurrently — each is a fully independent
+      // query + details fetch, so there's no reason to make one wait on
+      // the other. Promise.allSettled (rather than Promise.all) keeps one
+      // type's failure from aborting the other's in-flight request.
+      const searchOutcomes = await Promise.allSettled(
+        secondarySearches.map(async ({ query, type }) => {
           const items = (await youtubeSearch(query, youtubeApiKey, 25))
             .filter((item) => isRelevantResult(item, artist_name))
           const ids = items.map((i) => i.id.videoId)
           const typeDetails = await youtubeVideoDetails(ids, youtubeApiKey)
 
-          secondaryCandidates[type] = items.map((item, index) => {
+          return items.map((item, index) => {
             const detail = typeDetails.get(item.id.videoId)
             return {
               youtube_video_id: item.id.videoId,
@@ -739,15 +743,25 @@ Deno.serve(async (req) => {
               video_type: type,
             }
           })
-        } catch (err) {
-          if (
-            err instanceof Error
-            && err.message.includes("Artist was curated while the public build was running")
-          ) {
-            throw err
-          }
-          console.error(`YouTube search failed for ${type}:`, err)
+        }),
+      )
+
+      for (let i = 0; i < secondarySearches.length; i++) {
+        const { type } = secondarySearches[i]
+        const outcome = searchOutcomes[i]
+        if (outcome.status === "fulfilled") {
+          secondaryCandidates[type] = outcome.value
+          continue
         }
+
+        const err = outcome.reason
+        if (
+          err instanceof Error
+          && err.message.includes("Artist was curated while the public build was running")
+        ) {
+          throw err
+        }
+        console.error(`YouTube search failed for ${type}:`, err)
       }
 
       // A video that satisfies two of these queries stays in concert if it's
