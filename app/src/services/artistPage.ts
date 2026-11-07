@@ -1,6 +1,7 @@
 import { FunctionsHttpError } from "@supabase/supabase-js"
 import { supabase } from "./supabase"
 import { filterRelatedArtists } from "../utils/artistNameFilters"
+import { getArtistByName } from "./artists"
 
 /**
  * Thrown when the build-artist-page edge function rejects the subject name
@@ -150,34 +151,9 @@ export function normalizeArtistContext(
   }
 }
 
-function artistNameLookupVariants(artistName: string): string[] {
-  const normalized = artistName.trim().toLowerCase()
-  if (!normalized) return []
-
-  const variants = [normalized]
-  const withoutLeadingThe = normalized.replace(/^the\s+/, "")
-  if (withoutLeadingThe !== normalized) {
-    variants.push(withoutLeadingThe)
-  } else {
-    variants.push(`the ${normalized}`)
-  }
-
-  return [...new Set(variants)]
-}
-
 async function findCachedArtist(artistName: string) {
-  for (const variant of artistNameLookupVariants(artistName)) {
-    const escaped = variant.replace(/%/g, "\\%").replace(/_/g, "\\_")
-    const { data: artist } = await supabase
-      .from("artists")
-      .select("*")
-      .ilike("name", escaped)
-      .maybeSingle()
-
-    if (artist?.last_refreshed_at) return artist
-  }
-
-  return null
+  const artist = await getArtistByName(artistName)
+  return artist && (artist.last_refreshed_at || artist.is_curated) ? artist : null
 }
 
 /**
