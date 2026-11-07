@@ -29,3 +29,6 @@ dist-ssr
 *.sw?
 .DS_Store
 .claude/
+
+# Local relevance evaluation outputs
+evals/relevance/results/
