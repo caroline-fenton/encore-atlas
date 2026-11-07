@@ -706,14 +706,15 @@ Deno.serve(async (req) => {
       // Missing entries represent search failures and must not clear old rows.
       const secondaryCandidates: Partial<Record<"interview" | "music_video", RefreshVideo[]>> = {}
 
-      for (const { query, type } of secondarySearches) {
-        try {
+      // Fetch independent categories concurrently; persist in fixed order below.
+      const searchOutcomes = await Promise.allSettled(
+        secondarySearches.map(async ({ query, type }) => {
           const items = (await youtubeSearch(query, youtubeApiKey, 25))
             .filter((item) => isRelevantResult(item, buildArtistName))
           const ids = items.map((i) => i.id.videoId)
           const typeDetails = await youtubeVideoDetails(ids, youtubeApiKey)
 
-          secondaryCandidates[type] = items.map((item, index) => {
+          return items.map((item, index) => {
             const detail = typeDetails.get(item.id.videoId)
             return {
               youtube_video_id: item.id.videoId,
@@ -734,14 +735,14 @@ Deno.serve(async (req) => {
               video_type: type,
             }
           })
-        } catch (err) {
-          if (
-            err instanceof Error
-            && err.message.includes("Artist was curated while the public build was running")
-          ) {
-            throw err
-          }
-          console.error(`YouTube search failed for ${type}:`, err)
+        }),
+      )
+      for (const [index, outcome] of searchOutcomes.entries()) {
+        const { type } = secondarySearches[index]
+        if (outcome.status === "fulfilled") {
+          secondaryCandidates[type] = outcome.value
+        } else {
+          console.error(`YouTube search failed for ${type}:`, outcome.reason)
         }
       }
 

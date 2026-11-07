@@ -7,6 +7,8 @@ import { test } from 'node:test'
 const rpcCalls = []
 let readError = null
 let interviewMode = 'overlap'
+let releaseInterview
+let secondaryStarted = []
 const persisted = [
   { id: 'stored-1', youtube_video_id: 'overlap', video_type: 'concert', title: 'stored concert', display_order: 0 },
   { id: 'manual-1', youtube_video_id: 'manual', video_type: 'interview', title: 'manual selection', display_order: 7 },
@@ -57,6 +59,17 @@ globalThis.fetch = async (url) => {
   if (parsed.pathname.endsWith('/videos')) return Response.json({ items: [] })
   assert.ok(parsed.pathname.endsWith('/search'))
   const query = parsed.searchParams.get('q')
+  if (interviewMode === 'concurrency' && !query.endsWith('full set')) {
+    secondaryStarted.push(query)
+    if (query.endsWith('interview')) {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Music-video search waited for interview completion')), 1000)
+        releaseInterview = () => { clearTimeout(timer); resolve() }
+      })
+    } else {
+      releaseInterview()
+    }
+  }
   if (query.endsWith('interview') && interviewMode === 'failure') return new Response('test failure', { status: 503 })
   const ids = query.endsWith('full set') ? ['overlap', 'concert2', 'concert3']
     : query.endsWith('interview') && interviewMode === 'empty' ? [] : ['overlap']
@@ -111,4 +124,16 @@ test('persisted read failure is not disguised as successful empty content', asyn
   const response = await build()
   assert.equal(response.status, 500)
   assert.match((await response.json()).error, /Failed to read built videos/)
+})
+
+
+test('secondary searches overlap while category writes retain their order', async () => {
+  readError = null
+  interviewMode = 'concurrency'
+  secondaryStarted = []
+  const response = await build()
+  assert.equal(response.status, 200)
+  assert.equal(secondaryStarted.length, 2)
+  assert.deepEqual(rpcCalls.map(call => call.p_video_type), ['concert', 'interview', 'music_video'])
+  interviewMode = 'overlap'
 })
