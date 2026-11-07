@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Check, Pencil, Plus, Search, X } from "lucide-react"
+import { Check, Pencil, Plus, Search, Trash2, X } from "lucide-react"
 import { Link } from "react-router-dom"
 import {
+  deleteArtistPage,
   generateRefreshPreview,
   getAdminSession,
+  getArtistDeletePreview,
   previewReplacementVideo,
   publishContentRefresh,
   searchAdminArtists,
   sendAdminMagicLink,
   signOutAdmin,
   type AdminArtist,
+  type ArtistDeletePreview,
   type ContentRefresh,
   type RefreshArtist,
   type RefreshScope,
@@ -449,6 +452,152 @@ function VideoPreview({
   )
 }
 
+function DeleteArtistSection({
+  artist,
+  onDeleted,
+}: {
+  artist: AdminArtist
+  onDeleted: (artistName: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [preview, setPreview] = useState<ArtistDeletePreview | null>(null)
+  const [confirmName, setConfirmName] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+
+  const nameMatches = confirmName.trim().toLowerCase()
+    === artist.name.trim().toLowerCase()
+
+  async function handleOpen() {
+    setOpen(true)
+    setError(null)
+    setBusy(true)
+    try {
+      setPreview(await getArtistDeletePreview(artist.id))
+    } catch (previewError) {
+      setError(
+        previewError instanceof Error
+          ? previewError.message
+          : "Could not load deletion details",
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!nameMatches) return
+    setBusy(true)
+    setError(null)
+    try {
+      const deleted = await deleteArtistPage(artist.id, confirmName)
+      if (mounted.current) onDeleted(deleted.artist_name)
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Could not delete this artist",
+      )
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="mt-12 border-t border-[#a33b33]/35 py-8">
+      <h2 className="font-display text-3xl tracking-[0.1em] text-[#82332d]">Delete artist page</h2>
+      {artist.is_curated ? (
+        <p className="mt-3 border border-[#a33b33]/25 bg-[#a33b33]/5 p-4 text-sm text-[#82332d]">
+          <strong>Curated artist.</strong> Curated pages cannot be deleted from
+          this tool.
+        </p>
+      ) : !open ? (
+        <>
+          <p className="mt-3 text-sm leading-relaxed text-black/55">
+            Deleting removes this artist page, its videos, and its watch
+            history and admin refresh records. A future public search can
+            create the page again; deleting does not block the name.
+          </p>
+          <button
+            type="button"
+            onClick={handleOpen}
+            className="mt-4 inline-flex items-center gap-2 border border-[#a33b33]/45 bg-white/45 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#a33b33] hover:bg-[#a33b33]/5"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete this artist page…
+          </button>
+          {error && <p className="mt-3 text-sm text-[#a33b33]">{error}</p>}
+        </>
+      ) : (
+        <div className="mt-4 border border-[#a33b33]/35 bg-[#a33b33]/5 p-4">
+          {busy && !preview ? (
+            <p className="text-sm text-black/55">Loading deletion details...</p>
+          ) : preview ? (
+            <>
+              <p className="text-sm leading-relaxed text-[#82332d]">
+                Deleting <strong>{preview.artist.name}</strong> permanently removes:
+              </p>
+              <ul className="mt-2 list-inside list-disc text-sm text-[#82332d]">
+                <li>{preview.blast_radius.video_count} videos</li>
+                <li>
+                  {preview.blast_radius.watch_history_count} watch-history rows
+                  (users lose these from their history)
+                </li>
+                <li>{preview.blast_radius.refresh_count} admin refresh records</li>
+                <li>
+                  {preview.blast_radius.search_count} past searches unlink from
+                  this page
+                </li>
+              </ul>
+              <label htmlFor="delete-artist-confirmation" className="mt-4 block text-xs font-semibold uppercase tracking-[0.14em] text-black/55">
+                Type the artist name to confirm
+              </label>
+              <input
+                id="delete-artist-confirmation"
+                disabled={busy}
+                value={confirmName}
+                onChange={(event) => setConfirmName(event.target.value)}
+                placeholder={artist.name}
+                className="mt-2 w-full border border-stone-300 bg-white/70 px-3 py-2 text-sm outline-none focus:border-[#a33b33]"
+              />
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  disabled={busy || !nameMatches || preview.artist.is_curated}
+                  onClick={handleDelete}
+                  className="inline-flex items-center gap-2 bg-[#a33b33] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] text-white disabled:opacity-40"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {busy ? "Deleting..." : "Delete permanently"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setOpen(false)
+                    setConfirmName("")
+                    setError(null)
+                  }}
+                  className="text-xs font-semibold uppercase tracking-[0.12em] text-black/45"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          ) : null}
+          {error && <p className="mt-3 text-sm text-[#a33b33]">{error}</p>}
+          {!preview && !busy && <button type="button" onClick={() => setOpen(false)} className="mt-3 underline">Close</button>}
+        </div>
+      )}
+    </section>
+  )
+}
+
 export default function AdminContentRefreshPage() {
   const [session, setSession] = useState<Awaited<ReturnType<typeof getAdminSession>> | null>(null)
   const [sessionError, setSessionError] = useState<string | null>(null)
@@ -471,6 +620,7 @@ export default function AdminContentRefreshPage() {
   const [previewing, setPreviewing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(false)
+  const [deletedMessage, setDeletedMessage] = useState<string | null>(null)
   const previewRequestIdRef = useRef(0)
 
   const loadSession = useCallback(async () => {
@@ -727,8 +877,24 @@ export default function AdminContentRefreshPage() {
   function handleSelectArtist(artist: AdminArtist) {
     setSelectedArtist(artist)
     setShowTargetedSearch(false)
+    setDeletedMessage(null)
     setVideoSearchQueries(defaultVideoSearchQueries(artist.name))
     void handlePreview(artist)
+  }
+
+  function handleArtistDeleted(artistName: string) {
+    previewRequestIdRef.current += 1
+    setPreviewing(false)
+    setPublished(false)
+    setSelectedArtist(null)
+    setRefresh(null)
+    setProposedArtist(null)
+    setVideos([])
+    setError(null)
+    setDeletedMessage(`Deleted "${artistName}". A future public search can create the page again.`)
+    searchAdminArtists(query)
+      .then(setArtists)
+      .catch((searchError) => setError(searchError.message))
   }
 
   function updateVideoSearchQuery(type: RefreshVideoType, value: string) {
@@ -848,6 +1014,7 @@ export default function AdminContentRefreshPage() {
 
       {error && <div className="mb-6 border border-[#a33b33]/35 bg-[#a33b33]/5 p-4 text-sm text-[#82332d]">{error}</div>}
       {published && <div className="mb-6 border border-[#5a9a6e]/45 bg-[#5a9a6e]/10 p-4 text-sm text-[#356444]">Refresh published successfully.</div>}
+      {deletedMessage && <div className="mb-6 border border-[#5a9a6e]/45 bg-[#5a9a6e]/10 p-4 text-sm text-[#356444]">{deletedMessage}</div>}
 
       {refresh && beforeArtist && proposedArtist && (
         <section className="space-y-10 border-t border-stone-300 py-8">
@@ -1392,6 +1559,14 @@ export default function AdminContentRefreshPage() {
             </button>
           </div>
         </section>
+      )}
+
+      {selectedArtist && (
+        <DeleteArtistSection
+          key={selectedArtist.id}
+          artist={selectedArtist}
+          onDeleted={handleArtistDeleted}
+        />
       )}
     </main>
   )

@@ -19,7 +19,10 @@ psql = base + ['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', 
 
 
 def sql(text):
-    return subprocess.check_output(psql, input=text, text=True, stderr=subprocess.STDOUT).strip()
+    try:
+        return subprocess.check_output(psql, input=text, text=True, stderr=subprocess.STDOUT).strip()
+    except subprocess.CalledProcessError as error:
+        raise AssertionError(error.output) from error
 
 
 def candidate(category):
@@ -40,7 +43,7 @@ def wait_for_blocked():
     raise AssertionError('Second writer never waited for the artist lock')
 
 
-def overlap(artist, first_sql, second_sql, should_fail=False):
+def overlap(artist, first_sql, second_sql, should_fail=False, expected_error='Artist was curated'):
     first = subprocess.Popen(psql, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     second = None
     try:
@@ -62,7 +65,7 @@ def overlap(artist, first_sql, second_sql, should_fail=False):
         assert first.returncode == 0, err
         _, err = second.communicate(timeout=10)
         if should_fail:
-            assert second.returncode != 0 and 'Artist was curated' in err, err
+            assert second.returncode != 0 and expected_error in err, err
         else:
             assert second.returncode == 0, err
     finally:
@@ -89,6 +92,8 @@ try:
     print('PASS: full migration replay', flush=True)
     sql((root / 'supabase/tests/public_builder_video_dedupe.sql').read_text())
     print('PASS: category precedence, manual selections, stale cleanup, invalid payloads, guards and permissions', flush=True)
+    sql((root / 'supabase/tests/admin_artist_delete.sql').read_text())
+    print('PASS: admin deletion authorization, confirmation, curation guard, cascades and audit', flush=True)
     # Reverse arrival order too: existing persisted category wins in either order.
     for first_type, second_type in [('concert', 'interview'), ('music_video', 'concert')]:
         artist = sql("insert into public.artists(name) values ('%s') returning id;" % uuid.uuid4())
@@ -101,5 +106,17 @@ try:
             "select public.upsert_public_build_videos('%s', '[]', 'concert');" % artist, should_fail=True)
     assert sql("select count(*) from public.artist_videos where artist_id='%s';" % artist) == '1'
     print('PASS: concurrent completion/admin publication blocks stale deletion', flush=True)
+    actor = sql("insert into auth.users(id) values(gen_random_uuid()) returning id;")
+    sql("insert into public.admin_users(user_id) values('%s');" % actor)
+    for update, expected_error in [("is_curated=true", 'Curated artists cannot be deleted'), ("name='Renamed fixture'", 'Artist name confirmation does not match')]:
+        artist = sql("insert into public.artists(name) values('Delete race fixture') returning id;")
+        overlap(artist, "update public.artists set %s where id='%s';" % (update, artist),
+                "select public.admin_delete_artist('%s','%s','Delete race fixture');" % (artist, actor),
+                should_fail=True, expected_error=expected_error)
+        assert sql("select count(*) from public.artists where id='%s';" % artist) == '1'
+        assert sql("select count(*) from public.admin_artist_deletions where artist_id='%s';" % artist) == '0'
+        sql("delete from public.artists where id='%s';" % artist)
+    print('PASS: concurrent curation and rename prevent stale admin deletions', flush=True)
+
 finally:
     subprocess.run(base + ['dropdb', '-U', 'postgres', '--force', database], check=True)

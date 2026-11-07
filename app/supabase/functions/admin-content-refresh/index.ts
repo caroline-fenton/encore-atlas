@@ -581,6 +581,83 @@ Deno.serve(async (request) => {
       return json({ published })
     }
 
+    if (action === "delete_preview") {
+      const artistId = typeof body.artist_id === "string" ? body.artist_id : ""
+      if (!artistId) return json({ error: "An artist is required" }, 400)
+
+      const { data: artist, error: artistError } = await service
+        .from("artists")
+        .select("id,name,is_curated")
+        .eq("id", artistId)
+        .maybeSingle()
+      if (artistError) throw artistError
+      if (!artist) return json({ error: "Artist not found" }, 404)
+
+      const [videos, watchHistory, searches, refreshes] = await Promise.all([
+        service
+          .from("artist_videos")
+          .select("*", { count: "exact", head: true })
+          .eq("artist_id", artistId),
+        service
+          .from("watch_history")
+          .select("*", { count: "exact", head: true })
+          .eq("artist_id", artistId),
+        service
+          .from("artist_searches")
+          .select("*", { count: "exact", head: true })
+          .eq("selected_artist_id", artistId),
+        service.from("admin_content_refreshes")
+          .select("*", { count: "exact", head: true })
+          .eq("artist_id", artistId),
+      ])
+      const countError = videos.error ?? watchHistory.error ?? searches.error ?? refreshes.error
+      if (countError) throw countError
+
+      return json({
+        artist,
+        blast_radius: {
+          video_count: videos.count ?? 0,
+          watch_history_count: watchHistory.count ?? 0,
+          search_count: searches.count ?? 0,
+          refresh_count: refreshes.count ?? 0,
+        },
+      })
+    }
+
+    if (action === "delete_artist") {
+      const artistId = typeof body.artist_id === "string" ? body.artist_id : ""
+      const confirmName = typeof body.confirm_name === "string"
+        ? body.confirm_name.trim()
+        : ""
+      if (!artistId) return json({ error: "An artist is required" }, 400)
+
+      const { data: artist, error: artistError } = await service
+        .from("artists")
+        .select("id,name,is_curated")
+        .eq("id", artistId)
+        .maybeSingle()
+      if (artistError) throw artistError
+      if (!artist) return json({ error: "Artist not found" }, 404)
+      if (artist.is_curated) {
+        return json({ error: "Curated artists cannot be deleted" }, 400)
+      }
+      if (confirmName.toLowerCase() !== artist.name.trim().toLowerCase()) {
+        return json(
+          { error: "Type the artist name exactly to confirm the deletion" },
+          400,
+        )
+      }
+
+      // The RPC re-checks the curated guard under a row lock, records the
+      // audit row with the cascaded counts, and deletes atomically.
+      const { data: deleted, error: deleteError } = await service.rpc(
+        "admin_delete_artist",
+        { p_artist_id: artistId, p_deleted_by: user.id, p_confirm_name: confirmName },
+      )
+      if (deleteError) throw deleteError
+      return json({ deleted })
+    }
+
     return json({ error: "Unknown action" }, 400)
   } catch (error) {
     console.error("admin-content-refresh error:", error)
