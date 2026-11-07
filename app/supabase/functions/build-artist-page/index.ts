@@ -13,7 +13,7 @@ import {
   verifyArtistNames,
   verifySubjectArtist,
 } from "../_shared/musicbrainz.ts"
-import { dedupeVideosAcrossTypes, type RefreshVideo } from "../_shared/refresh-policy.ts"
+import type { RefreshVideo } from "../_shared/refresh-policy.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -665,16 +665,13 @@ Deno.serve(async (req) => {
     // YouTube presence — obscure artists won't have this content and it's
     // not worth burning quota to find out.
     const needsSecondarySearches = concertRows.length >= 3
-    const secondaryRows: Record<string, ReturnType<typeof toBuiltVideoRow>[]> = {
-      interview: [],
-      music_video: [],
-    }
     // Categories that were searched and successfully persisted (regardless
     // of whether any relevant results were found). Used to distinguish
     // "completed, genuinely empty" from "never attempted".
     const syncedTypes: string[] = []
 
     function toBuiltVideoRow(v: {
+      id: string
       youtube_video_id: string
       title: string
       description: string | null
@@ -686,7 +683,7 @@ Deno.serve(async (req) => {
       display_order: number
     }): VideoRow {
       return {
-        id: "",
+        id: v.id,
         youtube_video_id: v.youtube_video_id,
         title: v.title,
         description: v.description,
@@ -705,10 +702,8 @@ Deno.serve(async (req) => {
         { query: `${buildArtistName} official music video`, type: "music_video" },
       ]
 
-      // Search results are gathered for both types before anything is
-      // written so a video that satisfies two queries (e.g. a live set that
-      // also reads as an "official" video) can be deduped across them —
-      // see the merge below.
+      // Gather successful searches before writing categories sequentially.
+      // Missing entries represent search failures and must not clear old rows.
       const secondaryCandidates: Partial<Record<"interview" | "music_video", RefreshVideo[]>> = {}
 
       for (const { query, type } of secondarySearches) {
@@ -750,42 +745,19 @@ Deno.serve(async (req) => {
         }
       }
 
-      // A video that satisfies two of these queries stays in concert if it's
-      // already there; otherwise interview wins over music_video by default.
-      // dedupeVideosAcrossTypes only groups duplicates within its first
-      // argument, so concertRows must be included there too — passing it
-      // only as existingVideos wouldn't catch a video that matches concert
-      // plus exactly one secondary type (no group of size >1 would ever
-      // form). Concert-typed winners are dropped below by the per-type
-      // filter, since concertRows were already persisted separately above.
-      const dedupedSecondary = dedupeVideosAcrossTypes(
-        [
-          ...concertRows,
-          ...(secondaryCandidates.interview ?? []),
-          ...(secondaryCandidates.music_video ?? []),
-        ],
-        concertRows,
-      )
-
+      // Send raw candidates in category order. The database resolves overlap
+      // against live rows under the artist lock, including other builds' writes.
       for (const type of ["interview", "music_video"] as const) {
         // The search itself failed — leave this category unattempted rather
         // than recording it as synced with (falsely) zero results.
         if (!secondaryCandidates[type]) continue
 
-        const rows = dedupedSecondary
-          .filter((video) => video.video_type === type)
+        const rows = secondaryCandidates[type]
           .map((video) => ({ ...video, artist_id: artistId }))
 
         try {
-          // p_video_type tells the guarded function to also clear any
-          // stale row this dedup pass excluded from `rows` — e.g. a
-          // cross-type duplicate a prior incomplete build attempt already
-          // persisted under this type. That cleanup runs inside the same
-          // curation lock as the write (see migration 019), unlike a
-          // separate post-RPC delete, which could erase a concurrent
-          // admin publish landing after the write's lock is released.
-          // Always call this, even when rows is empty, so a category with
-          // zero relevant results this time still clears prior rows.
+          // Even an empty successful search must clear stale automatic rows.
+          // Cleanup and cross-type decisions share the database's curation lock.
           const { error } = await supabase.rpc(
             "upsert_public_build_videos",
             { p_artist_id: artistId, p_videos: rows, p_video_type: type },
@@ -795,7 +767,6 @@ Deno.serve(async (req) => {
           }
 
           syncedTypes.push(type)
-          secondaryRows[type] = rows.map(toBuiltVideoRow)
         } catch (err) {
           if (
             err instanceof Error
@@ -869,6 +840,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    // The RPC may reject candidates already stored under another category.
+    // Return persisted rows, including protected manual selections, so the first
+    // response agrees with subsequent cache hits instead of displaying losers.
+    const { data: persistedVideos, error: persistedError } = await supabase
+      .from("artist_videos")
+      .select("*")
+      .eq("artist_id", artistId)
+      .order("display_order", { ascending: true })
+    if (persistedError) {
+      throw new Error(`Failed to read built videos: ${persistedError.message}`)
+    }
+    const persistedByType = (type: string): VideoRow[] =>
+      (persistedVideos ?? [])
+        .filter((video) => (video.video_type ?? "concert") === type)
+        .map(toBuiltVideoRow)
+
     const response: ArtistPageResponse = {
       artist: {
         id: artistId,
@@ -882,9 +869,9 @@ Deno.serve(async (req) => {
         is_curated: false,
         artist_context: tagResult.artist_context,
       },
-      videos: concertRows.map(toBuiltVideoRow),
-      interview_videos: secondaryRows.interview,
-      music_videos: secondaryRows.music_video,
+      videos: persistedByType("concert"),
+      interview_videos: persistedByType("interview"),
+      music_videos: persistedByType("music_video"),
       interviews_synced: syncedTypes.includes("interview"),
       music_videos_synced: syncedTypes.includes("music_video"),
       was_cache_hit: false,
