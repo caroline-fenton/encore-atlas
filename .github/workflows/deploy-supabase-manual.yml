@@ -37,7 +37,8 @@ jobs:
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Match app/package-lock.json; upgrade the CLI and config together.
+          version: 2.84.4
 
       - name: Link Supabase project
         if: ${{ inputs.deploy_migrations }}
