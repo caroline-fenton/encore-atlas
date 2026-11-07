@@ -134,6 +134,42 @@ export async function publishContentRefresh(
   })
 }
 
+export type ArtistDeletePreview = {
+  artist: Pick<AdminArtist, "id" | "name" | "is_curated">
+  blast_radius: {
+    video_count: number
+    watch_history_count: number
+    search_count: number
+    refresh_count: number
+  }
+}
+
+export type ArtistDeleteResult = {
+  artist_id: string
+  artist_name: string
+  video_count: number
+  watch_history_count: number
+  search_count: number
+  refresh_count: number
+}
+
+export function getArtistDeletePreview(
+  artistId: string,
+): Promise<ArtistDeletePreview> {
+  return invoke<ArtistDeletePreview>("delete_preview", { artist_id: artistId })
+}
+
+export async function deleteArtistPage(
+  artistId: string,
+  confirmName: string,
+): Promise<ArtistDeleteResult> {
+  const data = await invoke<{ deleted: ArtistDeleteResult }>("delete_artist", {
+    artist_id: artistId,
+    confirm_name: confirmName,
+  })
+  return data.deleted
+}
+
 export async function sendAdminMagicLink(email: string): Promise<void> {
   const { error } = await supabase.auth.signInWithOtp({
     email,
