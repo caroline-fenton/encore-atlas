@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import type { User } from "@supabase/supabase-js"
-import { findOrCreateArtist } from "../services/artists"
+import { getArtistByName } from "../services/artists"
 import {
   recordSearch as recordSearchService,
   getRecentSearches,
@@ -40,7 +40,8 @@ export function useSupabaseSearches(
 
   /**
    * Records a search to Supabase.
-   * Finds or creates the artist, then inserts the search row.
+   * Links an existing artist, then inserts the search row. Only the page
+   * builder may create artists, after validating the search subject.
    * Fire-and-forget — errors are caught and logged.
    *
    * If auth has not initialised yet, waits for it rather than
@@ -53,7 +54,7 @@ export function useSupabaseSearches(
       if (!resolvedUser) return
 
       try {
-        const artist = await findOrCreateArtist(artistName)
+        const artist = await getArtistByName(artistName)
         await recordSearchService(
           resolvedUser.id,
           artistName,

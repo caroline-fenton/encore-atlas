@@ -277,6 +277,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      resolve_artist: {
+        Args: { p_name: string }
+        Returns: Database["public"]["Tables"]["artists"]["Row"][]
+      }
       current_artist_content_snapshot: {
         Args: { p_artist_id: string }
         Returns: unknown

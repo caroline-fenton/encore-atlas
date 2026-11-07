@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import type { User } from "@supabase/supabase-js"
-import { findOrCreateArtist } from "../services/artists"
+import { getArtistByName } from "../services/artists"
 import {
   recordWatch as recordWatchService,
   getWatchedVideoIds,
@@ -56,7 +56,7 @@ export function useWatchHistory(
       if (!resolvedUser) return
 
       try {
-        const artist = await findOrCreateArtist(artistName)
+        const artist = await getArtistByName(artistName)
         if (!artist) return
 
         const ok = await recordWatchService(

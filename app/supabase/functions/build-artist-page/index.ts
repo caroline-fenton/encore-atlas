@@ -390,7 +390,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const normalizedName = artist_name.trim().toLowerCase()
+    let normalizedName = artist_name.trim().toLowerCase()
 
     // Initialize Supabase client with the user's auth token
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!
@@ -414,11 +414,13 @@ Deno.serve(async (req) => {
     }
 
     // ── CACHE CHECK ──
-    const { data: existingArtist } = await supabase
-      .from("artists")
-      .select("*")
-      .ilike("name", normalizedName.replace(/%/g, "\\%").replace(/_/g, "\\_"))
+    const { data: existingArtist, error: lookupError } = await supabase
+      .rpc("resolve_artist", { p_name: normalizedName })
       .maybeSingle()
+    if (lookupError) throw new Error(`Artist lookup failed: ${lookupError.message}`)
+    // Keep the stored spelling when rebuilding an incomplete existing page.
+    // A spelling variant must never rename or create a second artist.
+    if (existingArtist) normalizedName = existingArtist.name
 
     if (
       existingArtist
@@ -476,6 +478,9 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Use the stored identity for validation and discovery on incomplete pages.
+    const buildArtistName = existingArtist?.name ?? artist_name
+
     // ── SUBJECT VALIDATION ──
     // Runs only on cache misses, so curated and already-built artists are
     // never re-validated. Blocks junk subject names (stale links, search
@@ -484,7 +489,7 @@ Deno.serve(async (req) => {
       new Response(
         JSON.stringify({
           error: "artist_not_found",
-          message: `No artist found matching "${artist_name}"`,
+          message: `No artist found matching "${buildArtistName}"`,
         }),
         {
           status: 404,
@@ -492,19 +497,15 @@ Deno.serve(async (req) => {
         },
       )
 
-    if (hasMixedScript(artist_name)) {
+    if (hasMixedScript(buildArtistName)) {
       return rejectUnknownArtist()
     }
 
     // Existence check against MusicBrainz: a definitive miss rejects the
     // build, while a transport failure fails open so MusicBrainz downtime
-    // can't take page building down with it. The canonical name is
-    // deliberately NOT swapped into the stored row — the ilike cache check
-    // above and artistNameLookupVariants in src/services/artistPage.ts both
-    // match on the user's normalized input, and a stored name that
-    // normalizes differently (e.g. "sigur rós" for input "sigur ros") would
-    // make the row unfindable and trigger a rebuild on every visit.
-    const subjectVerification = await verifySubjectArtist(artist_name)
+    // can't take page building down with it. Database identity matching
+    // handles accents and reviewed spelling corrections independently.
+    const subjectVerification = await verifySubjectArtist(buildArtistName)
     if (subjectVerification.status === "not_found") {
       return rejectUnknownArtist()
     }
@@ -516,7 +517,7 @@ Deno.serve(async (req) => {
     let concertResults: YouTubeSearchItem[] = []
     try {
       concertResults = await youtubeSearch(
-        `${artist_name} live concert full set`,
+        `${buildArtistName} live concert full set`,
         youtubeApiKey,
         25,
       )
@@ -528,7 +529,7 @@ Deno.serve(async (req) => {
     // about this artist (e.g. unrelated videos that surface for broad
     // "live concert full set" queries).
     const topResults = concertResults
-      .filter((item) => isRelevantResult(item, artist_name))
+      .filter((item) => isRelevantResult(item, buildArtistName))
       .slice(0, 25)
 
     // Get video details (thumbnails, view counts)
@@ -537,9 +538,9 @@ Deno.serve(async (req) => {
 
     // Fetch Wikipedia for context, then pass to Claude for bio generation
     const videoTitles = topResults.map((r) => decodeHtml(r.snippet.title))
-    const wiki = await fetchWikipediaSummary(artist_name).catch(() => null)
+    const wiki = await fetchWikipediaSummary(buildArtistName).catch(() => null)
     const tagResult = await claudeTag(
-      artist_name, videoTitles, wiki?.extract ?? null, anthropicApiKey,
+      buildArtistName, videoTitles, wiki?.extract ?? null, anthropicApiKey,
     )
 
     // Verify Claude's related-artist suggestions against MusicBrainz.
@@ -598,15 +599,14 @@ Deno.serve(async (req) => {
       if (insertError) {
         // Race condition — another request may have inserted
         if (insertError.code === "23505") {
-          const { data: raceArtist } = await supabase
-            .from("artists")
-            .select("id")
-            .ilike(
-              "name",
-              normalizedName.replace(/%/g, "\\%").replace(/_/g, "\\_"),
-            )
+          const { data: raceArtist, error: raceError } = await supabase
+            .rpc("resolve_artist", { p_name: normalizedName })
             .single()
-          artistId = raceArtist!.id
+          if (raceError || !raceArtist) {
+            throw new Error(`Failed to resolve concurrent artist build: ${raceError?.message}`)
+          }
+          artistId = raceArtist.id
+          normalizedName = raceArtist.name
         } else {
           throw new Error(`Failed to insert artist: ${insertError.message}`)
         }
@@ -633,7 +633,7 @@ Deno.serve(async (req) => {
         channel_title:
           detail?.channelTitle ??
           (item.snippet.channelTitle ? decodeHtml(item.snippet.channelTitle) : null),
-        search_query: `${artist_name} live concert full set`,
+        search_query: `${buildArtistName} live concert full set`,
         is_manually_added: false,
         display_order: index,
         video_type: "concert",
@@ -701,8 +701,8 @@ Deno.serve(async (req) => {
 
     if (needsSecondarySearches) {
       const secondarySearches: Array<{ query: string; type: "interview" | "music_video" }> = [
-        { query: `${artist_name} interview`, type: "interview" },
-        { query: `${artist_name} official music video`, type: "music_video" },
+        { query: `${buildArtistName} interview`, type: "interview" },
+        { query: `${buildArtistName} official music video`, type: "music_video" },
       ]
 
       // Search results are gathered for both types before anything is
@@ -714,7 +714,7 @@ Deno.serve(async (req) => {
       for (const { query, type } of secondarySearches) {
         try {
           const items = (await youtubeSearch(query, youtubeApiKey, 25))
-            .filter((item) => isRelevantResult(item, artist_name))
+            .filter((item) => isRelevantResult(item, buildArtistName))
           const ids = items.map((i) => i.id.videoId)
           const typeDetails = await youtubeVideoDetails(ids, youtubeApiKey)
 
@@ -819,7 +819,7 @@ Deno.serve(async (req) => {
       for (const related of tagResult.artist_context.relatedArtists) {
         const canonical = verifiedNames.get(related.name)
         if (!canonical) continue // MusicBrainz has no such artist
-        if (isSameArtistName(canonical, artist_name)) continue
+        if (isSameArtistName(canonical, buildArtistName)) continue
         const key = normalizeArtistName(canonical)
         if (seen.has(key)) continue
         seen.add(key)
