@@ -27,7 +27,7 @@ export default function InterviewStrip({ videos, onSelect }: Props) {
     >
       <div className="mx-auto max-w-5xl px-6 mb-3">
         <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-black/50">
-          Interviews
+          Interviews &amp; Films
         </div>
       </div>
 

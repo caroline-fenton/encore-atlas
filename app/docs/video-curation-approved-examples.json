@@ -1,0 +1,19 @@
+{
+  "policy_version": "2026-11-07.v1",
+  "approved_by": "Caroline",
+  "approved_on": "2026-11-07",
+  "proposed_by": "Codex",
+  "source": "Human approvals in the cross-category duplicate cleanup chat, including confirmation of both viewing conditions",
+  "application_status": "not_applied_as_policy_batch",
+  "identity_scope": "artist plus youtube_video_id; resolve and validate artist_id before applying",
+  "examples": [
+    {"number": 1, "artist": "militarie gun", "youtube_video_id": "HtAYbzZz2ms", "title": "Militarie Gun — Ottobar full concert", "decision": "keep", "target_video_type": "concert", "target_label": "Live Performances", "reason": "Complete concert at a music venue.", "human_confirmed": "Footage is watchable and audible.", "protect_after_application": true},
+    {"number": 2, "artist": "militarie gun", "youtube_video_id": "ImQ1i1fBEA0", "title": "Militarie Gun: Tiny Desk Concert", "decision": "keep_once", "target_video_type": "concert", "target_label": "Live Performances", "reason": "Tiny Desk is a live performance under the revised policy, not a music-video category.", "protect_after_application": true},
+    {"number": 3, "artist": "freak slug", "youtube_video_id": "wjyr9bHoC2E", "title": "Freak Slug on Audiotree Live (Full Session)", "decision": "keep_once", "target_video_type": "concert", "target_label": "Live Performances", "reason": "Music session with interview breaks; classify by the overall performance purpose.", "protect_after_application": true},
+    {"number": 4, "artist": "mazzy star", "youtube_video_id": "ImKY6TZEyrI", "title": "Mazzy Star - Fade Into You (Official Music Video)", "decision": "keep_once", "target_video_type": "music_video", "target_label": "Music Videos", "reason": "Official music video, not concert footage or an interview.", "protect_after_application": true},
+    {"number": 5, "artist": "alcest", "youtube_video_id": "iuPpqEmpPsQ", "title": "ALCEST - Making Of Les Chants de l'Aurore (Official Behind The Scenes)", "decision": "keep_once", "target_video_type": "interview", "target_label": "Interviews & Films", "reason": "Artist-made behind-the-scenes film about making the album.", "protect_after_application": true},
+    {"number": 6, "artist": "dag nasty", "youtube_video_id": "KAek2u6POk4", "title": "Dag Nasty - Wig Out At Denkos (1987) Full Álbum", "decision": "remove", "target_video_type": null, "reason": "Audio-only studio-album upload lacks meaningful footage.", "human_confirmed": "Upload is audio-only.", "exclude_from_automatic_rediscovery": true},
+    {"number": 7, "artist": "mazzy star", "youtube_video_id": "-5y9J7TqbKQ", "title": "Miley Cyrus - Fade Into You (Mazzy Star Cover)", "decision": "remove", "target_video_type": null, "reason": "Cover by another artist without Mazzy Star participation; remove from Mazzy Star's page only.", "exclude_from_automatic_rediscovery": true},
+    {"number": 8, "artist": "weezer", "youtube_video_id": "BnbuptO63X4", "title": "We’re Weezer, of course we’re playing the Blue Album in full this summer", "decision": "remove", "target_video_type": null, "reason": "Eight-second tour promotion, not a complete performance or substantive interview.", "exclude_from_automatic_rediscovery": true}
+  ]
+}

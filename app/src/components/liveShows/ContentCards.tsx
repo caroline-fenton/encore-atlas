@@ -186,7 +186,7 @@ export default function ContentCards({
 
       {/* Interviews */}
       {interviewVideos.length > 0 && (
-        <CardStrip title="Interviews">
+        <CardStrip title="Interviews & Films">
           {interviewVideos.map((v) => (
             <VideoCard
               key={v.id}
