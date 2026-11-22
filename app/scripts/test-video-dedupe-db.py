@@ -94,6 +94,8 @@ try:
     print('PASS: category precedence, manual selections, stale cleanup, invalid payloads, guards and permissions', flush=True)
     sql((root / 'supabase/tests/admin_artist_delete.sql').read_text())
     print('PASS: admin deletion authorization, confirmation, curation guard, cascades and audit', flush=True)
+    sql((root / 'supabase/tests/video_curation.sql').read_text())
+    print('PASS: review authorization, approval, protection, exclusions, restoration, stale batches, retry and cascade', flush=True)
     # Reverse arrival order too: existing persisted category wins in either order.
     for first_type, second_type in [('concert', 'interview'), ('music_video', 'concert')]:
         artist = sql("insert into public.artists(name) values ('%s') returning id;" % uuid.uuid4())
@@ -117,6 +119,8 @@ try:
         assert sql("select count(*) from public.admin_artist_deletions where artist_id='%s';" % artist) == '0'
         sql("delete from public.artists where id='%s';" % artist)
     print('PASS: concurrent curation and rename prevent stale admin deletions', flush=True)
+
+    print(sql((root / 'supabase/tests/video_curation_timing.sql').read_text()), flush=True)
 
 finally:
     subprocess.run(base + ['dropdb', '-U', 'postgres', '--force', database], check=True)

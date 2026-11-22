@@ -5,6 +5,8 @@ import LiveShowsPage from "./pages/LiveShowsPage"
 import MusicVideosPage from "./pages/MusicVideosPage"
 import InterviewsPage from "./pages/InterviewsPage"
 import WatchHistoryPage from "./pages/WatchHistoryPage"
+import { lazy, Suspense } from "react"
+const AdminVideoReviewPage = lazy(() => import("./pages/AdminVideoReviewPage"))
 import AdminContentRefreshPage from "./pages/AdminContentRefreshPage"
 import SceneExplorerPage from "./pages/SceneExplorerPage"
 
@@ -12,6 +14,7 @@ export default function App() {
   return (
     <>
       <Routes>
+        <Route path="/admin/video-review" element={<Suspense fallback={<p className="p-8">Loading reviews…</p>}><AdminVideoReviewPage /></Suspense>} />
         <Route path="/admin/content-refresh" element={<AdminContentRefreshPage />} />
         <Route path="/" element={<AppLayout />}>
           <Route index element={<LiveShowsPage />} />

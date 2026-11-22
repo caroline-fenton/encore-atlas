@@ -64,7 +64,7 @@ type AdminSession = {
   email: string | null
 }
 
-async function invoke<T>(
+export async function invoke<T>(
   action: string,
   payload: Record<string, unknown> = {},
 ): Promise<T> {

@@ -92,6 +92,7 @@ export type Database = {
           wikipedia_extract: string | null
           wikipedia_thumbnail_url: string | null
           wikipedia_url: string | null
+          video_curation_policy: unknown
           video_types_synced: string[]
         }
         Insert: {

@@ -5,6 +5,7 @@ import { test } from 'node:test'
 // Run the actual Edge Function handler with network boundaries replaced.
 // SQL behavior and concurrency are tested separately in real Postgres.
 const rpcCalls = []
+let resolvedArtist = null
 let readError = null
 let interviewMode = 'overlap'
 let releaseInterview
@@ -15,7 +16,7 @@ const persisted = [
 ]
 const client = {
   rpc(name, args) {
-    if (name === 'resolve_artist') return { maybeSingle: async () => ({ data: null, error: null }) }
+    if (name === 'resolve_artist') return { maybeSingle: async () => ({ data: resolvedArtist, error: null }) }
     assert.equal(name, 'upsert_public_build_videos')
     rpcCalls.push(args)
     return Promise.resolve({ error: null })
@@ -136,4 +137,22 @@ test('secondary searches overlap while category writes retain their order', asyn
   assert.equal(secondaryStarted.length, 2)
   assert.deepEqual(rpcCalls.map(call => call.p_video_type), ['concert', 'interview', 'music_video'])
   interviewMode = 'overlap'
+})
+
+
+test('cached reviewed-empty state reaches public response without rebuilding', async () => {
+  const saved = persisted.splice(0)
+  resolvedArtist = { id: 'artist', name: 'radiohead', last_refreshed_at: '2026-11-22',
+    video_types_synced: [], video_curation_policy: { reviewed_empty_types: ['concert', 'interview', 'music_video'], decisions: [] } }
+  try {
+    const response = await build()
+    assert.equal(response.status, 200)
+    const data = await response.json()
+    assert.deepEqual(data.videos, [])
+    assert.deepEqual(data.reviewed_empty_types, ['concert', 'interview', 'music_video'])
+    assert.equal(data.interviews_synced, true)
+    assert.equal(data.music_videos_synced, true)
+    assert.equal(data.was_cache_hit, true)
+    assert.deepEqual(rpcCalls, [])
+  } finally { resolvedArtist = null; persisted.push(...saved) }
 })

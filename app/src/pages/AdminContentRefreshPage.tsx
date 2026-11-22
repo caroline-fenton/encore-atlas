@@ -29,8 +29,8 @@ const videoSections: Array<{
   title: string
   emptyText: string
 }> = [
-  { type: "concert", title: "Live Videos", emptyText: "No live videos in this preview." },
-  { type: "interview", title: "Interviews", emptyText: "No interviews in this preview." },
+  { type: "concert", title: "Live Performances", emptyText: "No live videos in this preview." },
+  { type: "interview", title: "Interviews & Films", emptyText: "No interviews in this preview." },
   { type: "music_video", title: "Music Videos", emptyText: "No music videos in this preview." },
 ]
 
@@ -943,6 +943,7 @@ export default function AdminContentRefreshPage() {
       <main className="mx-auto min-h-screen max-w-lg px-6 py-20">
         <Link to="/" className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">← Encore Atlas</Link>
         <h1 className="mt-10 font-display text-5xl tracking-[0.12em]">Content Refresh</h1>
+          <a href="/admin/video-review" className="underline">Review video decisions →</a>
         <p className="mt-4 text-sm leading-relaxed text-black/60">
           This route requires an explicitly provisioned admin account.
         </p>
@@ -970,6 +971,7 @@ export default function AdminContentRefreshPage() {
         <div>
           <Link to="/" className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">← Encore Atlas</Link>
           <h1 className="mt-4 font-display text-5xl tracking-[0.12em]">Content Refresh</h1>
+          <a href="/admin/video-review" className="underline">Review video decisions →</a>
           <p className="mt-2 text-sm text-black/55">Search an artist to review metadata, same-vibe picks, and every artist-page video category before publishing fixes.</p>
         </div>
         <button type="button" onClick={() => signOutAdmin().then(() => window.location.reload())} className="text-xs font-semibold uppercase tracking-[0.15em] text-black/45">

@@ -10,6 +10,7 @@ import {
   type RefreshScope,
   type RefreshVideo,
 } from "../_shared/refresh-policy.ts"
+import { handleVideoCuration } from "../_shared/video-curation.ts"
 import { getAliases } from "../../../src/data/artistAliases.ts"
 import { decodeHtml } from "../../../src/utils/decodeHtml.ts"
 
@@ -372,6 +373,9 @@ Deno.serve(async (request) => {
   if (!admin) return json({ error: "Admin access required" }, 403)
 
   try {
+    if (typeof action === "string" && action.startsWith("curation_")) {
+      return json(await handleVideoCuration(service, user.id, body))
+    }
     if (action === "search") {
       const query = typeof body.query === "string" ? body.query.trim() : ""
       const escaped = query.replace(/[%_]/g, (character) => `\\${character}`)
