@@ -9,6 +9,7 @@ type ArtistRow = Database["public"]["Tables"]["artists"]["Row"]
  */
 export async function getArtistByName(
   name: string,
+  strict = false,
 ): Promise<ArtistRow | null> {
   try {
     const { data, error } = await supabase
@@ -16,12 +17,14 @@ export async function getArtistByName(
       .maybeSingle()
 
     if (error) {
+      if (strict) throw error;
       console.warn("[artists] getArtistByName error:", error.message)
       return null
     }
 
     return data
   } catch (err) {
+    if (strict) throw err;
     console.warn("[artists] getArtistByName error:", err)
     return null
   }

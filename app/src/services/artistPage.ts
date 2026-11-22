@@ -1,6 +1,7 @@
 import { FunctionsHttpError } from "@supabase/supabase-js"
 import { supabase } from "./supabase"
 import { filterRelatedArtists } from "../utils/artistNameFilters"
+import { readVideoPolicy } from "./publicVideoPolicy"
 import { getArtistByName } from "./artists"
 
 /**
@@ -64,6 +65,7 @@ export type ArtistPageData = {
   videos: ArtistVideo[]
   interview_videos: ArtistVideo[]
   music_videos: ArtistVideo[]
+  reviewed_empty_types: string[]
   interviews_synced: boolean
   music_videos_synced: boolean
   was_cache_hit: boolean
@@ -218,8 +220,9 @@ export async function getCachedArtistPage(
     videos: byType("concert"),
     interview_videos: byType("interview"),
     music_videos: byType("music_video"),
-    interviews_synced: syncedTypes.includes("interview"),
-    music_videos_synced: syncedTypes.includes("music_video"),
+    reviewed_empty_types: readVideoPolicy(artist.video_curation_policy).reviewed_empty_types,
+    interviews_synced: syncedTypes.includes("interview") || readVideoPolicy(artist.video_curation_policy).reviewed_empty_types.includes("interview"),
+    music_videos_synced: syncedTypes.includes("music_video") || readVideoPolicy(artist.video_curation_policy).reviewed_empty_types.includes("music_video"),
     was_cache_hit: true,
   }
 }

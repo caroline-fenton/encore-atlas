@@ -54,11 +54,11 @@ export default function LiveShowsPage() {
   const artistPage = useArtistPage(selectedArtistName)
 
   // Only fall back to direct YouTube search after the pipeline has definitively
-  // failed or returned no videos. While the pipeline is still loading, pass ""
+  // failed or returned no videos without a reviewed-empty decision. While the pipeline is still loading, pass ""
   // to prevent the fallback from firing and burning YouTube quota.
   const pipelineSettled = !artistPage.isLoading && !artistPage.isBuilding
   const pipelineSucceeded =
-    pipelineSettled && artistPage.data !== null && artistPage.data.videos.length > 0
+    pipelineSettled && artistPage.data !== null && (artistPage.data.videos.length > 0 || artistPage.data.reviewed_empty_types?.includes("concert"))
   const pipelineFailed =
     pipelineSettled && !pipelineSucceeded
 

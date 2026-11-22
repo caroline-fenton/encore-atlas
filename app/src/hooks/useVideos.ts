@@ -13,6 +13,8 @@ import {
 } from "../services/searchQueries"
 import { getCachedArtistPage, type ArtistVideo } from "../services/artistPage"
 
+import { searchWithVideoPolicy, type VideoCategory } from "../services/publicVideoPolicy"
+
 type UseVideosResult = {
   videos: Video[]
   featured: Video | null
@@ -141,12 +143,12 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
 
   const fetchFn = useCallback(async (signal: AbortSignal) => {
     const query = buildConcertSearchQuery(artistName)
-    const result = await searchWithDurationFallback(query, {
+    const result = await searchWithVideoPolicy(artistName, "concert", () => searchWithDurationFallback(query, {
       maxResults: 25,
       videoDuration: "long",
       artistName,
       signal,
-    })
+    }))
     // Track whether fallback switched from "long" to "any"
     effectiveDurationRef.current = result.effectiveDuration === "any" ? "any" : "long"
     return result
@@ -155,12 +157,12 @@ export function useArtistConcerts(artistName: string): UseVideosResult {
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
       const query = buildConcertSearchQuery(artistName)
-      return searchAndEnrich(query, {
+      return searchWithVideoPolicy(artistName, "concert", () => searchAndEnrich(query, {
         maxResults: 25,
         videoDuration: effectiveDurationRef.current,
         artistName,
         pageToken,
-      })
+      }))
     },
     [artistName],
   )
@@ -186,6 +188,7 @@ function mapArtistVideo(v: ArtistVideo): Video {
 
 function useCachedOrLiveVideos(
   artistName: string,
+  category: VideoCategory,
   getCached: (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => ArtistVideo[],
   isSynced: (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => boolean,
   buildQuery: (name: string) => string,
@@ -203,15 +206,15 @@ function useCachedOrLiveVideos(
       }
     }
     const query = buildQuery(artistName)
-    return searchAndEnrich(query, { maxResults: 25, artistName, signal })
-  }, [artistName, getCached, isSynced, buildQuery])
+    return searchWithVideoPolicy(artistName, category, () => searchAndEnrich(query, { maxResults: 25, artistName, signal }))
+  }, [artistName, category, getCached, isSynced, buildQuery])
 
   const loadMoreFn = useCallback(
     async (pageToken: string) => {
       const query = buildQuery(artistName)
-      return searchAndEnrich(query, { maxResults: 25, artistName, pageToken })
+      return searchWithVideoPolicy(artistName, category, () => searchAndEnrich(query, { maxResults: 25, artistName, pageToken }))
     },
-    [artistName, buildQuery],
+    [artistName, category, buildQuery],
   )
 
   return useVideoFetch(fetchFn, loadMoreFn, [artistName])
@@ -226,8 +229,8 @@ export function useArtistMusicVideos(artistName: string): UseVideosResult {
     (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => data.music_videos_synced,
     [],
   )
-  const buildQuery = useCallback(buildMusicVideoSearchQuery, [])
-  return useCachedOrLiveVideos(artistName, getCached, isSynced, buildQuery)
+  const buildQuery = buildMusicVideoSearchQuery
+  return useCachedOrLiveVideos(artistName, "music_video", getCached, isSynced, buildQuery)
 }
 
 export function useArtistInterviews(artistName: string): UseVideosResult {
@@ -239,6 +242,6 @@ export function useArtistInterviews(artistName: string): UseVideosResult {
     (data: NonNullable<Awaited<ReturnType<typeof getCachedArtistPage>>>) => data.interviews_synced,
     [],
   )
-  const buildQuery = useCallback(buildInterviewSearchQuery, [])
-  return useCachedOrLiveVideos(artistName, getCached, isSynced, buildQuery)
+  const buildQuery = buildInterviewSearchQuery
+  return useCachedOrLiveVideos(artistName, "interview", getCached, isSynced, buildQuery)
 }

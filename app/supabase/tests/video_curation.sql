@@ -29,6 +29,9 @@ begin
   assert (select count(*)=1 from public.artist_videos where artist_id=artist);
   assert (select video_type='concert' and is_manually_added from public.artist_videos where artist_id=artist);
   assert exists(select 1 from public.artist_videos where artist_id=other_artist);
+  assert (select video_curation_policy->'decisions' @> '[{"youtube_video_id":"KAek2u6POk4","action":"remove","target_type":null}]'::jsonb from public.artists where id=artist);
+  assert (select not (video_curation_policy->'reviewed_empty_types' ? 'concert') from public.artists where id=artist);
+  assert (select video_curation_policy->'decisions'='[]'::jsonb from public.artists where id=other_artist);
   select last_refreshed_at into saved_time from public.artists where id=artist;
   perform public.apply_video_curation(actor,array[first_id,second_id]);
   assert (select last_refreshed_at=saved_time from public.artists where id=artist);
@@ -59,6 +62,19 @@ begin
   assert not has_function_privilege('authenticated','public.apply_video_curation(uuid,uuid[])','execute');
   assert not has_table_privilege('anon','public.video_curation_decisions','select');
   assert not has_table_privilege('authenticated','public.video_curation_reviews','insert');
+  -- A fresh approval removing the last live performance records an explicit
+  -- public empty state without exposing reasons, snapshots, or reviewer IDs.
+  first_id := (public.preview_video_curation(actor,artist,'ImQ1i1fBEA0','remove',null,'Remove final concert','2026-11-07.v1')->>'id')::uuid;
+  perform public.approve_video_curation(actor,array[first_id]);
+  perform public.apply_video_curation(actor,array[first_id]);
+  assert (select video_curation_policy->'reviewed_empty_types' ? 'concert' from public.artists where id=artist);
+  assert (select not (video_curation_policy->'reviewed_empty_types' ? 'music_video') from public.artists where id=artist);
+  assert (select not (video_curation_policy::text like '%approved_by%') from public.artists where id=artist);
+  -- Explicit restoration clears the empty marker for its destination.
+  first_id := (public.preview_video_curation(actor,artist,'ImQ1i1fBEA0','keep','concert','Restore concert','2026-11-07.v1')->>'id')::uuid;
+  perform public.approve_video_curation(actor,array[first_id]);
+  perform public.apply_video_curation(actor,array[first_id]);
+  assert (select not (video_curation_policy->'reviewed_empty_types' ? 'concert') from public.artists where id=artist);
   -- Artist deletion still cascades normally (no deletion is performed in production).
   delete from public.artists where id=artist;
   assert not exists(select 1 from public.video_curation_decisions where artist_id=artist);

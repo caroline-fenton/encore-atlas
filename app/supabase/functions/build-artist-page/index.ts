@@ -370,6 +370,7 @@ type ArtistPageResponse = {
   // persisted (even if zero relevant results were found). Lets the
   // frontend distinguish "completed, genuinely empty" from "never
   // attempted" (legacy artists, or artists with too few concert videos).
+  reviewed_empty_types: string[]
   interviews_synced: boolean
   music_videos_synced: boolean
   was_cache_hit: boolean
@@ -468,8 +469,9 @@ Deno.serve(async (req) => {
         videos: byType("concert"),
         interview_videos: byType("interview"),
         music_videos: byType("music_video"),
-        interviews_synced: syncedTypes.includes("interview"),
-        music_videos_synced: syncedTypes.includes("music_video"),
+        reviewed_empty_types: existingArtist.video_curation_policy?.reviewed_empty_types ?? [],
+        interviews_synced: syncedTypes.includes("interview") || (existingArtist.video_curation_policy?.reviewed_empty_types ?? []).includes("interview"),
+        music_videos_synced: syncedTypes.includes("music_video") || (existingArtist.video_curation_policy?.reviewed_empty_types ?? []).includes("music_video"),
         was_cache_hit: true,
       }
 
@@ -873,6 +875,7 @@ Deno.serve(async (req) => {
       videos: persistedByType("concert"),
       interview_videos: persistedByType("interview"),
       music_videos: persistedByType("music_video"),
+      reviewed_empty_types: [],
       interviews_synced: syncedTypes.includes("interview"),
       music_videos_synced: syncedTypes.includes("music_video"),
       was_cache_hit: false,

@@ -80,8 +80,25 @@ The review screen is lazy-loaded separately from the public route bundle.
 
 Rollout follows `../docs/workflow.md`: review/merge the PR, use an up-to-date main
 checkout to push the migration, verify migration history, deploy
-`admin-content-refresh`, then verify the authenticated browser flow before applying
+`admin-content-refresh` and `build-artist-page`, then verify the authenticated browser flow before applying
 the already-approved eight examples. Verify the eight outcomes and unrelated rows
 using read-only database checks. Full authenticated browser-to-Edge verification and
 production build timing remain rollout checks; no production schema/content writes
 were made during implementation.
+
+
+### PR review repairs
+
+Reviewed-empty categories and a minimal public projection of artist-scoped
+keep/remove decisions are now persisted with application. Cache responses carry
+reviewed-empty markers; every browser live fallback (including pagination and
+retries) checks current artist policy and filters exclusions and misplaced keeps.
+A policy lookup failure stops the fallback instead of bypassing protection.
+The projection contains no review reasons, user identities, or audit snapshots.
+This does not add requests to successful cached artist-page reads or AI build stages.
+
+The admin review surface now supplies its own dark background. Its signed-in view
+was visually checked in a local browser with fixture data; this is not a production
+authentication test. Regression coverage includes public fallback filtering,
+reviewed-empty suppression, strict lookup failure, refreshed pagination policy,
+public cache response flags, and SQL empty-marker/restoration behavior.

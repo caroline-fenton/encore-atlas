@@ -1,5 +1,10 @@
 -- Deliberately separate reviewed video decisions from whole-artist refreshes.
 -- No production content is changed by this migration.
+-- Public projection only: no reviewer identity, reasons, or audit snapshots.
+-- Read alongside the artist to keep reviewed-empty results authoritative.
+alter table public.artists add column video_curation_policy jsonb not null
+  default '{"reviewed_empty_types": [], "decisions": []}'::jsonb;
+
 create table public.video_curation_reviews (
   id uuid primary key default gen_random_uuid(),
   artist_id uuid not null references public.artists(id) on delete cascade,
@@ -160,7 +165,25 @@ begin
   end loop;
   perform set_config('app.video_curation_apply',coalesce(previous_override,''),true);
   -- Also marks a deliberately empty artist complete, blocking public rebuild/refill.
-  update public.artists set last_refreshed_at=now() where id=artist;
+  update public.artists set last_refreshed_at=now(), video_curation_policy=jsonb_build_object(
+    'reviewed_empty_types', (
+      select coalesce(jsonb_agg(category order by category),'[]'::jsonb) from (
+        select distinct category from public.video_curation_reviews review,
+          lateral (
+            select value->>'video_type' as category from jsonb_array_elements(review.source_videos)
+            union select review.target_type
+          ) touched
+        where review.artist_id=artist and review.status='applied'
+          and category in ('concert','interview','music_video')
+          and not exists(select 1 from public.artist_videos v where v.artist_id=artist and v.video_type=category)
+      ) empty_categories
+    ),
+    'decisions', (
+      select coalesce(jsonb_agg(jsonb_build_object('youtube_video_id',youtube_video_id,
+        'action',action,'target_type',target_type) order by youtube_video_id),'[]'::jsonb)
+      from public.video_curation_decisions where artist_id=artist
+    )
+  ) where id=artist;
   return jsonb_build_object('status','applied');
 end $$;
 

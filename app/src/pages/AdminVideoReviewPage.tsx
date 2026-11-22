@@ -101,7 +101,7 @@ export default function AdminVideoReviewPage() {
   }
   if (admin === null) return <main className="p-8">Checking admin access…</main>
   if (!admin) return <main className="p-8"><p>Sign in with your admin account to review videos.</p><Link to="/admin/content-refresh">Go to admin sign-in</Link><p role="alert">{message}</p></main>
-  return <main className="mx-auto max-w-5xl space-y-6 p-6 text-white">
+  return <main className="mx-auto min-h-screen max-w-5xl space-y-6 bg-zinc-950 p-6 text-white">
     <Link className="underline" to="/admin/content-refresh">← Content Refresh</Link>
     <h1 className="text-4xl">Video Review</h1>
     <p>Keep complete performances, meaningful music videos, and interviews or films about the artist. Tiny Desk, KEXP and TV performances belong in Live Performances. Exclude audio-only uploads, teasers and unrelated performers.</p>
